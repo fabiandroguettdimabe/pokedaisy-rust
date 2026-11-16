@@ -45,7 +45,7 @@ const versions = page.versions?.map((v: string) => tr(v)) ?? [...new Set(data.ha
 const cell = { yes: ['check', 'f-pillGreen', 'YES'], part: ['half', 'f-pillYellow', 'PARTLY'], no: ['cross', 'f-pillGrey', 'NO'] } as Record<string, string[]>;
 const COLUMN: Record<string, string> = { Party: tr('PARTY'), Bag: tr('BAG'), Battle: tr('BATTLE'), Map: tr('MAP'), Dex: tr('DEX'), Guide: tr('GUIDE') };
 ---
-<Base title={tr('{game} on PokeDaisy', { game: page.title })} description={say(page.description)} image={`${dir}/og.png`} theme={page.theme}>
+<Base title={tr('{game} on Vyntra', { game: page.title })} description={say(page.description)} image={`${dir}/og.png`} theme={page.theme}>
   <section class="hero container">
     <div class="hero-copy" data-track-where="hero">
       <span class="eyebrow">{page.eyebrow}</span>
@@ -75,7 +75,7 @@ const COLUMN: Record<string, string> = { Party: tr('PARTY'), Bag: tr('BAG'), Bat
         <div class="duo-dual">
           <HeroDevice>
             <div slot="top" class="screen-shots" data-cycle="3200" data-offset="1600">
-              {top.map((s: { src: string; label: string }, i: number) => <img src={s.src} alt={tr('{game} on PokeDaisy: {shot}', { game: page.title, shot: s.label })} class:list={[i === 0 && 'on']} loading={i === 0 ? 'eager' : 'lazy'} decoding="async" />)}
+              {top.map((s: { src: string; label: string }, i: number) => <img src={s.src} alt={tr('{game} on Vyntra: {shot}', { game: page.title, shot: s.label })} class:list={[i === 0 && 'on']} loading={i === 0 ? 'eager' : 'lazy'} decoding="async" />)}
             </div>
             <!-- Until the companion's shots are made, its drawn demo (the homepage's). -->
             <div slot="bottom" class="screen-shots" data-cycle="3200">
@@ -88,14 +88,14 @@ const COLUMN: Record<string, string> = { Party: tr('PARTY'), Bag: tr('BAG'), Bat
         <div class="duo-single">
           <HeroSingleDevice>
             <div slot="screen" class="screen-shots" data-cycle="3200">
-              {single.map((s: { src: string; label: string }, i: number) => <img src={s.src} alt={tr('{game} on PokeDaisy: {shot}', { game: page.title, shot: s.label })} class:list={[i === 0 && 'on']} loading={i === 0 ? 'eager' : 'lazy'} decoding="async" />)}
+              {single.map((s: { src: string; label: string }, i: number) => <img src={s.src} alt={tr('{game} on Vyntra: {shot}', { game: page.title, shot: s.label })} class:list={[i === 0 && 'on']} loading={i === 0 ? 'eager' : 'lazy'} decoding="async" />)}
             </div>
           </HeroSingleDevice>
         </div>
       </div>
       <p class="tiny muted shot-note">{companion.length > 0
-        ? tr('Real screenshots of PokeDaisy on a player\'s {game} save.', { game: page.title })
-        : tr('Real screenshots of PokeDaisy on a player\'s {game} save. The companion is the homepage\'s demo.', { game: page.title })}</p>
+        ? tr('Real screenshots of Vyntra on a player\'s {game} save.', { game: page.title })
+        : tr('Real screenshots of Vyntra on a player\'s {game} save. The companion is the homepage\'s demo.', { game: page.title })}</p>
     </div>
   </section>
 
@@ -127,7 +127,7 @@ const COLUMN: Record<string, string> = { Party: tr('PARTY'), Bag: tr('BAG'), Bat
         {tricks.map((s: { label: string }, i: number) => <button type="button" role="tab" class:list={['btn f-btn h-btnHot small', i === 0 && 'on']} aria-selected={i === 0 ? 'true' : 'false'}>{s.label}</button>)}
       </div>
       <div class="viewer-screen f-card">
-        {tricks.map((s: { src: string; label: string }, i: number) => <img src={s.src} alt={tr('{game} on PokeDaisy: {shot}', { game: page.title, shot: s.label })} class:list={[i === 0 && 'on']} loading="lazy" decoding="async" />)}
+        {tricks.map((s: { src: string; label: string }, i: number) => <img src={s.src} alt={tr('{game} on Vyntra: {shot}', { game: page.title, shot: s.label })} class:list={[i === 0 && 'on']} loading="lazy" decoding="async" />)}
       </div>
       {tricks.map((s: { caption: string }, i: number) => <p class:list={['viewer-caption small muted', i === 0 && 'on']}>{s.caption}</p>)}
     </div>

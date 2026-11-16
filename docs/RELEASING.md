@@ -23,7 +23,7 @@ make release               # tags v1.2.0 on main and pushes the tag
 
 Then follow the **Release** run in the repo's Actions tab. Its last job waits for you:
 **Review deployments → release → Approve**. When it's green the release is on GitHub as a
-**draft**, with `PokeDaisy-1.2.0.apk` attached. Only you see it. Edit its notes, add any other
+**draft**, with `Vyntra-1.2.0.apk` attached. Only you see it. Edit its notes, add any other
 platform's files (`gh release upload v1.2.0 <files>`: the Linux packages, the 3DS `.3dsx`; the
 APK stays the release's first `.apk`), then publish it: **Publish release** on its page, or
 `gh release edit v1.2.0 --draft=false`. Publishing starts the **Website** workflow (a full
@@ -60,9 +60,9 @@ gh release upload v$V linux-v$V/*/*.zip
 | --- | --- |
 | `pokedaisy-linux-x86_64.zip` | Steam Deck and desktop Linux (glibc 2.35 or newer): the executable and its two cores |
 | `pokedaisy-linux-aarch64.zip` | TrimUI devices, as an app |
-| `pokedaisy-portmaster-aarch64.zip` | PortMaster handhelds (`PokeDaisy.sh` + `pokedaisy/`) |
+| `pokedaisy-portmaster-aarch64.zip` | PortMaster handhelds (`Vyntra.sh` + `pokedaisy/`) |
 | `pokedaisy-libretro-x86_64.zip`, `pokedaisy-libretro-aarch64.zip` | the three libretro cores (GBA on armGBA, GB/GBC on mGBA, DS on DSperate) and their licenses, for other frontends |
-| `PokeDaisy-NXRedux.zip` | the TrimUI Brick on NXRedux (all three cores behind one collection) |
+| `Vyntra-NXRedux.zip` | the TrimUI Brick on NXRedux (all three cores behind one collection) |
 
 The install guide for all six is the manual's Linux page (`docs/manual/linux.md`); link it in the release notes and
 say the Linux files are a **beta** (Android stays the full app). A file missing from the run means a job failed: fix
@@ -72,7 +72,7 @@ it on `main`, then follow the "If a run fails" steps above.
 
 The release APK carries the native code for both arm64 (the Thor, the Retroid Pocket, phones) and 32-bit ARM
 (`-Ppokedaisy.armv7=true`), so a device running a 32-bit Android (a Galaxy Tab A SM-T510, older tablets) installs
-the same `PokeDaisy-<version>.apk` as everyone else, from the website, the release page or the in-app updater
+the same `Vyntra-<version>.apk` as everyone else, from the website, the release page or the in-app updater
 (every updater, old ones too). The cost is the 32-bit libraries: about 5 MB more in every APK (they're stored
 uncompressed, so Android maps them straight from the APK). One APK per ABI was tried and dropped (the owner's call,
 2026-11-08): players would have had to find the right file, and updaters before it take the first `.apk` of a

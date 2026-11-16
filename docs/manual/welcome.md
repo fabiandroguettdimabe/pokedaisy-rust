@@ -1,12 +1,12 @@
 ---
-title: Welcome to PokeDaisy
-summary: What PokeDaisy is, what each screen shows, what you need to get going and where to read on.
+title: Welcome to Vyntra
+summary: What Vyntra is, what each screen shows, what you need to get going and where to read on.
 section: start
 order: 1
 keywords: [about, intro, introduction, overview, what is, getting started, manual, help, faq, emulator, gba]
 ---
 
-PokeDaisy is a Game Boy, Game Boy Color, Game Boy Advance and Nintendo DS player for Android, made for Pokémon games. Beside your game runs a live **companion** that reads it while you play: your party, your bag, the map you're on, how the current battle is going, your Pokédex and a guide that hints before it tells. On a dual-screen handheld like the AYN Thor, the companion gets the bottom screen to itself. On a handheld with one screen it opens as a window over the game or a panel beside it, and on a phone held upright it sits under it.
+Vyntra is a Game Boy, Game Boy Color, Game Boy Advance and Nintendo DS player for Android, made for Pokémon games. Beside your game runs a live **companion** that reads it while you play: your party, your bag, the map you're on, how the current battle is going, your Pokédex and a guide that hints before it tells. On a dual-screen handheld like the AYN Thor, the companion gets the bottom screen to itself. On a handheld with one screen it opens as a window over the game or a panel beside it, and on a phone held upright it sits under it.
 
 You never have to pause and open a menu to check a Pokémon's moves or look up what an attack does against a type. One glance, and it's there, drawn in the game's own menu style.
 
@@ -15,14 +15,14 @@ You never have to pause and open a menu to check a Pokémon's moves or look up w
 ## What you need
 
 - **An Android device running Android 8.0 or newer.** A handheld with two screens or one, or a phone.
-- **Your own games.** PokeDaisy comes with no games at all. Use ROMs you dumped yourself from cartridges you own: `.gba` files (Game Boy and Game Boy Color `.gb` / `.gbc` and DS `.nds` work too), loose or inside a `.zip` or `.7z`.
+- **Your own games.** Vyntra comes with no games at all. Use ROMs you dumped yourself from cartridges you own: `.gba` files (Game Boy and Game Boy Color `.gb` / `.gbc` and DS `.nds` work too), loose or inside a `.zip` or `.7z`.
 - **A supported game for the companion.** Any Game Boy, Game Boy Color, GBA or DS game plays, but the companion only reads the games it knows: FireRed, LeafGreen, Emerald, Ruby, Sapphire, Red to Crystal on the Game Boy, Platinum, HeartGold, SoulSilver, Black, White, Black 2 and White 2 on the DS, and a long list of ROM hacks (Origin HeartGold among them on the DS). [Supported games](supported-games.md) has the full list and the exact versions.
 
 Ready? [Install and first setup](install.md) walks you through the first five minutes.
 
 ## Which devices
 
-PokeDaisy was built on the **AYN Thor**, and the companion is laid out for its bottom screen. The **Retroid Pocket Duo Lite** gets its own layout for its squarer bottom screen. Other dual-screen devices should work, and `SWAP SCREENS` handles one whose main display is the bottom screen.
+Vyntra was built on the **AYN Thor**, and the companion is laid out for its bottom screen. The **Retroid Pocket Duo Lite** gets its own layout for its squarer bottom screen. Other dual-screen devices should work, and `SWAP SCREENS` handles one whose main display is the bottom screen.
 
 With one screen, the companion opens as a window over the game (or a panel beside it), or, on a phone held upright, a strip docked under it. The [HUD](hud.md) keeps your party, a minimap and your bag on the game screen while you walk, and the [quick menu](controls.md#the-quick-menu) puts your PC, `FLY`, your bike, your rod and save states one button away. [Screens and devices](devices.md) covers all of it.
 
@@ -58,7 +58,7 @@ There's also an early preview for the New Nintendo 3DS, a homebrew app with the 
 
 ## Reading this manual in the app
 
-This manual is built into PokeDaisy, so you can look something up without leaving your game. There are three ways in:
+This manual is built into Vyntra, so you can look something up without leaving your game. There are three ways in:
 
 - On the top screen, tap the `?` button in the library's header.
 - On the top screen, open Settings (`SETTINGS` in the library, down the left or along the bottom) and pick `HELP`, in the `APP` group.
@@ -66,7 +66,7 @@ This manual is built into PokeDaisy, so you can look something up without leavin
 
 The top screen's copy has a search box: type what you're after ("fast-forward", "backup", "rebind") and the matching pages and sections show up. Each page links to the previous and next one at its end.
 
-The app downloads the manual from the PokeDaisy website and keeps a copy, so after that it works offline. It needs the internet once: if the first open can't reach the website, it says so. Connect, then tap `RETRY`.
+The app downloads the manual from the Vyntra website and keeps a copy, so after that it works offline. It needs the internet once: if the first open can't reach the website, it says so. Connect, then tap `RETRY`.
 
 ![The manual inside the app on the top screen: a search box and the list of sections and pages](shots/help-contents.png "The manual on the top screen")
 

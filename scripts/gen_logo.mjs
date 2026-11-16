@@ -1,11 +1,8 @@
-// The PokeDaisy mark in the app, from the website's own drawing (website/src/lib/pixel.js, daisyBall):
+// The angular Vyntra mark is shared by Android, Windows and web from website/src/lib/pixel.js.
 //  - app/src/main/kotlin/.../companion/ui/LogoGen.kt: the website's mark as it is - its rows and palette,
 //    for PixelArt (the Library's title, the PokéDaisy theme's backdrop).
 //  - app/src/main/res/mipmap-*/ic_launcher_foreground.png: the launcher icon's foreground - the mark with
-//    the icon's edits (scripts/logo_icon.mjs' iconLogo: every outline 1 px, the top / bottom petals centred,
-//    the 3 and 9 o'clock petal tips rounded), MARK_DP across in the middle of the adaptive icon, as wide as the old one.
-//  - app/src/main/res/mipmap-*/ic_launcher_background.png: logo_icon.mjs' blue diamond lattice on the flower's own
-//    pixel grid, its 1 px lines crossing behind the flower's middle, each diamond's top half lit.
+//    with the dark crimson grid background (scripts/logo_icon.mjs).
 // The avatar and GitHub's social preview are drawn from the same art by scripts/gen_brand_images.mjs.
 //
 //     node scripts/gen_logo.mjs
@@ -32,7 +29,7 @@ package com.pokedaisy.app.companion.ui
 
 import androidx.compose.ui.graphics.Color
 
-/** The PokeDaisy mark (a daisy drawn as a Poké Ball), for [PixelArt] with [LOGO_PALETTE]. */
+/** The angular Vyntra mark, for [PixelArt] with [LOGO_PALETTE]. */
 val LOGO_ROWS = listOf(
 ${rows}
 )

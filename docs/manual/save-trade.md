@@ -6,7 +6,7 @@ order: 8
 keywords: [save editor, edit save, editor, pc boxes, boxes, trade saves, trade, trading, transfer, move pokemon between games, bag, money, coins, held item, moves, save file]
 ---
 
-PokeDaisy can open a game's save file while the game is closed: you can tidy its PC, change what it holds, or move Pokémon between two of your games, the way a trade would. It works with FireRed, LeafGreen, Emerald, Ruby and Sapphire saves (and ROM hacks that kept their save layout), in English and the other Western languages.
+Vyntra can open a game's save file while the game is closed: you can tidy its PC, change what it holds, or move Pokémon between two of your games, the way a trade would. It works with FireRed, LeafGreen, Emerald, Ruby and Sapphire saves (and ROM hacks that kept their save layout), in English and the other Western languages.
 
 ## Save editor
 
@@ -25,7 +25,7 @@ The games' own trade rules apply. FireRed and LeafGreen only trade with Ruby, Sa
 
 ## Your saves stay safe
 
-Each save is backed up before it's changed (see [Backups and RESTORE BACKUP](saves.md#backups-and-restore-backup)), and the change is only written if the file is still exactly what PokeDaisy read. The game then starts from the new save rather than resuming, so an old resume can't put the old save back. A save state you made before the change still holds the old save, so don't load one afterwards.
+Each save is backed up before it's changed (see [Backups and RESTORE BACKUP](saves.md#backups-and-restore-backup)), and the change is only written if the file is still exactly what Vyntra read. The game then starts from the new save rather than resuming, so an old resume can't put the old save back. A save state you made before the change still holds the old save, so don't load one afterwards.
 
 > [!TIP]
 > Close the game before you edit its save: the library has to be in front.

@@ -52,7 +52,7 @@ const TOP = ['top-original', 'top-expand', 'top-hud', 'top-zoom', 'top-quick'];
 const COMPANION = ['party', 'summary', 'bag', 'map', 'dex', 'battle', 'guide'];
 // Text a page fills in: [text, its {placeholders}] (GamePage translates the text, then fills it).
 const playLead = (region) => [msg('{region} on any Android handheld or phone: the map drawn to your screen\'s edges, ZOOM, a HUD and a quick menu on the game, and your team, bag, map and dex live in the companion.'), { region }];
-const description = (title) => [msg('Play {title} on Android handhelds and phones with PokeDaisy: EXPAND widescreen, ZOOM, a HUD and quick menu on the game, and a live companion with your party, bag, map, dex, battle info and guide, over the game or on a second screen. Free and open source.'), { title }];
+const description = (title) => [msg('Play {title} on Android handhelds and phones with Vyntra: EXPAND widescreen, ZOOM, a HUD and quick menu on the game, and a live companion with your party, bag, map, dex, battle info and guide, over the game or on a second screen. Free and open source.'), { title }];
 const played = (game) => [msg('{game}, played better'), { game }];
 
 export const GAME_PAGES = [

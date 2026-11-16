@@ -14,7 +14,7 @@ Some Pokémon only evolve when traded, and each version has Pokémon the other d
 2. That game is `GAME 1`. Tap `ADD A GAME` to add the next one, up to four. Tap a game to swap it for another, or pick `REMOVE`.
 3. Tap `START LINK`.
 
-Every game starts from its own save, the one it plays normally, and PokeDaisy backs each save up first, as it does when you open a game. You can pick the same game twice: the second copy then plays on a save of its own, kept next to the first and named after it with `(link 2)`. It starts empty, so start a new game in it, or put a save there with your file manager.
+Every game starts from its own save, the one it plays normally, and Vyntra backs each save up first, as it does when you open a game. You can pick the same game twice: the second copy then plays on a save of its own, kept next to the first and named after it with `(link 2)`. It starts empty, so start a new game in it, or put a save there with your file manager.
 
 ## Playing
 

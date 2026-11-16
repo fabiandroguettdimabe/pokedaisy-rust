@@ -687,72 +687,27 @@ SPRITES.moreDevice = {
 SPRITES.steam = { pal: SPRITES.coffee.pal, rows: SPRITES.coffee.rows.slice(0, 4) };
 SPRITES.cup = { pal: SPRITES.coffee.pal, rows: SPRITES.coffee.rows.slice(5) };
 
-/**
- * The PokeDaisy mark: a daisy drawn as a Poké Ball - eight petals, red above the band and white
- * below it, a black band through the side petals, and a yellow heart with the ball's black button
- * ring in it. Drawn from polar shapes on a [size] grid, then outlined and shaded in whole pixels.
- */
-function daisyBall(size) {
-  const c = size / 2;
-  const disc = size * 0.17;
-  const dist = size * 0.33;
-  const ra = size * 0.165;
-  const rb = size * 0.105;
-  const petals = Array.from({ length: 8 }, (_, i) => (i * Math.PI) / 4);
-  // Which part a pixel is in: 'disc', a petal index, or null.
-  const part = (x, y) => {
-    const dx = x + 0.5 - c;
-    const dy = y + 0.5 - c;
-    if (Math.hypot(dx, dy) < disc + 1) return 'disc';
-    // Leave the grid's outer ring free, so the petal tips get their outline too.
-    if (x < 1 || y < 1 || x > size - 2 || y > size - 2) return null;
-    let best = null;
-    let bestV = 1;
-    petals.forEach((t, i) => {
-      const px = dx - Math.cos(t) * dist;
-      const py = dy - Math.sin(t) * dist;
-      const u = px * Math.cos(t) + py * Math.sin(t);
-      const v = -px * Math.sin(t) + py * Math.cos(t);
-      const val = (u / ra) ** 2 + (v / rb) ** 2;
-      if (val < bestV) { bestV = val; best = i; }
-    });
-    return best;
-  };
+/** Vyntra's angular V mark, rendered on the pixel grid used by the app and site. */
+function vyntraMark(size) {
   const rows = [];
   for (let y = 0; y < size; y++) {
     let row = '';
+    const active = y >= Math.floor(size * 0.08) && y <= Math.floor(size * 0.9);
+    const t = (y - size * 0.08) / (size * 0.82);
+    const left = size * 0.12 + t * size * 0.38;
+    const right = size * 0.88 - t * size * 0.38;
     for (let x = 0; x < size; x++) {
-      const dx = x + 0.5 - c;
-      const dy = y + 0.5 - c;
-      const r = Math.hypot(dx, dy);
-      const p = part(x, y);
-      const around = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([ox, oy]) => part(x + ox, y + oy));
-      if (p === null) { row += around.some((q) => q !== null) ? 'K' : '.'; continue; }
-      if (p === 'disc') {
-        if (r > disc) row += 'K';
-        else if (r < disc * 0.3) row += 'w';
-        else if (r < disc * 0.6) row += 'K';
-        else row += dx < -1 && dy < -1 ? 'y' : 'Y';
-        continue;
-      }
-      // A petal meeting another petal (not the disc) gets a line between them.
-      if (around.some((q) => q !== null && q !== 'disc' && q !== p && q > p)) { row += 'K'; continue; }
-      // The ball's band: two rows at full size, one on the small mark (else it hides the side petals).
-      if (Math.abs(dy) < (size >= 24 ? 1 : 0.5)) { row += 'K'; continue; }
-      const top = dy < 0;
-      const edgeBR = part(x + 1, y + 1) !== p || part(x + 1, y) !== p || part(x, y + 1) !== p;
-      const edgeTL = part(x - 1, y - 1) !== p;
-      row += top ? (edgeBR ? 'D' : edgeTL ? 'H' : 'R') : (edgeBR ? 'S' : 'W');
+      const d = Math.min(Math.abs(x + 0.5 - left), Math.abs(x + 0.5 - right));
+      row += active && d < size * 0.105
+        ? d < size * 0.036 ? 'W' : d < size * 0.081 ? 'R' : 'K'
+        : '.';
     }
     rows.push(row);
   }
-  return {
-    pal: { K: INK, R: '#e83028', D: '#b01c14', H: '#ff9080', W: '#ffffff', S: '#c4c8d4', Y: '#f8d030', y: '#fff0a0', w: '#fff8d8' },
-    rows,
-  };
+  return { pal: { K: INK, R: '#B31231', W: '#E6E6E9' }, rows };
 }
 
-SPRITES.logo = daisyBall(32);
+SPRITES.logo = vyntraMark(32);
 
 /** A sprite as a CSS url() - for tiled backgrounds. */
 // The invented creatures (creatures.js) draw by their id: <Pixel name="emberpup" />.
@@ -852,11 +807,11 @@ export function frameSvg(layers, r, fill) {
  * OPTION list / title / dialog windows (the app's OptionColors, GbaMenu.kt) for the game UI. */
 const INKF = '#1d1b26';
 export const FRAMES = {
-  card: frameSvg([[INKF, 1]], 3, '#ffffff'),
-  btn: frameSvg([[INKF, 1]], 2, '#ffffff'),
-  btnHot: frameSvg([[INKF, 1]], 2, '#fff6d0'),
-  primary: frameSvg([[INKF, 1], ['#ff8a78', 1]], 2, '#e83028'),
-  primaryHot: frameSvg([[INKF, 1], ['#ffb4a8', 1]], 2, '#f5402f'),
+  card: frameSvg([['#39343c', 1]], 3, '#17171b'),
+  btn: frameSvg([['#39343c', 1]], 2, '#17171b'),
+  btnHot: frameSvg([['#b31231', 1]], 2, '#3a0a12'),
+  primary: frameSvg([['#3a0a12', 1], ['#d94a63', 1]], 2, '#b31231'),
+  primaryHot: frameSvg([['#3a0a12', 1], ['#e6e6e9', 1]], 2, '#c51d3e'),
   coffee: frameSvg([[INKF, 1], ['#fff6b8', 1]], 2, '#ffdd00'),
   coffeeHot: frameSvg([[INKF, 1], ['#ffffff', 1]], 2, '#ffe94d'),
   kofi: frameSvg([[INKF, 1], ['#e2eeff', 1]], 2, '#a8ccff'),
@@ -867,8 +822,8 @@ export const FRAMES = {
   redditHot: frameSvg([[INKF, 1], ['#ffffff', 1]], 2, '#ffcbb0'),
   discord: frameSvg([[INKF, 1], ['#e3e6ff', 1]], 2, '#aab2ff'),
   discordHot: frameSvg([[INKF, 1], ['#ffffff', 1]], 2, '#c6ccff'),
-  chip: frameSvg([[INKF, 1]], 1, '#ffffff'),
-  chipOn: frameSvg([[INKF, 1]], 1, INKF),
+  chip: frameSvg([['#39343c', 1]], 1, '#17171b'),
+  chipOn: frameSvg([['#b31231', 1]], 1, '#3a0a12'),
   pillGreen: frameSvg([['#2c7a3a', 1]], 1, '#dff6e2'),
   pillYellow: frameSvg([['#9a6a00', 1]], 1, '#fff1bf'),
   pillBlue: frameSvg([['#2d55b0', 1]], 1, '#e0e9ff'),

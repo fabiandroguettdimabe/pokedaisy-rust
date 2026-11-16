@@ -1,4 +1,4 @@
-# The PokeDaisy manual
+# The Vyntra manual
 
 This folder is the user manual, and the only place it's written. The website turns it into
 [pokedaisy.com/docs](https://pokedaisy.com/docs/) and the docs API (`/api/docs/v1/docs.json`),

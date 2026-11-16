@@ -1,6 +1,6 @@
-# PokeDaisy - developer notes
+# Vyntra - developer notes
 
-How PokeDaisy is built, how each game is read, and how to work on it. For what
+How Vyntra is built, how each game is read, and how to work on it. For what
 the app does and how to install it, see the [README](../README.md).
 
 Dual-screen Android app for the AYN Thor and the Retroid Pocket Duo Lite (its
@@ -35,7 +35,7 @@ What works:
 - Kotlin shell: `EmulatorView` (GLES2 aspect-fit blit), `EmulatorEngine` (emu
   thread, audio-paced, services savestate requests between frames), `GbaInput`
   (gamepad + keyboard → GBA bitmask), `Hotkeys` (configurable), `SaveStates`
-  (per-game CRC folder), `PokeDaisyActivity` (full-screen, ROM auto-discovery,
+  (per-game CRC folder), `VyntraActivity` (full-screen, ROM auto-discovery,
   HUD).
 - **Savestates**: slots 0–9 in `files/states/<rom-crc32>/ss<N>` (mGBA's own
   extended `.ss` format) + a `ss<N>.png` thumbnail. On-screen HUD confirms each
@@ -1090,7 +1090,7 @@ When there's no source (most of the ROM hacks above), addresses are found by
 forcing a live memory dump off the device and brute-force-scanning it, not by
 guessing:
 
-1. `PokeDaisyActivity`'s `EXTRA_DUMP_FIXTURE`/`EXTRA_DUMP_FIXTURE_FORCE` intent
+1. `VyntraActivity`'s `EXTRA_DUMP_FIXTURE`/`EXTRA_DUMP_FIXTURE_FORCE` intent
    extras dump the full EWRAM (256 KB) + IWRAM (32 KB) to a device file —
    `scripts/capture_fixture.sh <key>` drives this (live session if the app's
    already running via `onNewIntent`, cold relaunch otherwise) and pulls the
@@ -1358,9 +1358,9 @@ retail rows or the retail cursor / party addresses.
 
 ## Launch from a frontend (Cocoon, iiSU, ES-DE, ...)
 
-Frontends can open a game in PokeDaisy directly, with no library screen in
+Frontends can open a game in Vyntra directly, with no library screen in
 between. Leaving the game (hold BACK, or the exit hotkey) returns to the frontend.
-Add PokeDaisy as a custom / standalone emulator for GBA:
+Add Vyntra as a custom / standalone emulator for GBA:
 
 | Field    | Value                                                                                             |
 | -------- | ------------------------------------------------------------------------------------------------- |
@@ -1391,7 +1391,7 @@ What `LaunchActivity` does with the ROM:
   suspended first, as on exit); the same game just comes back.
 
 Step-by-step setup: [iiSU](iisu/README.md), [ES-DE](es-de/README.md). Cocoon only
-lists emulators from its own platform files (inssekt/CocoonFE's `android/*.yaml`): PokeDaisy
+lists emulators from its own platform files (inssekt/CocoonFE's `android/*.yaml`): Vyntra
 is in `gba`, `gb`, `gbc` and `nds` (`LaunchActivity`, `game: uri`, files with `zip` / `7z`),
 so a player only needs Cocoon's "Refetch platforms".
 
@@ -2520,7 +2520,7 @@ built-in frames, storage + import - ui-preview compiles it, `OverlaysTest` cover
   and the site may point at libretro's overlay collections in general, never at a branded file, and
   screenshots only ever show the built-in frames.
 - **Built-in frames** (`BuiltInFrames`): DAISY (the launcher icon's blue, the website's dot grid, a dark
-  screen surround, the PokeDaisy mark in the left margin) and BEZEL (plain charcoal). Drawn at the game's
+  screen surround, the Vyntra mark in the left margin) and BEZEL (plain charcoal). Drawn at the game's
   own pixel size for the view they're shown on and drawn at a whole-number scale (`scaleFor`: the
   largest that leaves 8 frame pixels at the sides, 4 above and below - 6x on the Thor's 1920x1080,
   7x for a Game Boy), so they're as crisp as the game; the game loses a little size (6x instead of 6.75x).
@@ -3005,7 +3005,7 @@ RetroAchievements' views are the file.
   scripts are *called* on the Route 101 save (the hook only looks at the pointer): a held call returns its script as r0, a
   call that ran returns `0x080000C1`.
 - **The lock in the running game** (`CoopLock.kt`): one `CoopLock` per game while a pairing exists for the running save (made by
-  `PokeDaisyActivity.startCoopLock` after the ROM's SHA-1 matched retail Emerald, no cheats; `activity.coopLock`, with `ui`,
+  `VyntraActivity.startCoopLock` after the ROM's SHA-1 matched retail Emerald, no cheats; `activity.coopLock`, with `ui`,
   `notice` and the `CoopLockActions`, is what the later UI reads). It draws nothing. `EmulatorEngine.coopLock?.onFrame()` runs
   every loop turn on the emu thread, also while a hold runs no frame (so a held game can still be released). Link messages
   (`CoopLockWire`, 0x0301-0x0310) are only queued by `onMessage` (collector thread) and handled in `onFrame`; the actions
@@ -3268,7 +3268,7 @@ screen's. Any game: a one-colour top screen over a touch screen that isn't (the 
 (`NdsBattleTaps`: the stylus on the game's own buttons) and `DsBattleMenu` (the battle stays wide; a strip over the text box's
 rows 144-191 in the band's #202020, HG's message window drawn at its far left - outline, gold line, slate frame, sampled
 headless - with the battler's nickname, the game's four buttons in its colours at its right, a 2 x 2 with FireRed's no-wrap
-D-pad and pulsing red corners, moves a card each on one line; the D-pad is the menu's, `PokeDaisyActivity.dsBattleTakes`, with
+D-pad and pulsing red corners, moves a card each on one line; the D-pad is the menu's, `VyntraActivity.dsBattleTakes`, with
 the game view focused so no press goes to leaving touch mode). Steps 0 - 6 and 15 of the selection (the command init the move
 panel's CANCEL passes through, two frames with the panel drawn) are the battle buttons' own, never the floating touch screen.
 **Fades** (nds_dump's `trace` prints each screen's one-colour state): leaving a menu screen, HG fades both screens and keeps
@@ -3279,7 +3279,7 @@ screen is blank, and the black between a menu and the field is covered by the ov
 battle's bag and party fade the touch screen out and in: `PK_NDS_FIELD_TOUCH_FADES` makes them float in only once it has been
 black and then lit for 12 frames, and their window ends at the first black after (leaving the bag, the battle draws a Poké Ball
 for 5 frames while still at the bag's step; no black inside the bag's pockets or the party's summary, headless).
-The cover shows `DsLoader` (the PokeDaisy flower hopping in whole pixels, three dots in turn) once a wait has lasted 160 ms;
+The cover shows `DsLoader` (the Vyntra flower hopping in whole pixels, three dots in turn) once a wait has lasted 160 ms;
 a side-by-side menu screen whose top half is already black (the card blanks it 16 frames before its touch half) counts as
 covered too. **The X menu after a screen left by touch**: HG's `Task_StartMenu_WaitApp` closes the menu when the screen it
 opened ends with `FieldSystem.menuInputState` (+0x10C) at TOUCH - so a screen's own Cancel / Quit button returns to the
@@ -3376,7 +3376,7 @@ to the core that's up (`pk_nds_set_core` before `pk_nds_init`, from `EmulatorEng
 DSperate where `DevicePerformance.looksWeak` or the process is 32-bit). On DSperate the field read is the same RAM-only
 `pk_nds_field.cpp` (BG tiles and master brightness from DSperate's GPU), saves the same quiet-frames flush, audio resampled
 linearly from its ~32728 Hz mixer; EXPAND, DS RESOLUTION, the game's own functions (PC / FLY), STEADY music and DS CPU BOOST are
-melonDS internals and report off (the activity greys them out: `PokeDaisyActivity.dsperate`). States are each core's own,
+melonDS internals and report off (the activity greys them out: `VyntraActivity.dsperate`). States are each core's own,
 behind a header with the save's CRC32 ("PKDS" melonDS, "PKDP" DSperate): `pk_nds_state_matches_save` answers 2 for the other
 core's, which the engine parks as `resume.melonds` / `resume.dsperate` (`SaveStates.parkedResume`) and the next start on that
 core takes back; a DSperate state loads into a second console first (a failed load leaves DSperate's machine unusable), and a
@@ -3664,7 +3664,7 @@ Its manual page is a draft, `docs/manual-drafts/coop.md` (its top note says what
   its README covers deploying it (by hand, or to Google Cloud by `.github/workflows/coop-relay.yml` over `deploy/gcp/`) and its limits table.
 - **Channel** (`CoopChannel`, one per connection, whatever the pipe is): a Noise IK handshake, `Noise_IK_25519_AESGCM_SHA256`
   (`CoopNoise`, X25519 from Bouncy Castle, the rest java.security). The static key is the device's `filesDir/coop/secret.key`
-  (32 bytes; the peer id is its public key, 64 hex characters). The prologue is ASCII `PokeDaisy co-op 1`, one path byte (0 invite room,
+  (32 bytes; the peer id is its public key, 64 hex characters). The prologue is ASCII `Vyntra co-op 1`, one path byte (0 invite room,
   1 pair room, 2 TCP) and the room id's 32 characters (none for TCP). Message 1 carries the transport version (u16, 1), message 2 a
   status byte (0 go on, else a reason code). After the handshake every message is sealed; the plaintext is a kind byte plus a body:
   DATA 0 (an app frame, 1 to 65,536 bytes), PING 1, CLOSE 2 (a reason byte). A PING goes every 5 s, 20 s of silence is TIMEOUT, and the
@@ -3728,7 +3728,7 @@ Its manual page is a draft, `docs/manual-drafts/coop.md` (its top note says what
 
 See [RELEASING.md](RELEASING.md): `make bump V=x.y.z`, merge, `make release` (tags
 `v<versionName>` on main), and the Release workflow tests, signs and publishes the APK as
-`PokeDaisy-<versionName>.apk`. The app compares the tag against its own `versionName` and
+`Vyntra-<versionName>.apk`. The app compares the tag against its own `versionName` and
 ignores drafts and pre-releases, so a test build can go out as a pre-release
 (`1.2.0-rc.1`) without reaching users. **Every release must use the same key**: the
 updater's APK only installs over a build signed with it.

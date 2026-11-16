@@ -2,28 +2,28 @@
 
 # Instalar em um Nintendo 3DS
 
-*Coloque o app homebrew PokeDaisy em um 3DS passo a passo, adicione seus jogos e saves e ligue o som.*
+*Coloque o app homebrew Vyntra em um 3DS passo a passo, adicione seus jogos e saves e ligue o som.*
 
 [English](INSTALL.md) · [日本語](INSTALL.ja.md) · [한국어](INSTALL.ko.md) · [Français](INSTALL.fr.md) · [Deutsch](INSTALL.de.md) · [Italiano](INSTALL.it.md) · [Español](INSTALL.es.md) · **Português (Brasil)** · [Português (Portugal)](INSTALL.pt.md)
 
 Também no site: https://pokedaisy.com/pt-br/docs/3ds/
 
-O PokeDaisy também roda no Nintendo 3DS, como app homebrew: seu jogo roda na tela de cima e o companheiro fica na tela de toque, com sua própria biblioteca de jogos, um editor de saves e trocas entre saves. Esta página leva você de um console com firmware personalizado até o seu primeiro jogo.
+O Vyntra também roda no Nintendo 3DS, como app homebrew: seu jogo roda na tela de cima e o companheiro fica na tela de toque, com sua própria biblioteca de jogos, um editor de saves e trocas entre saves. Esta página leva você de um console com firmware personalizado até o seu primeiro jogo.
 
 > [!NOTE]
 > A versão para 3DS é uma prévia inicial. Ela foi feita para o **New Nintendo 3DS, New Nintendo 3DS XL e New Nintendo 2DS XL**. Um Nintendo 3DS, 3DS XL ou 2DS original pode abrir, mas pode ficar lento. Os menus estão em inglês por enquanto.
 
-![A biblioteca do PokeDaisy em um 3DS: o jogo escolhido na tela de cima, a lista de jogos na tela de toque](../docs/manual/shots/3ds-library.png "A biblioteca: em cima o jogo sob o cursor, embaixo os seus jogos")
+![A biblioteca do Vyntra em um 3DS: o jogo escolhido na tela de cima, a lista de jogos na tela de toque](../docs/manual/shots/3ds-library.png "A biblioteca: em cima o jogo sob o cursor, embaixo os seus jogos")
 
 ## O que você precisa
 
 - **Um 3DS com firmware personalizado (Luma3DS) e o Homebrew Launcher.** Se o seu console ainda não tem, siga o [3ds.hacks.guide](https://3ds.hacks.guide/). É o guia da comunidade, atualizado para cada console e versão do sistema, e ele prepara tudo o que esta página precisa. Volte aqui quando terminar.
 - **O cartão SD** e um computador que consiga ler (ou um app de FTP no 3DS, se preferir não tirar o cartão).
-- **Seus próprios jogos.** O PokeDaisy não vem com nenhum jogo. Use ROMs que você mesmo extraiu de cartuchos que você tem: arquivos `.gba`, `.gb` ou `.gbc`.
+- **Seus próprios jogos.** O Vyntra não vem com nenhum jogo. Use ROMs que você mesmo extraiu de cartuchos que você tem: arquivos `.gba`, `.gb` ou `.gbc`.
 
 ## Passo 1: baixe o app
 
-1. No computador, abra a [página de versões do PokeDaisy](https://github.com/lidor30/pokedaisy/releases).
+1. No computador, abra a [página de versões do Vyntra](https://github.com/lidor30/pokedaisy/releases).
 2. Na versão mais nova que tiver um arquivo para 3DS, baixe `pokedaisy.3dsx`.
 
 ## Passo 2: copie para o cartão SD
@@ -36,11 +36,11 @@ O PokeDaisy também roda no Nintendo 3DS, como app homebrew: seu jogo roda na te
 
 ## Passo 3: adicione seus jogos e saves
 
-1. Na raiz do cartão, crie uma pasta `pokedaisy` e, dentro dela, uma pasta `roms`: `sdmc:/pokedaisy/roms/`. (O PokeDaisy cria as duas na primeira vez que abre, se preferir abrir uma vez antes.)
-2. Copie seus jogos para `roms`. Coloque direto na pasta, não em subpastas, e descompacte antes: no 3DS, o PokeDaisy só lê arquivos `.gba`, `.gb` e `.gbc` soltos.
+1. Na raiz do cartão, crie uma pasta `pokedaisy` e, dentro dela, uma pasta `roms`: `sdmc:/pokedaisy/roms/`. (O Vyntra cria as duas na primeira vez que abre, se preferir abrir uma vez antes.)
+2. Copie seus jogos para `roms`. Coloque direto na pasta, não em subpastas, e descompacte antes: no 3DS, o Vyntra só lê arquivos `.gba`, `.gb` e `.gbc` soltos.
 3. Vai trazer um save de outro emulador? Coloque em `roms` ao lado do jogo, com o mesmo nome e `.sav` no final: `Pokemon Emerald.gba` lê `Pokemon Emerald.sav`. Um save do RetroArch termina em `.srm`: renomeie para `.sav`. Guarde também uma cópia do save no computador, por garantia.
 
-Sem save, o jogo começa do zero e o PokeDaisy cria o `.sav` na mesma pasta na primeira vez que você salvar no jogo.
+Sem save, o jogo começa do zero e o Vyntra cria o `.sav` na mesma pasta na primeira vez que você salvar no jogo.
 
 ## Passo 4: ligue o som
 
@@ -52,10 +52,10 @@ O homebrew de 3DS só consegue tocar som depois que o firmware de áudio do cons
 
 Isso grava `sdmc:/3ds/dspfirm.cdc`. Sem ele, os jogos rodam sem som. Se você já fez isso antes para outro app, não precisa fazer nada.
 
-## Passo 5: abra o PokeDaisy
+## Passo 5: abra o Vyntra
 
 1. Abra o Homebrew Launcher. Em um console preparado com o 3ds.hacks.guide, ele abre pelo app de jogo por download (Download Play).
-2. Escolha **PokeDaisy** na lista.
+2. Escolha **Vyntra** na lista.
 
 A biblioteca abre: a tela de toque lista seus jogos e a tela de cima mostra o que está sob o cursor, com seu jogador, tempo de jogo e equipe depois que você jogar. Mova com o direcional ou toque em um jogo, e aperte **A** para jogar.
 
@@ -70,7 +70,7 @@ Se a biblioteca disser **No games yet**, confira se os jogos estão direto em `s
 | **A** | Joga o jogo sob o cursor |
 | **L** / **R** | Troca as visões da biblioteca: `ALL`, `RECENT`, `GBA`, `GB`, `HACKS` |
 | **SELECT** | A próxima página: jogos, `SAVE EDITOR`, `TRADE SAVES`, `SETTINGS` |
-| **START** | Fecha o PokeDaisy e volta ao Homebrew Launcher |
+| **START** | Fecha o Vyntra e volta ao Homebrew Launcher |
 
 No jogo, os botões do GBA são os mesmos do 3DS (o botão deslizante funciona como o direcional) e a tela de toque é o companheiro. Mais alguns:
 
@@ -87,7 +87,7 @@ Para sair de um jogo, use `CLOSE GAME` no fim das `SETTINGS` do companheiro. O b
 
 ## Quais jogos funcionam
 
-Qualquer jogo de Game Boy, Game Boy Color ou Game Boy Advance roda. O companheiro lê os jogos que o PokeDaisy conhece no Android: FireRed, LeafGreen, Ruby, Sapphire e Emerald, Red, Blue, Yellow, Gold, Silver e Crystal, e muitos hacks de ROM ([Jogos compatíveis](https://pokedaisy.com/docs/supported-games/) tem a lista). Jogos de DS não rodam na versão para 3DS.
+Qualquer jogo de Game Boy, Game Boy Color ou Game Boy Advance roda. O companheiro lê os jogos que o Vyntra conhece no Android: FireRed, LeafGreen, Ruby, Sapphire e Emerald, Red, Blue, Yellow, Gold, Silver e Crystal, e muitos hacks de ROM ([Jogos compatíveis](https://pokedaisy.com/docs/supported-games/) tem a lista). Jogos de DS não rodam na versão para 3DS.
 
 ## Onde fica cada coisa no cartão SD
 
@@ -109,7 +109,7 @@ Baixe o `pokedaisy.3dsx` novo e copie por cima do antigo em `sdmc:/3ds/`. Seus j
 ## Se algo der errado
 
 - **Sem som:** está faltando `sdmc:/3ds/dspfirm.cdc`. Faça o passo 4.
-- **O PokeDaisy não aparece no Homebrew Launcher:** o arquivo precisa estar em `sdmc:/3ds/` e terminar em `.3dsx`.
+- **O Vyntra não aparece no Homebrew Launcher:** o arquivo precisa estar em `sdmc:/3ds/` e terminar em `.3dsx`.
 - **Um jogo não aparece na lista:** ele precisa estar direto em `sdmc:/pokedaisy/roms/`, não em uma pasta dentro dela e não compactado.
 - **Meu save não carregou:** ele precisa ter exatamente o nome do jogo com `.sav` no final. Todo início copia o save primeiro para `sdmc:/pokedaisy/roms/pokedaisy-backups/`, então uma cópia mais antiga está lá se você precisar.
 - **Está lento:** um 3DS ou 2DS original é mais lento que os modelos New. Nas `SETTINGS` da biblioteca, mude `SCREEN` para `PIXEL 1x`, o modo mais leve.

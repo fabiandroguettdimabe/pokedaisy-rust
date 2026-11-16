@@ -35,8 +35,8 @@ const jsonLd = [
     description: page.summary,
     url,
     inLanguage: language(lang).hreflang,
-    isPartOf: { '@type': 'WebSite', name: 'PokeDaisy', url: site.href },
-    about: { '@type': 'SoftwareApplication', name: 'PokeDaisy', operatingSystem: 'Android', applicationCategory: 'GameApplication' },
+    isPartOf: { '@type': 'WebSite', name: 'Vyntra', url: site.href },
+    about: { '@type': 'SoftwareApplication', name: 'Vyntra', operatingSystem: 'Android', applicationCategory: 'GameApplication' },
     ...(firstShot ? { image: new URL(firstShot.src, site).href } : {}),
   },
   {
@@ -51,7 +51,7 @@ const jsonLd = [
 ];
 const source = translated ? `docs/manual/translations/${lang}/${page.slug}.md` : `docs/manual/${page.slug}.md`;
 ---
-<DocsLayout title={`${page.title} · ${tr('PokeDaisy docs')}`} description={page.summary} docs={docs} current={page.slug} toc={toc} jsonLd={jsonLd} paths={paths}>
+<DocsLayout title={`${page.title} · ${tr('Vyntra docs')}`} description={page.summary} docs={docs} current={page.slug} toc={toc} jsonLd={jsonLd} paths={paths}>
   <article class="doc f-card" lang={translated ? language(lang).hreflang : undefined}>
     <p class="doc-crumb"><a href="/docs/">{tr('DOCS')}</a>{!translated && <> · <a href={`/docs/#${section.id}`}>{section.title.toUpperCase()}</a></>}</p>
     <h1 class="doc-title">{page.title}</h1>

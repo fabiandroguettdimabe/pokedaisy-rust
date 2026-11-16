@@ -63,7 +63,7 @@ accept, so check the name and ID before you do.
 ## Pair with a link or QR code
 
 `YOUR ROOM` also shows a QR code, `COPY LINK` and `SHARE LINK`. Your partner pastes your link under `JOIN WITH A LINK`
-in their `JOIN` tab, or scans the QR code with the system camera, which opens the link in PokeDaisy.
+in their `JOIN` tab, or scans the QR code with the system camera, which opens the link in Vyntra.
 
 ## Pair on the same Wi-Fi
 
@@ -109,7 +109,7 @@ The companion's SETTINGS has a `LINK` row that tells you where the link stands.
 
 | You see | What to do |
 | --- | --- |
-| Your partner's PokeDaisy is a different version | Update both devices to the same version. |
+| Your partner's Vyntra is a different version | Update both devices to the same version. |
 | Your partner plays a different Emerald ROM | Both of you need the same ROM. |
 | This save is already paired | Open `PARTNERS` and `UNPAIR` it first. |
 | The other player said no | Ask them to try again and accept. |

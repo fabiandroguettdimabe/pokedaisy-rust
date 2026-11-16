@@ -12,7 +12,7 @@ In a battle the companion becomes your battle screen: big touch buttons for your
 
 When a battle starts, a `BATTLE` tab appears at the front of the tab bar and opens by itself. When the battle ends, you're back on the tab you were using. To keep the companion where it is instead, turn off `JUMP TO BATTLE` in SETTINGS > `TWEAKS`; the `BATTLE` tab still shows up for you to tap.
 
-The tab only appears when PokeDaisy can read the battle. In a game where it can't, you stay on your usual tabs rather than looking at an empty page.
+The tab only appears when Vyntra can read the battle. In a game where it can't, you stay on your usual tabs rather than looking at an empty page.
 
 ## Touch buttons on your turn
 
@@ -77,7 +77,7 @@ In `GEN 5`, `FIGHT!` grows the band into a dark field with your four moves on it
 
 ![GEN 5's moves: four dark plates edged in their type's colour over a dark field, your party's balls under them and the arrow back](shots/companion-battle-gen5-moves.png "GEN 5's moves")
 
-The first time you open PokeDaisy after this update, it asks which look you want, with both side by side. Change it any time with `BATTLE STYLE` in the companion's SETTINGS (COMPANION group). `ONE-TAP MOVES` works with either look. Yellow keeps its own black and white text boxes whichever you pick.
+The first time you open Vyntra after this update, it asks which look you want, with both side by side. Change it any time with `BATTLE STYLE` in the companion's SETTINGS (COMPANION group). `ONE-TAP MOVES` works with either look. Yellow keeps its own black and white text boxes whichever you pick.
 
 ## INFO: the whole matchup on one page
 
@@ -99,7 +99,7 @@ Scroll down the foe's column for more:
 - Its stats as they stand in this battle. Any stat that's been raised or lowered gets a small pill (+2 in green, -1 in red), and accuracy and evasion show up once they've changed.
 - Its moves, each with a verdict on what it does to *your* Pokémon. A `SUPER` here is a warning.
 
-To give the foe the whole page, tap the button with the corner arrows at the bottom right. Your side shrinks to a strip with your Pokémon's sprite and an upright HP bar, and the foe's facts and moves get the room. Tap it again to go back. PokeDaisy remembers your choice for the next battle.
+To give the foe the whole page, tap the button with the corner arrows at the bottom right. Your side shrinks to a strip with your Pokémon's sprite and an upright HP bar, and the foe's facts and moves get the room. Tap it again to go back. Vyntra remembers your choice for the next battle.
 
 ### Shiny foes
 
@@ -147,11 +147,11 @@ The ranking looks at how hard each Pokémon's best usable move hits this foe, an
 
 `POKéMON` opens your party with the game's own party slots, filling the tab, and "Choose a POKéMON." with a `CANCEL` button below. The cursor starts on SUGGESTIONS' top pick, tagged `BEST`; the Pokémon already in battle is tagged `OUT`.
 
-Tap a Pokémon to send it in. PokeDaisy works the game's party menu for you, and the top screen holds still while it does, so you don't watch the menus flash by. A fainted Pokémon, an egg or the one already out can't be picked.
+Tap a Pokémon to send it in. Vyntra works the game's party menu for you, and the top screen holds still while it does, so you don't watch the menus flash by. A fainted Pokémon, an egg or the one already out can't be picked.
 
 The same pane appears when the game asks you to choose, for example after one of your Pokémon faints.
 
-This works in the Game Boy games too (Red, Blue, Yellow, Yellow Legacy, PureRed, PureBlue, Gold, Silver, Crystal, Crystal Legacy, Crystal Clear, Prism and Polished Crystal). There the game asks what to do with the Pokémon you picked, and PokeDaisy answers its switch option for you.
+This works in the Game Boy games too (Red, Blue, Yellow, Yellow Legacy, PureRed, PureBlue, Gold, Silver, Crystal, Crystal Legacy, Crystal Clear, Prism and Polished Crystal). There the game asks what to do with the Pokémon you picked, and Vyntra answers its switch option for you.
 
 ![The switch pane: the party in the game's slots, one Pokémon tagged BEST, EMBERPUP tagged OUT and GALEFINCH fainted, with Choose a POKéMON. and CANCEL below](shots/companion-battle-switch.png "Choosing who to send in")
 

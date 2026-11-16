@@ -30,7 +30,7 @@ export const FORMS = {
     issueTitle: (v) => `Bug: ${firstLine(v.what_happened, 70)}`,
     labels: ['bug'],
     fields: [
-      field('app_version', 'PokeDaisy version', 'input', 20, true, 'Top-screen Settings > VERSION.', '1.2.0'),
+      field('app_version', 'Vyntra version', 'input', 20, true, 'Top-screen Settings > VERSION.', '1.2.0'),
       field('device', 'Device', 'select', 40, true),
       field('device_model', 'Device model and Android version', 'input', 120, false, '', 'Retroid Pocket 6, Android 13'),
       field('game', 'Game', 'input', 120, true, 'The game and its version (the ROM check shows both).', 'Pokémon Unbound v2.1.1.1'),

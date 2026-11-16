@@ -61,7 +61,7 @@ In FireRed, LeafGreen and Emerald, `USE` on a TM or HM opens the game's own scre
 Like the other items, it only works while you're walking around, with no menu, conversation or battle open.
 
 > [!NOTE]
-> This works in FireRed, LeafGreen and Emerald, in every language PokeDaisy supports, and in the hacks built on their code: Unbound, Radical Red, Gaia, Odyssey, Orange Islands, Ultra Violet, FireRed Rocket Edition, Ash Gray, Let's Go, Sword and Shield Ultimate Plus, GS Chronicles, Glazed, Emerald Kaizo, Emerald Legacy, Recharged Emerald and the randomized games. Each hack keeps its own TM rules (some never use a TM up). Ruby and Sapphire would drop you back in their own bag afterwards, so there, and in other games, teach the move from the game's own bag.
+> This works in FireRed, LeafGreen and Emerald, in every language Vyntra supports, and in the hacks built on their code: Unbound, Radical Red, Gaia, Odyssey, Orange Islands, Ultra Violet, FireRed Rocket Edition, Ash Gray, Let's Go, Sword and Shield Ultimate Plus, GS Chronicles, Glazed, Emerald Kaizo, Emerald Legacy, Recharged Emerald and the randomized games. Each hack keeps its own TM rules (some never use a TM up). Ruby and Sapphire would drop you back in their own bag afterwards, so there, and in other games, teach the move from the game's own bag.
 
 ## Reusable TMs
 
@@ -70,7 +70,7 @@ Normally a TM is gone once it teaches a move, so you think twice before using a 
 Everything else about TMs works as the game has it: which Pokémon can learn one, forgetting a move to make room, selling one at a shop. The change applies at once, no restart needed, and turning it off makes TMs single use again.
 
 > [!NOTE]
-> `REUSABLE TMS` works in FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and release PokeDaisy supports), and in Emerald Kaizo, Emerald Legacy, Orange Islands, FireRed Rocket Edition, Ultra Violet and Celia's Stupid Romhack. In Radical Red, Unbound and SoulGold a TM already stays after use, so the setting shows `ON`, greyed out. Prism and Polished Crystal keep their TMs too, and Elite Redux keeps no counts at all. In other games it shows `N/A`.
+> `REUSABLE TMS` works in FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and release Vyntra supports), and in Emerald Kaizo, Emerald Legacy, Orange Islands, FireRed Rocket Edition, Ultra Violet and Celia's Stupid Romhack. In Radical Red, Unbound and SoulGold a TM already stays after use, so the setting shows `ON`, greyed out. Prism and Polished Crystal keep their TMs too, and Elite Redux keeps no counts at all. In other games it shows `N/A`.
 
 ## Using an item from the companion
 
@@ -85,7 +85,7 @@ To take a held item back, open the Pokémon's summary on the party tab and tap `
 It only works while you're walking around. If a menu, a conversation or a battle is open, it tells you so (close the game's menus first). Items that need the game's own screens, like the ones that raise a level or make a Pokémon evolve, and letters, aren't offered here.
 
 > [!NOTE]
-> This works in FireRed, LeafGreen, Ruby, Sapphire and Emerald (in every language PokeDaisy supports, except the Japanese Ruby, Sapphire and Emerald), and in Unbound, Radical Red, Gaia, Odyssey, Amethyst, Orange Islands, Ultra Violet, FireRed Rocket Edition, Ash Gray, Let's Go, Sword and Shield Ultimate Plus, GS Chronicles, Glazed, Emerald Kaizo and Recharged Emerald. SoulGold has `USE` on the items that keep wild Pokémon away. In other games, use items in the game as normal; the bag tab updates by itself.
+> This works in FireRed, LeafGreen, Ruby, Sapphire and Emerald (in every language Vyntra supports, except the Japanese Ruby, Sapphire and Emerald), and in Unbound, Radical Red, Gaia, Odyssey, Amethyst, Orange Islands, Ultra Violet, FireRed Rocket Edition, Ash Gray, Let's Go, Sword and Shield Ultimate Plus, GS Chronicles, Glazed, Emerald Kaizo and Recharged Emerald. SoulGold has `USE` on the items that keep wild Pokémon away. In other games, use items in the game as normal; the bag tab updates by itself.
 
 ## The PC from anywhere
 

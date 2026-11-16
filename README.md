@@ -1,14 +1,14 @@
 <div align="center">
 
-<img src="https://pokedaisy.com/og.png" alt="PokeDaisy: Game Boy, Game Boy Color, GBA and DS player with a live companion, on two screens or one, for Pokemon games and ROM hacks, free and open source" width="100%">
+<img src="https://pokedaisy.com/og.png" alt="Vyntra: Game Boy, Game Boy Color, GBA and DS player with a live companion, on two screens or one, for Pokemon games and ROM hacks, free and open source" width="100%">
 
 <h3>Pokémon, played better. Game Boy to DS, with a live companion, a widescreen overworld, a HUD and quick menu, and every chore one button away.</h3>
 
 <p>
-  <a href="https://github.com/lidor30/pokedaisy/releases/latest"><img src="https://img.shields.io/github/v/release/lidor30/pokedaisy?style=for-the-badge&label=release&color=2f81f7" alt="Latest PokeDaisy release"></a>
+  <a href="https://github.com/lidor30/pokedaisy/releases/latest"><img src="https://img.shields.io/github/v/release/lidor30/pokedaisy?style=for-the-badge&label=release&color=2f81f7" alt="Latest Vyntra release"></a>
   <a href="https://github.com/lidor30/pokedaisy/releases"><img src="https://img.shields.io/github/downloads/lidor30/pokedaisy/total?style=for-the-badge&label=downloads&color=5c8a3c" alt="Total downloads"></a>
-  <a href="https://discord.gg/vcmyKZZV5q"><img src="https://img.shields.io/badge/Discord-join-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join PokeDaisy on Discord"></a>
-  <a href="https://www.reddit.com/r/PokeDaisy/"><img src="https://img.shields.io/reddit/subreddit-subscribers/PokeDaisy?style=for-the-badge&logo=reddit&logoColor=white&label=r%2FPokeDaisy&color=FF4500" alt="r/PokeDaisy on Reddit"></a>
+  <a href="https://discord.gg/vcmyKZZV5q"><img src="https://img.shields.io/badge/Discord-join-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join Vyntra on Discord"></a>
+  <a href="https://www.reddit.com/r/Vyntra/"><img src="https://img.shields.io/reddit/subreddit-subscribers/Vyntra?style=for-the-badge&logo=reddit&logoColor=white&label=r%2FVyntra&color=FF4500" alt="r/Vyntra on Reddit"></a>
 </p>
 
 <p>
@@ -20,7 +20,7 @@
 </p>
 
 <p>
-  <sub><strong>Support PokeDaisy</strong></sub><br>
+  <sub><strong>Support Vyntra</strong></sub><br>
   <a href="https://www.patreon.com/cw/pokedaisy"><img src="https://img.shields.io/badge/Patreon-F96854?logo=patreon&logoColor=white" alt="Patreon"></a>
   <a href="https://buymeacoffee.com/lidor30g"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
   <a href="https://ko-fi.com/pokedaisy"><img src="https://img.shields.io/badge/Ko--fi-FF5E5B?logo=kofi&logoColor=white" alt="Ko-fi"></a>
@@ -28,7 +28,7 @@
 
 </div>
 
-PokeDaisy is a Game Boy, Game Boy Color, GBA and Nintendo DS player for Android handhelds with two screens or one,
+Vyntra is a Game Boy, Game Boy Color, GBA and Nintendo DS player for Android handhelds with two screens or one,
 made for the Pokemon games of every generation from Red to Black 2 and White 2 and popular ROM hacks. Next to the
 game runs a live companion that reads it as you play: your party, bag, map, battle matchups, Pokedex and a spoiler-free
 guide, all drawn in the game's own menu style.
@@ -58,9 +58,9 @@ Any Android 8.0+ device runs the games.
 
 ## Install
 
-1. Download `PokeDaisy-<version>.apk` from the [latest release](https://github.com/lidor30/pokedaisy/releases/latest)
+1. Download `Vyntra-<version>.apk` from the [latest release](https://github.com/lidor30/pokedaisy/releases/latest)
    on the device and open it (allow your browser or file manager to install apps if Android asks).
-2. Open PokeDaisy. A short setup links your ROMs folders, picks where saves go (PokeDaisy's own folder or another
+2. Open Vyntra. A short setup links your ROMs folders, picks where saves go (Vyntra's own folder or another
    emulator's, like RetroArch's) and can add cover art. All of it can be changed later in Settings.
 
 The app updates itself: it offers each new version when you open it. The full manual is at
@@ -228,12 +228,12 @@ game code, never the file). The website counts visits anonymously, with no cooki
 
 ## Community and support
 
-Come say hi, share your runs and ask questions on [r/PokeDaisy](https://www.reddit.com/r/PokeDaisy/) or
+Come say hi, share your runs and ask questions on [r/Vyntra](https://www.reddit.com/r/Vyntra/) or
 [Discord](https://discord.gg/vcmyKZZV5q). Found a bug? [Report it](https://pokedaisy.com/feedback/#bug).
 
-PokeDaisy is free, with no ads and nothing locked. If it made a playthrough better, you can support it on
+Vyntra is free, with no ads and nothing locked. If it made a playthrough better, you can support it on
 [Ko-fi](https://ko-fi.com/pokedaisy), [Patreon](https://www.patreon.com/cw/pokedaisy) or
-[Buy Me a Coffee](https://buymeacoffee.com/lidor30g). It's optional, unlocks nothing and pays for PokeDaisy's own code
+[Buy Me a Coffee](https://buymeacoffee.com/lidor30g). It's optional, unlocks nothing and pays for Vyntra's own code
 only: no games, ROMs or game content are sold or handed out.
 
 ## Building from source
@@ -260,7 +260,7 @@ This project may use AI-assisted development tools, such as Claude Code, to help
 - [armGBA](https://github.com/MagnominusGit/armGBA) by Magnominus runs the GBA games in the `pokedaisy_gba` libretro core (MPL 2.0;
   source in [`third_party/armgba`](https://github.com/MagnominusGit/armGBA)), with [zlib](https://zlib.net) (zlib License).
 - [melonDS](https://melonds.kuribo64.net) by the melonDS team runs the DS games (GPL 3.0; source in
-  [`third_party/melonds`](https://github.com/melonDS-emu/melonDS), PokeDaisy's changes in
+  [`third_party/melonds`](https://github.com/melonDS-emu/melonDS), Vyntra's changes in
   [`third_party/patches`](third_party/patches)), with its bundled FatFs, Teakra (MIT), xxHash (BSD 2-Clause),
   tiny-AES-c (Unlicense), blip_buf (LGPL 2.1) and Dolphin's ARM64 emitter (GPL 2.0+).
 - [rcheevos](https://github.com/RetroAchievements/rcheevos) by RetroAchievements.org (MIT) for achievements.
@@ -284,16 +284,16 @@ Every license is in [NOTICE](NOTICE) and, in the app, under Settings > LICENSES.
 
 ## License
 
-PokeDaisy is free software under the [GNU GPL v3](LICENSE), with one
-[additional term](NOTICE): if you share PokeDaisy or anything built from it,
-keep the credit **"Based on PokeDaisy by Lidor Itzhari -
+Vyntra is free software under the [GNU GPL v3](LICENSE), with one
+[additional term](NOTICE): if you share Vyntra or anything built from it,
+keep the credit **"Based on Vyntra by Lidor Itzhari -
 https://github.com/lidor30/pokedaisy"** in its documentation and credits.
 Forks must stay open source under the same license.
 
-PokeDaisy is a fan project, not affiliated with or endorsed by Nintendo,
+Vyntra is a fan project, not affiliated with or endorsed by Nintendo,
 Game Freak, Creatures or The Pokemon Company. Pokemon and all related names are
 trademarks of their respective owners; Game Boy, Game Boy Color and Game Boy Advance
 are trademarks of Nintendo. Device names (AYN Thor, Retroid, Anbernic) belong to their
 makers, and RetroAchievements and SteamGridDB are independent services; none of them
-endorse PokeDaisy. ROM hacks belong to their creators. No games, BIOS or game art are
+endorse Vyntra. ROM hacks belong to their creators. No games, BIOS or game art are
 included: use your own legally dumped ROMs.

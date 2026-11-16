@@ -66,10 +66,10 @@ const deviceList = [
 ];
 const ticker = ['GB · GBC · GBA · DS', msg('TWO SCREENS OR ONE'), msg('PARTY'), msg('BAG'), msg('BATTLE'), msg('MAP'), msg('DEX'), msg('GUIDE'), msg('TRAINER CARD'), msg('SAVE STATES'), msg('HUD'), msg('QUICK MENU'), msg('EXPAND'), msg('PC ANYWHERE'), msg('QUICK FLY'), msg('FAST-FORWARD'), msg('SHADERS'), msg('ACHIEVEMENTS')]
   .map((t) => tr(t)).concat(tr('{n} GAMES', { n: gameCount }));
-const title = 'POKEDAISY'.split('');
+const title = 'VYNTRA'.split('');
 ---
 <Base
-  title={tr('PokeDaisy: Game Boy Pokémon with a live companion')}
+  title={tr('Vyntra: Game Boy Pokémon with a live companion')}
   description={tr('A free player for Game Boy, Game Boy Color, Game Boy Advance and Nintendo DS Pokémon games on Android handhelds with two screens or one: the game, and a live companion with your party, battles, map, dex and guide on the second screen or right beside it, plus a HUD and a quick menu on the game screen.')}
 >
   <!-- Hero -->
@@ -77,10 +77,10 @@ const title = 'POKEDAISY'.split('');
     <div class="hero-copy" data-track-where="hero">
       <div class="hero-head">
         <div class="hero-mark">
-          <span class="mark-ball"><Pixel name="logo" scale={1} label="PokeDaisy" /></span>
+          <span class="mark-ball"><Pixel name="logo" scale={1} label="Vyntra" /></span>
           {[0, 1, 2].map((i) => <span class={`twinkle t${i}`}><Pixel name="spark" scale={1} /></span>)}
         </div>
-        <h1 class="hero-title" aria-label="PokeDaisy">
+        <h1 class="hero-title" aria-label="Vyntra">
           {title.map((ch, i) => <span class:list={['drop-letter', i < 4 && 'red']} style={`--d:${i}`} aria-hidden="true">{ch}</span>)}
         </h1>
       </div>
@@ -268,7 +268,7 @@ const title = 'POKEDAISY'.split('');
     <section class="block container">
       <div class="section-head">
         <span class="eyebrow">{tr('WHAT\'S NEW')}</span>
-        <h2 class="heading">PokeDaisy {latest.version}</h2>
+        <h2 class="heading">Vyntra {latest.version}</h2>
         <p class="lead small">{formatDate(latest.date, tr.locale)} · {tr('updates install from inside the app')}</p>
       </div>
       <article class="release f-card" data-reveal>
@@ -291,9 +291,9 @@ const title = 'POKEDAISY'.split('');
         <Pixel name="cup" scale={4} />
       </div>
       <div class="support-copy">
-        <span class="eyebrow">{tr('SUPPORT POKEDAISY')}</span>
+        <span class="eyebrow">{tr('SUPPORT VYNTRA')}</span>
         <h2 class="heading">{tr('Free, no ads, nothing locked')}</h2>
-        <p class="lead">{tr('If PokeDaisy made a playthrough better, you can support it on Ko-fi or Patreon, or buy me a coffee. It\'s completely optional and doesn\'t unlock anything; it helps cover the time that goes into mapping new games and ROM hacks.')}</p>
+        <p class="lead">{tr('If Vyntra made a playthrough better, you can support it on Ko-fi or Patreon, or buy me a coffee. It\'s completely optional and doesn\'t unlock anything; it helps cover the time that goes into mapping new games and ROM hacks.')}</p>
         <div class="cta">
           <a class="btn f-kofi h-kofiHot big" href={KOFI_URL}><Pixel name="kofi" scale={0.667} /> KO-FI</a>
           <a class="btn f-patreon h-patreonHot big" href={PATREON_URL}><Pixel name="patreon" scale={0.667} /> PATREON</a>

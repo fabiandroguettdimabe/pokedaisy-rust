@@ -45,7 +45,7 @@ test('the post follows the form, and keeps the contact off it', () => {
   assert.equal(issue.title, 'Bug: The map is blank');
   assert.deepEqual(issue.labels, ['bug']);
   assert.equal(issue.category, null);
-  assert.match(issue.body, /^### PokeDaisy version\n\n1\.2\.0\n\n### Device\n\nAYN Thor/);
+  assert.match(issue.body, /^### Vyntra version\n\n1\.2\.0\n\n### Device\n\nAYN Thor/);
   assert.match(issue.body, /### How to make it happen\n\n_No response_/);
   assert.match(issue.body, /```shell\nE\/x: '''boom'''\n```/);
   assert.doesNotMatch(issue.body, /secret@example\.com/);

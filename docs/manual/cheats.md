@@ -6,7 +6,7 @@ order: 5
 keywords: [gameshark, action replay, codebreaker, codes, cht, ar, ards, action replay ds, nds cheats, ds cheats, gs, money, shiny, walk through walls]
 ---
 
-Cheat codes let you skip a grind, try something the game normally won't allow, or get past a bug in a hack. PokeDaisy reads the classic GBA cheat devices: **GameShark**, **Action Replay** and **CodeBreaker**, and **Action Replay** codes for DS games. Game Boy games don't take cheats.
+Cheat codes let you skip a grind, try something the game normally won't allow, or get past a bug in a hack. Vyntra reads the classic GBA cheat devices: **GameShark**, **Action Replay** and **CodeBreaker**, and **Action Replay** codes for DS games. Game Boy games don't take cheats.
 
 Cheats are off until you turn them on. You add codes on the top screen (that's where the keyboard is), and switch them on and off from either screen, live, while the game runs.
 
@@ -49,11 +49,11 @@ If you have cheat files from another emulator, there's no need to type anything.
 
 For a DS game, a RetroArch `.cht` for its DS core works the same way.
 
-PokeDaisy tells you how many cheats came in. Imported cheats start switched off, since a file often holds dozens you won't want all at once. Tap the ones you want to turn them on.
+Vyntra tells you how many cheats came in. Imported cheats start switched off, since a file often holds dozens you won't want all at once. Tap the ones you want to turn them on.
 
 ## Bad lines are reported
 
-Every line of a code is checked before it's kept. If a line can't be read, PokeDaisy says which one instead of quietly skipping it:
+Every line of a code is checked before it's kept. If a line can't be read, Vyntra says which one instead of quietly skipping it:
 
 - When you add a code by hand, it isn't added, and you see the line that's wrong. Fix the typo, or try a different `TYPE`.
 - When you import a file, the good cheats come in and you're told how many were left out.
@@ -76,12 +76,12 @@ Your cheats stay with the game if you rename the file or zip it. They're kept se
 
 ## Turning cheats off undoes them
 
-When you turn a cheat off (or flip the master switch), PokeDaisy takes it out completely. Codes that patch the game itself are reversed, so with no cheats on, the game runs exactly as it would without them.
+When you turn a cheat off (or flip the master switch), Vyntra takes it out completely. Codes that patch the game itself are reversed, so with no cheats on, the game runs exactly as it would without them.
 
 What a cheat already changed in your game stays changed, though. If a code gave you 999 of an item and you saved, you still have them. Save states also keep whatever a cheat wrote into memory, but they don't keep the cheats themselves.
 
 > [!WARNING]
-> A cheat can break a save, especially the ones that change items, Pokémon or story flags. PokeDaisy copies your save every time a game starts, so you can go back with `RESTORE BACKUP` in the game's library menu. See [Saves](saves.md).
+> A cheat can break a save, especially the ones that change items, Pokémon or story flags. Vyntra copies your save every time a game starts, so you can go back with `RESTORE BACKUP` in the game's library menu. See [Saves](saves.md).
 
 ## Cheats and RetroAchievements
 

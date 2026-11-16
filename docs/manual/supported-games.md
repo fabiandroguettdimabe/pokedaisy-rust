@@ -1,12 +1,12 @@
 ---
 title: Supported games
-summary: Which games the companion can read, how to check your ROM, and what happens with a hack or version PokeDaisy doesn't know.
+summary: Which games the companion can read, how to check your ROM, and what happens with a hack or version Vyntra doesn't know.
 section: help
 order: 1
 keywords: [randomizer, randomized, randomiser, universal randomizer, upr, upr zx, nds, nintendo ds, platinum, heartgold, soulsilver, black, unova, gen 5, purered, pureblue, purergb, compatibility, compatible, rom hack, hacks, version, sha1, sha-1, checksum, unsupported, best effort, partially supported, request]
 ---
 
-Any GBA, Game Boy or DS game plays in PokeDaisy. "Supported" is about the companion on the bottom screen: to show your party, bag, map and battles, it has to know exactly which game you're running and where that game keeps its data. A game it doesn't know still plays fine on the top screen; the companion shows a notice instead of your party.
+Any GBA, Game Boy or DS game plays in Vyntra. "Supported" is about the companion on the bottom screen: to show your party, bag, map and battles, it has to know exactly which game you're running and where that game keeps its data. A game it doesn't know still plays fine on the top screen; the companion shows a notice instead of your party.
 
 ## What's supported
 
@@ -91,7 +91,7 @@ Not every game gets every tab yet. Some hacks have the guide's live pages only, 
 
 ## Games removed at their makers' request
 
-Some games aren't read by PokeDaisy because the people who made them asked for that. They still play, as plain games: no companion, no `EXPAND`, no HUD and none of the other extras. Instead of your party, the companion says why and links to where you can ask the game's makers about it.
+Some games aren't read by Vyntra because the people who made them asked for that. They still play, as plain games: no companion, no `EXPAND`, no HUD and none of the other extras. Instead of your party, the companion says why and links to where you can ask the game's makers about it.
 
 | Game | Why |
 |---|---|
@@ -99,12 +99,12 @@ Some games aren't read by PokeDaisy because the people who made them asked for t
 
 ## Support is for the exact version
 
-PokeDaisy recognises a game by its file, using the ROM's SHA-1 checksum (a fingerprint of every byte). So "Radical Red" means Radical Red 4.1, the exact file that version's patch produces. An older or newer version of a hack moves things around in memory, and reading it with the wrong map would show wrong names, wrong sprites or nonsense.
+Vyntra recognises a game by its file, using the ROM's SHA-1 checksum (a fingerprint of every byte). So "Radical Red" means Radical Red 4.1, the exact file that version's patch produces. An older or newer version of a hack moves things around in memory, and reading it with the wrong map would show wrong names, wrong sprites or nonsense.
 
 That's why the version matters:
 
 - If you patched a hack yourself, make sure you used the right patch on the right base ROM (most hacks want a clean, unmodified US FireRed or Emerald). [Patch a ROM hack](library.md#patch-a-rom-hack) finds the right base ROM by itself.
-- If the hack has a newer version than the one listed, it may not be recognised until it's added. [Best effort](#best-effort-for-games-pokedaisy-doesnt-know) may still read it.
+- If the hack has a newer version than the one listed, it may not be recognised until it's added. [Best effort](#best-effort-for-games-vyntra-doesnt-know) may still read it.
 
 ## Check your ROM before you play
 
@@ -112,9 +112,9 @@ The website's [ROM check](https://pokedaisy.com/compatibility/) tells you whethe
 
 In the app, the library tags games the companion can't read as `NOT SUPPORTED`, and ones it reads only in part as `PARTIALLY SUPPORTED`. A game's `INFO` (long-press it in the library) tells you more.
 
-## Best effort for games PokeDaisy doesn't know
+## Best effort for games Vyntra doesn't know
 
-When you play a ROM PokeDaisy doesn't recognise, but its header says it's built on FireRed, LeafGreen, Emerald, Ruby or Sapphire, the companion doesn't give up. It tries reading the game as each game it knows, by itself, while you play, and checks what it would show against the ROM: species, move and item names, the map, your party.
+When you play a ROM Vyntra doesn't recognise, but its header says it's built on FireRed, LeafGreen, Emerald, Ruby or Sapphire, the companion doesn't give up. It tries reading the game as each game it knows, by itself, while you play, and checks what it would show against the ROM: species, move and item names, the map, your party.
 
 What happens next depends on how well a game fits:
 
@@ -126,7 +126,7 @@ The match is remembered for that ROM. To undo it, long-press the game in the lib
 
 ### Hacks that kept FireRed or Emerald's own code
 
-Many hacks are made by editing the English FireRed or Emerald directly, with a map editor or a patch tool, and leave the game's own code alone. PokeDaisy checks the code of such a ROM against the original game's when it starts. If it still holds what the features below need, the hack gets them even though PokeDaisy doesn't know it by name:
+Many hacks are made by editing the English FireRed or Emerald directly, with a map editor or a patch tool, and leave the game's own code alone. Vyntra checks the code of such a ROM against the original game's when it starts. If it still holds what the features below need, the hack gets them even though Vyntra doesn't know it by name:
 
 - [EXPAND](screen.md#expand-more-of-the-map) and the field features that read the overworld (TEXT and the other scene speeds, AUTO-RUN, RUN INDOORS). If the hack moved the tables of the people standing further off, those people aren't drawn past the screen's edge.
 - Quick battle taps (a tap on `FIGHT`, `BAG`, `RUN` or a move goes straight to it) and [switching during a battle](battle.md#switching-during-a-battle), once best effort reads the game as FireRed or Emerald.
@@ -137,9 +137,9 @@ A hack that rebuilt the game from its source code doesn't pass this check, and n
 
 When more than one game could fit, or none fits clearly, the companion shows **WHICH GAME IS THIS?** in place of your party. The likely ones come first, tagged `LIKELY`. Pick the game your ROM is a version of, or the base game the hack was built on.
 
-- If you're not sure, play on: once you have a Pokémon in your party, PokeDaisy checks again by itself.
+- If you're not sure, play on: once you have a Pokémon in your party, Vyntra checks again by itself.
 - `NONE OF THESE` tells it the ROM isn't any of them. The companion then shows its `NOT SUPPORTED` page.
-- After you pick, PokeDaisy checks the pick once it can read your party. If it doesn't fit, a `WRONG GAME?` notice lets you `PICK AGAIN` or `KEEP` it.
+- After you pick, Vyntra checks the pick once it can read your party. If it doesn't fit, a `WRONG GAME?` notice lets you `PICK AGAIN` or `KEEP` it.
 
 You can open the picker again any time:
 
@@ -162,4 +162,4 @@ Every request goes up in [Game requests](https://github.com/lidor30/pokedaisy/di
 
 When best effort finds a match for a ROM, the notice may ask **SHARE THIS MATCH?** Sharing helps a future release support that ROM properly. It's entirely up to you: nothing is sent unless you tap `SHARE`, and `NO THANKS` sends nothing.
 
-The notice lists every value it would send, and that's all of it: the ROM's SHA-1, size, game code and revision, the game it was read as and how well it fit, and the app version. No file name, no account and no device details. It goes to PokeDaisy's own database, where it can't be read back by anyone through the app or the site. If you're offline, it's sent the next time the app starts.
+The notice lists every value it would send, and that's all of it: the ROM's SHA-1, size, game code and revision, the game it was read as and how well it fit, and the app version. No file name, no account and no device details. It goes to Vyntra's own database, where it can't be read back by anyone through the app or the site. If you're offline, it's sent the next time the app starts.

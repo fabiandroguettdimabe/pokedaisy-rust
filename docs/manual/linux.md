@@ -1,12 +1,12 @@
 ---
 title: Linux, Steam Deck and handhelds (beta)
-summary: Download, install and play the PokeDaisy Linux beta on a Steam Deck, a Linux desktop, TrimUI and PortMaster handhelds, or as libretro cores in your own frontend.
+summary: Download, install and play the Vyntra Linux beta on a Steam Deck, a Linux desktop, TrimUI and PortMaster handhelds, or as libretro cores in your own frontend.
 section: start
 order: 90
 keywords: [linux, steam deck, steamos, game mode, desktop mode, desktop, handheld, trimui, brick, smart pro, crossmix, nextui, nxredux, portmaster, rocknix, knulli, muos, gkd, retroarch, libretro, core, cores, aarch64, arm, x86_64, beta, install, download, zip, hotkeys, host menu, sdl]
 ---
 
-PokeDaisy for Linux plays your Game Boy, Game Boy Color and Game Boy Advance games with the same companion, HUD,
+Vyntra for Linux plays your Game Boy, Game Boy Color and Game Boy Advance games with the same companion, HUD,
 quick menu and `EXPAND` as the libretro cores, on a Steam Deck, a Linux desktop and Linux handhelds. It reads your
 own ROMs and saves; it never comes with games.
 
@@ -14,7 +14,7 @@ New to it? [Install on Linux, Steam Deck and handhelds](linux-install.md) takes 
 install step by step, in every language the app has.
 
 > [!WARNING]
-> This is a beta. The Android app stays the full PokeDaisy, and some devices below haven't been tried yet. If
+> This is a beta. The Android app stays the full Vyntra, and some devices below haven't been tried yet. If
 > something goes wrong, open an issue on [GitHub](https://github.com/lidor30/pokedaisy/issues) and say which file
 > and which device you used.
 
@@ -27,11 +27,11 @@ Every release has these files. Pick the one for your device.
 | Steam Deck, or a Linux PC (x86_64) | `pokedaisy-linux-x86_64.zip` |
 | A TrimUI handheld, as an app | `pokedaisy-linux-aarch64.zip` |
 | A handheld with PortMaster (ROCKNIX, Knulli, muOS and others) | `pokedaisy-portmaster-aarch64.zip` |
-| A TrimUI Brick running NXRedux | `PokeDaisy-NXRedux.zip` |
+| A TrimUI Brick running NXRedux | `Vyntra-NXRedux.zip` |
 | Your own frontend or RetroArch, on a PC | `pokedaisy-libretro-x86_64.zip` |
 | Your own frontend or RetroArch, on an ARM handheld | `pokedaisy-libretro-aarch64.zip` |
 
-The first three are the PokeDaisy program with its three cores beside it. The last three are the cores alone, for a
+The first three are the Vyntra program with its three cores beside it. The last three are the cores alone, for a
 frontend that loads libretro cores.
 
 ## Steam Deck and Linux PCs
@@ -41,18 +41,18 @@ desktops have both). Inside its `pokedaisy-linux-x86_64` folder are the program 
 (`pokedaisy_gba_libretro.so`), the Game Boy core (`pokedaisy_gbc_libretro.so`), the DS core (`pokedaisy_ds_libretro.so`) and their licenses.
 
 1. Extract the zip somewhere in your home folder. On a Steam Deck, do this in Desktop Mode, for example into a
-   `PokeDaisy` folder in your home folder.
+   `Vyntra` folder in your home folder.
 2. Put your games in the `roms` folder inside `pokedaisy-linux-x86_64` (it appears after the first start, or make it
    yourself).
 3. Start it from a terminal in that folder with `./pokedaisy-linux --data .` (no game named: you get the game list).
 
-The `--data` folder is where PokeDaisy keeps `roms`, `saves`, `states` and its settings. Without `--data` it uses
+The `--data` folder is where Vyntra keeps `roms`, `saves`, `states` and its settings. Without `--data` it uses
 the folder you started it from, so a shortcut should always pass it.
 
 ### Game Mode
 
 In Desktop Mode, open Steam and choose Games > Add a Non-Steam Game to My Library, browse to `pokedaisy-linux` and
-add it. Steam starts it in its own folder, so no launch options are needed. In Game Mode PokeDaisy fills the whole
+add it. Steam starts it in its own folder, so no launch options are needed. In Game Mode Vyntra fills the whole
 screen by itself, and the Deck's controls, touch screen and sound work as they do anywhere else. Steam's on-screen
 keyboard shouldn't open at launch; if it does, you're on an older build, so download the newest one.
 
@@ -65,7 +65,7 @@ into the SD card's `Apps` folder.
 
 On [plorpOS](https://github.com/thwonp/plorpos) and on [spruceOS](https://github.com/spruceUI/spruceOS) nightly,
 the Game Boy Advance, Game Boy and Game Boy Color cores come installed already, so there you don't need these files:
-pick PokeDaisy as the core for your game.
+pick Vyntra as the core for your game.
 
 The app keeps everything in its own folder: put your games in its `roms` folder. It runs fullscreen, and on
 CrossMix it raises the CPU's lowest speed while you play and puts it back when you quit.
@@ -75,20 +75,20 @@ CrossMix it raises the CPU's lowest speed while you play and puts it back when y
 
 ## PortMaster build
 
-`pokedaisy-portmaster-aarch64.zip` is an unpublished PortMaster port: `PokeDaisy.sh` beside a `pokedaisy` folder.
-Copy both into your firmware's `ports` folder, then start PokeDaisy from the Ports list. It has been tried on a
+`pokedaisy-portmaster-aarch64.zip` is an unpublished PortMaster port: `Vyntra.sh` beside a `pokedaisy` folder.
+Copy both into your firmware's `ports` folder, then start Vyntra from the Ports list. It has been tried on a
 GKD 350H running ROCKNIX.
 
 - **Your games:** the game list shows `ports/pokedaisy/roms` and the firmware's own `gba`, `gb`, `gbc`, `nds`,
   `Game Boy Advance`, `Game Boy Color`, `Game Boy` and `Nintendo DS` folders, wherever they exist next to `ports`.
 - **The menu:** press the Menu or Guide button. SELECT and START together quit the port, as in any PortMaster game.
-- PortMaster tells PokeDaisy your device's buttons, so they work without setup.
+- PortMaster tells Vyntra your device's buttons, so they work without setup.
 
 ## TrimUI Brick with NXRedux
 
-`PokeDaisy-NXRedux.zip` puts all three cores behind one PokeDaisy collection on a Brick running NXRedux. Extract it
+`Vyntra-NXRedux.zip` puts all three cores behind one Vyntra collection on a Brick running NXRedux. Extract it
 at the root of your SD card. Put your games (`.gb`, `.gbc`, `.gba` and `.nds`, not zipped) in
-`Roms/PokeDaisy (PDAI)`; the launcher lives in `Emus/tg5040/PDAI.pak`. GBA games run on the GBA core, Game Boy and
+`Roms/Vyntra (PDAI)`; the launcher lives in `Emus/tg5040/PDAI.pak`. GBA games run on the GBA core, Game Boy and
 Game Boy Color games on the Game Boy core, and DS games on the DS core. NXRedux keeps your saves, save states,
 fast-forward, shaders and resume, from its own menu. Use a different file name for every game, because NXRedux
 names saves by the file name alone.
@@ -119,16 +119,16 @@ open in the game's own floating panels. Doubles use the native battle controls.
 | `pokedaisy_ds_libretro.so` | Nintendo DS | DSperate |
 
 The ARM cores load on glibc 2.33 and newer, which takes in the TrimUI Brick; the PC cores need glibc 2.35. In
-RetroArch, copy a core into RetroArch's cores folder and load it with your game: it shows up as PokeDaisy (the DS
-core as PokeDaisy DS). Keep the licenses with the cores if you pass them on.
+RetroArch, copy a core into RetroArch's cores folder and load it with your game: it shows up as Vyntra (the DS
+core as Vyntra DS). Keep the licenses with the cores if you pass them on.
 
 The companion keeps its settings in your frontend's save folder: `pokedaisy/settings.ini` for the Game Boy and GBA
 cores, `pokedaisy-ds/settings.ini` for the DS core.
 
 ### As a core inside a launcher
 
-On plorpOS, PokeDaisy runs as a core of the launcher's own emulator. The save is the same file the mGBA core uses,
-and the launcher owns save states, fast-forward, rewind, shaders and leaving the game. Pick PokeDaisy in the Core
+On plorpOS, Vyntra runs as a core of the launcher's own emulator. The save is the same file the mGBA core uses,
+and the launcher owns save states, fast-forward, rewind, shaders and leaving the game. Pick Vyntra in the Core
 row of a Game Boy shelf.
 
 In this form the quick menu (Y) keeps PC, FLY, the keep-away spray, BIKE, WILD ENCOUNTERS and COMPANION (with TAKE
@@ -173,7 +173,7 @@ The program keeps a game's save in its data folder's `saves` folder, named after
 `.sav`: for `FireRed.gba` that's `saves/FireRed.gba.sav`. It's the game's own battery save, so a save from another
 emulator works when you rename it, a RetroArch `.srm` included. Keep a copy of your old save somewhere else first.
 
-Before a game opens, PokeDaisy backs its save up into `saves/pokedaisy-backups` and keeps the newest 10 copies.
+Before a game opens, Vyntra backs its save up into `saves/pokedaisy-backups` and keeps the newest 10 copies.
 Save states are in `states` and belong to the core that made them: a GBA state from another emulator, or from the
 other core, won't load.
 
@@ -242,7 +242,7 @@ another hotkey had moves over to the new one, and the `MODIFIER` can't be a hotk
 
 DS games keep hotkeys of their own, also SELECT + R2 and SELECT + L2 to start with. With the `MODIFIER` off they move
 to R3 and L3, since R2 and L2 alone are the DS's screen and companion buttons. On a Steam Deck, the back buttons reach
-PokeDaisy only when Steam passes them on.
+Vyntra only when Steam passes them on.
 
 ## For advanced users
 

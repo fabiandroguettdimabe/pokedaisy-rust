@@ -1,18 +1,18 @@
 ---
 title: Screens and devices
-summary: How PokeDaisy uses two screens, one screen, a phone held upright or a folding phone, and the settings that move the game and companion around.
+summary: How Vyntra uses two screens, one screen, a phone held upright or a folding phone, and the settings that move the game and companion around.
 section: start
 order: 3
 keywords: [nds, nintendo ds, touch screen, stylus, platinum, heartgold, soulsilver, dual screen, two screens, thor, ayn, retroid, duo, anbernic, rg ds, single screen, pocket 6, phone, portrait, landscape, rotate, rotation, tablet, side panel, window, modal, popup, loading, slow loading, companion view, display, bottom screen, top screen, foldable, folding phone, fold, flip, galaxy z fold, pixel fold, hinge, tabletop, flex mode, book, half open]
 ---
 
-PokeDaisy works with two screens or one. With two, the game is on top and the companion below. With one, the companion slides in beside the game, and on a phone held upright it sits under it. This page covers each setup and the settings that go with it.
+Vyntra works with two screens or one. With two, the game is on top and the companion below. With one, the companion slides in beside the game, and on a phone held upright it sits under it. This page covers each setup and the settings that go with it.
 
 ## Dual-screen handhelds
 
 | Device | How it runs |
 | --- | --- |
-| AYN Thor | What PokeDaisy was made on. The companion is laid out for its bottom screen. |
+| AYN Thor | What Vyntra was made on. The companion is laid out for its bottom screen. |
 | Retroid Pocket Duo Lite | Its bottom screen is squarer (4:3), so a few screens rearrange to fit: the Pokémon summary puts its types beside the icon, and `STATES` uses flatter screenshots. |
 | Retroid Pocket Duo | Should work the same way; not yet tried on real hardware. |
 | Anbernic RG DS | Should work with `SWAP SCREENS` on (see below); not yet tried on real hardware. Its screens are small (640 by 480), so the companion's text is a size smaller there, and a few screens squeeze: a move's power and PP sit beside its name, and `DEX` puts height and weight on two lines. |
@@ -31,7 +31,7 @@ You'll find it in the `SCREEN` group of Settings on the top screen and of the co
 
 ### On a TV
 
-Casting your phone to a TV (Smart View, screen mirroring) or plugging one in gives your device a second screen. PokeDaisy puts the game on the TV and keeps the companion on your phone, so you can play on the big screen with your party, bag and map in hand. Want it the other way round? Turn off `SWAP SCREENS`. A TV keeps its own choice, apart from a built-in second screen's.
+Casting your phone to a TV (Smart View, screen mirroring) or plugging one in gives your device a second screen. Vyntra puts the game on the TV and keeps the companion on your phone, so you can play on the big screen with your party, bag and map in hand. Want it the other way round? Turn off `SWAP SCREENS`. A TV keeps its own choice, apart from a built-in second screen's.
 
 ### CLOSE COMPANION
 
@@ -52,7 +52,7 @@ Rather play on one screen, so the other is free for good? Turn on `SINGLE SCREEN
 
 Flipped from the companion, it switches right away and the window opens so you can see where it went. Turn it off and the companion goes back to the second screen. While it's on, `SWAP SCREENS` and `CLOSE COMPANION` step aside, and `COMPANION VIEW` and `BATTLE BUTTONS` show up, as on a one-screen device.
 
-On an AYANEO handheld, PokeDaisy also opens an empty window on the bottom screen when a game starts, so AYANEO's own panel steps aside for the companion. Your buttons stay with the game.
+On an AYANEO handheld, Vyntra also opens an empty window on the bottom screen when a game starts, so AYANEO's own panel steps aside for the companion. Your buttons stay with the game.
 
 ## DS games
 
@@ -60,7 +60,7 @@ A DS has two screens, and so does a dual-screen handheld, so a DS game uses both
 
 The companion is still there:
 
-- **On the bottom screen:** tap `COMPANION` in the bar under the touch screen and the companion takes the touch screen's place. The bar takes a little of its height, so its text is a size smaller there, as on a small screen. Tap `GAME SCREEN` in the same spot to bring the touch screen back. `BACK` with nothing left to go back from also returns to the touch screen. PokeDaisy remembers which of the two you had.
+- **On the bottom screen:** tap `COMPANION` in the bar under the touch screen and the companion takes the touch screen's place. The bar takes a little of its height, so its text is a size smaller there, as on a small screen. Tap `GAME SCREEN` in the same spot to bring the touch screen back. `BACK` with nothing left to go back from also returns to the touch screen. Vyntra remembers which of the two you had.
 - **Over the game:** tap `BACK` and the companion opens over the top screen, as on a one-screen handheld (see [The window](#the-window)).
 
 Rather have the touch screen fill your whole bottom screen, without the bar? Set `DS TOUCH SCREEN` to `STRETCH` in SETTINGS (SCREEN group). The touch screen is stretched a little taller then, and `COMPANION` becomes a small tab on the right edge, halfway down, where the games keep nothing you need to tap. It works the same way: tap it for the companion, and tap it again there for the touch screen.
@@ -83,7 +83,7 @@ To switch layouts while you play, press R2 (the `DS LAYOUT` hotkey, see [Hotkeys
 
 To bring up the touch screen yourself in `ONE SCREEN` or `PICTURE IN PICTURE`, tap `TOUCH` on the [HUD](hud.md), or press L2 (the `TOUCH SCREEN` hotkey, T on a keyboard). Close it with its X, the same button again, or `BACK`. Taps beside the window still reach your touch controls.
 
-HeartGold and SoulSilver (the USA releases), Platinum, Black, White, Black 2 and White 2 are the games PokeDaisy follows this closely so far, each its own way:
+HeartGold and SoulSilver (the USA releases), Platinum, Black, White, Black 2 and White 2 are the games Vyntra follows this closely so far, each its own way:
 
 - **Platinum** opens its X menu, its party and its options on the top screen, so those stay on the game alone. The bag, the trainer card and the Pokédex show side by side, and a battle's bag, party and questions float in, as do the party after one of yours faints, picking a move to forget and the naming screen after a catch.
 - **Black, White, Black 2 and White 2** put their X menu on the touch screen, so it floats in when you press X, and so does its save question. The party, the trainer card and the options float in alone; the bag (the item you pick shows on the top screen) and the Pokédex show side by side. A battle's bag, party and questions float in, as does the party after one of yours faints.
@@ -153,7 +153,7 @@ With `ASPECT` set to `EXPAND`, the game fills everything above the companion, so
 
 ## Folding phones
 
-On a folding phone, PokeDaisy uses the fold the way a two-screen handheld uses its two screens. It switches as soon as you fold or unfold, mid-game.
+On a folding phone, Vyntra uses the fold the way a two-screen handheld uses its two screens. It switches as soon as you fold or unfold, mid-game.
 
 - **Half open like a laptop** (the fold across the screen, the bottom half resting on a table): the game is on the top half and the companion fills the bottom half. In a DS game the touch screen takes the bottom half, like on a DS, with its `COMPANION` switch to bring the companion up. With no controller, the touch controls sit on the top half, beside the game.
 - **Half open like a book** (the fold down the middle): the game is on the left page and the companion on the right. `BACK` goes back inside the companion, and the companion stays open.
@@ -163,9 +163,9 @@ The `FOLD LAYOUT` setting (in the `SCREEN` group, on both screens) turns this on
 
 ## Rotating the device
 
-On a device with one screen, PokeDaisy follows the way you hold it. Turn it sideways and you get the window or the side panel; turn it upright and you get the docked companion. It switches as you rotate, mid-game.
+On a device with one screen, Vyntra follows the way you hold it. Turn it sideways and you get the window or the side panel; turn it upright and you get the docked companion. It switches as you rotate, mid-game.
 
-With a second screen, PokeDaisy stays in landscape.
+With a second screen, Vyntra stays in landscape.
 
 ## Where things are on each screen
 

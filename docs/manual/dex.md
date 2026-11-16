@@ -42,7 +42,7 @@ The arrow buttons at the bottom step to the previous and next entry in the list 
 
 ## EVOLVE
 
-`EVOLVE` lists the family grouped by the Pokémon that evolves, each step with what it needs: a level (`LV 16`), an item to use or hold, a trade, high friendship, a time of day, a certain place, and so on. Hacks with new evolution methods show those in plain words too. A step whose condition PokeDaisy can't put into words reads "Special condition". A Pokémon that doesn't evolve says so.
+`EVOLVE` lists the family grouped by the Pokémon that evolves, each step with what it needs: a level (`LV 16`), an item to use or hold, a trade, high friendship, a time of day, a certain place, and so on. Hacks with new evolution methods show those in plain words too. A step whose condition Vyntra can't put into words reads "Special condition". A Pokémon that doesn't evolve says so.
 
 Tap another member of the family to jump to its entry.
 

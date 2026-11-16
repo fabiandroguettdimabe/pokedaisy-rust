@@ -35,14 +35,14 @@ const kinds = [
 ] as const;
 ---
 <Base
-  title={tr('Feedback · PokeDaisy')}
-  description={tr('Request a game, report a bug or suggest a feature for PokeDaisy. No GitHub account needed.')}
+  title={tr('Feedback · Vyntra')}
+  description={tr('Request a game, report a bug or suggest a feature for Vyntra. No GitHub account needed.')}
 >
   <section class="block container narrow">
     <div class="section-head">
       <span class="eyebrow">{tr('FEEDBACK')}</span>
-      <h1 class="heading">{tr('Tell PokeDaisy what you need')}</h1>
-      <p class="lead" set:html={tr('Ask for a game, report a bug or share an idea. No GitHub account needed: what you send here goes up on <a href="{repo}">PokeDaisy\'s GitHub</a>, where anyone can follow it. Game requests and ideas land in <a href="{discussions}">Discussions</a>, where people upvote the ones they want. Want a quick answer or to chat? Ask on <a href="{discord}">PokeDaisy\'s Discord</a>.', { repo: REPO_URL, discussions: `${REPO_URL}/discussions`, discord: DISCORD_URL })} />
+      <h1 class="heading">{tr('Tell Vyntra what you need')}</h1>
+      <p class="lead" set:html={tr('Ask for a game, report a bug or share an idea. No GitHub account needed: what you send here goes up on <a href="{repo}">Vyntra\'s GitHub</a>, where anyone can follow it. Game requests and ideas land in <a href="{discussions}">Discussions</a>, where people upvote the ones they want. Want a quick answer or to chat? Ask on <a href="{discord}">Vyntra\'s Discord</a>.', { repo: REPO_URL, discussions: `${REPO_URL}/discussions`, discord: DISCORD_URL })} />
     </div>
 
     <form class="feedback" data-feedback novalidate data-where={JSON.stringify(Object.fromEntries(kinds.map((k) => [k[0], `${REPO_URL}/${k[5]}`])))} data-t={JSON.stringify(strings)}>
@@ -101,7 +101,7 @@ const kinds = [
     <div class="f-card sheet thanks" data-thanks hidden>
       <span class="thanks-art"><Pixel name="logo" scale={2} /></span>
       <h2 class="heading">{tr('Thanks!')}</h2>
-      <p class="lead" set:html={tr('It\'s on its way. It shows up on <a data-where href="{url}">PokeDaisy\'s GitHub</a> in a minute or two.', { url: `${REPO_URL}/${kinds[0][5]}` })} />
+      <p class="lead" set:html={tr('It\'s on its way. It shows up on <a data-where href="{url}">Vyntra\'s GitHub</a> in a minute or two.', { url: `${REPO_URL}/${kinds[0][5]}` })} />
       <button class="btn f-btn h-btnHot small" type="button" data-again>{tr('SEND ANOTHER')}</button>
     </div>
   </section>

@@ -6,7 +6,7 @@ order: 1
 keywords: [instant text, text speed, dialogue, ff, turbo, speed up, skip, grind, grinding, slowmo, slow motion, music, audio, sound, volume, mute, quiet, silent, equalizer, eq, jamesdsp, clock, rtc, time, day, night, storage, space]
 ---
 
-Pokémon games have a lot of walking, text and grinding. Fast-forward runs the game several times faster so you get through it quicker, and PokeDaisy tries to get out of your way when speed would be a problem: in menus, on the map, and with the music.
+Pokémon games have a lot of walking, text and grinding. Fast-forward runs the game several times faster so you get through it quicker, and Vyntra tries to get out of your way when speed would be a problem: in menus, on the map, and with the music.
 
 You'll find all the speed settings under `FF / SPEED` at the top of the companion's `SETTINGS`. The ones you set once and leave, `SCENE SPEEDS`, `FF MODE` and `FF MUSIC`, are a tap further in, on its `SPEED OPTIONS` page. Most of them are on the top screen's Settings too.
 
@@ -64,7 +64,7 @@ The `SPEED CYCLE` hotkey (L2 on a controller, or the = key) steps through `1×`,
 
 Each one is `SAME` (the default: it follows `GAME SPEED`, like walking around does) or `1×` up to `4×`. These apply while fast-forward is off; turn fast-forward on and it wins everywhere. A sped-up scene's music follows `FF MUSIC`, the same as fast-forward's.
 
-`TEXT SPEED` shows `N/A` on a game PokeDaisy can't read text boxes in yet. `BIKE SPEED` and `SURF SPEED` show `N/A` until you've walked around for a moment in a game, and stay that way on hacks where PokeDaisy can't tell yet whether you're riding or surfing: Heart and Soul, SoulGold, Too Many Types 2, Emerald Rogue and Quetzal.
+`TEXT SPEED` shows `N/A` on a game Vyntra can't read text boxes in yet. `BIKE SPEED` and `SURF SPEED` show `N/A` until you've walked around for a moment in a game, and stay that way on hacks where Vyntra can't tell yet whether you're riding or surfing: Heart and Soul, SoulGold, Too Many Types 2, Emerald Rogue and Quetzal.
 
 ## Instant text
 
@@ -112,7 +112,7 @@ Ruby, Sapphire, Emerald and the Pokémon hacks that use a clock get it from your
 
 The clock follows real time, not game speed: fast-forward doesn't make berries grow faster.
 
-A save copied off a real cartridge can carry that cartridge's clock with it, and an old cartridge's clock battery is often dead. PokeDaisy starts such a clock fresh from your device, so the game doesn't greet you with "The internal battery has run dry" and its clock events keep working.
+A save copied off a real cartridge can carry that cartridge's clock with it, and an old cartridge's clock battery is often dead. Vyntra starts such a clock fresh from your device, so the game doesn't greet you with "The internal battery has run dry" and its clock events keep working.
 
 ## Rewind
 

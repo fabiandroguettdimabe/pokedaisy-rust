@@ -73,13 +73,13 @@ It needs what the game's own flight needs: the badge, a Pokémon in your party t
 
 `FLIGHT AREA` (in `SETTINGS`, under `GAMEPLAY`) keeps flying from skipping the story. On `VISITED`, the default, you fly only over places you've already been. At the edge of a place you haven't been, the bird turns back and a note says you haven't been there yet. That way you can't fly past a guard, a sleeping giant blocking the road or a cave you haven't made it through yet.
 
-PokeDaisy keeps a list of the places you've been for each save, and it grows by itself as you walk. The first time it meets a save, it fills the list from what the save already shows:
+Vyntra keeps a list of the places you've been for each save, and it grows by itself as you walk. The first time it meets a save, it fills the list from what the save already shows:
 
 - every town you can fly to,
 - the routes between two of those towns, since you crossed them to get there,
 - every place where you've beaten a trainer, when it's next to one already on the list.
 
-So a save from late in the game flies almost everywhere right away. A place with no town and no trainer, or one you skipped, needs one walk in before you can fly over it. The list is PokeDaisy's own: your save doesn't change.
+So a save from late in the game flies almost everywhere right away. A place with no town and no trainer, or one you skipped, needs one walk in before you can fly over it. The list is Vyntra's own: your save doesn't change.
 
 On `ANYWHERE`, you can fly wherever the game's world goes. If you're signed in to RetroAchievements, achievements pause the first time you take off this way, since flying ahead could reach a set's places early. They come back on when you switch to `VISITED` again.
 
@@ -97,7 +97,7 @@ A town you can't reach over land and sea from where you are (one behind gatehous
 
 ## Which games get a picture
 
-No game art comes with PokeDaisy. The map picture is rebuilt from your own ROM, once, the first time you play a game, and kept after that. So the very first time, the map can take a moment to appear.
+No game art comes with Vyntra. The map picture is rebuilt from your own ROM, once, the first time you play a game, and kept after that. So the very first time, the map can take a moment to appear.
 
 - **FireRed, LeafGreen, Emerald, Ruby and Sapphire** use their region's own map.
 - **Many hacks** have their own region drawn into the ROM, and get it: Unbound, Radical Red, Gaia, Odyssey and other FireRed-based hacks, plus hacks like Lazarus, SoulGold, Heart and Soul, Glazed, Quetzal and Wishes of Tomorrow. Monomyth shows the map its PokeNav has. Quetzal Alpha 0.8.4 (and Moemon Quetzal) is Hoenn only and shows the Hoenn map.
@@ -108,4 +108,4 @@ Quetzal shows the map of the region you're in: Hoenn, Johto, Kanto or the Sevii 
 When there's no picture for a game (or for the area you're in), the tab shows the place's name and your position as text instead.
 
 > [!NOTE]
-> A few hacks reuse the original games' map art without storing it themselves. If one of those shows text instead of a map, play the original FireRed or Emerald in PokeDaisy once: the picture it builds is shared by every game that needs it.
+> A few hacks reuse the original games' map art without storing it themselves. If one of those shows text instead of a map, play the original FireRed or Emerald in Vyntra once: the picture it builds is shared by every game that needs it.

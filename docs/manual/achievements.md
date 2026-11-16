@@ -6,7 +6,7 @@ order: 10
 keywords: [cheevos, ra, achievements, trophies, login, account, sign in, points, hardcore, softcore, leaderboard, shiny odds]
 ---
 
-[RetroAchievements](https://retroachievements.org) is a free community site that adds achievements to old games: "beat the first gym without a healing item", "catch every Pokémon on this route" and so on. PokeDaisy has it built in. Sign in once, and achievements unlock as you play, pop up on the companion and count towards your account on the site, like they would in RetroArch.
+[RetroAchievements](https://retroachievements.org) is a free community site that adds achievements to old games: "beat the first gym without a healing item", "catch every Pokémon on this route" and so on. Vyntra has it built in. Sign in once, and achievements unlock as you play, pop up on the companion and count towards your account on the site, like they would in RetroArch.
 
 It's optional: achievements only run once you sign in.
 
@@ -36,10 +36,10 @@ To check a game before playing it, long-press it in the library and open `INFO`.
 
 RetroAchievements has two modes. **Hardcore** earns hardcore points and counts for the site's rankings, but bans save states, rewind, cheats, slow motion and anything that plays the game for you. **Softcore** allows all of that.
 
-PokeDaisy plays in softcore, for two reasons:
+Vyntra plays in softcore, for two reasons:
 
-- RetroAchievements only accepts hardcore unlocks from emulators it has checked and approved, and that takes time for a new app. Until then, the site counts hardcore unlocks from PokeDaisy as softcore anyway.
-- Hardcore would have to switch off things PokeDaisy is built around: loading save states (including picking up where you left off when you open a game), rewind, and the companion's battle buttons, which press the game's buttons for you.
+- RetroAchievements only accepts hardcore unlocks from emulators it has checked and approved, and that takes time for a new app. Until then, the site counts hardcore unlocks from Vyntra as softcore anyway.
+- Hardcore would have to switch off things Vyntra is built around: loading save states (including picking up where you left off when you open a game), rewind, and the companion's battle buttons, which press the game's buttons for you.
 
 Your softcore achievements and points are real and show on your profile. They're listed separately from hardcore ones.
 

@@ -6,27 +6,27 @@ order: 5
 keywords: [save file, sav, srm, savestate, saveram compression, compressed save, quicksave, quick save, load state, slot, backup, restore, retroarch, sync, syncthing, resume, continue, rewind, undo, lost save, progress]
 ---
 
-Your progress lives in two kinds of files. The **save file** is what the game writes when you save in the game's own menu: a standard `.sav` or `.srm`, the same as mGBA and RetroArch use, so you can carry it between emulators. **Save states** are snapshots of the whole moment, taken by PokeDaisy at any time, even mid-battle.
+Your progress lives in two kinds of files. The **save file** is what the game writes when you save in the game's own menu: a standard `.sav` or `.srm`, the same as mGBA and RetroArch use, so you can carry it between emulators. **Save states** are snapshots of the whole moment, taken by Vyntra at any time, even mid-battle.
 
-This page covers both, and how PokeDaisy keeps your save file safe.
+This page covers both, and how Vyntra keeps your save file safe.
 
 ## Your save file is protected
 
-Losing a 40-hour save is the worst thing an emulator can do, so PokeDaisy is careful with it:
+Losing a 40-hour save is the worst thing an emulator can do, so Vyntra is careful with it:
 
-- **A backup every time you start a game.** Before the game opens its save, PokeDaisy copies it into a `pokedaisy-backups` folder next to the save. It keeps the newest 10 different copies for each game, and only makes a new one when the save has changed. You can change all of this in Settings > `FOLDERS` > `SAVE BACKUPS` (see [Change how backups are kept](#change-how-backups-are-kept)).
-- **Resuming never overwrites a newer save.** When a game picks up where you left off, PokeDaisy first checks the save file hasn't changed since. If it has (you played it in RetroArch, copied in another save, or moved your saves folder), the old snapshot is set aside and the game starts from the save file instead.
-- **A save in progress always finishes.** If you leave the game while it says it's saving (HOME, the recent apps screen, `CLOSE GAME`), PokeDaisy lets the save finish before it stops the game, so swiping PokeDaisy away right after can't leave a half written save behind.
+- **A backup every time you start a game.** Before the game opens its save, Vyntra copies it into a `pokedaisy-backups` folder next to the save. It keeps the newest 10 different copies for each game, and only makes a new one when the save has changed. You can change all of this in Settings > `FOLDERS` > `SAVE BACKUPS` (see [Change how backups are kept](#change-how-backups-are-kept)).
+- **Resuming never overwrites a newer save.** When a game picks up where you left off, Vyntra first checks the save file hasn't changed since. If it has (you played it in RetroArch, copied in another save, or moved your saves folder), the old snapshot is set aside and the game starts from the save file instead.
+- **A save in progress always finishes.** If you leave the game while it says it's saving (HOME, the recent apps screen, `CLOSE GAME`), Vyntra lets the save finish before it stops the game, so swiping Vyntra away right after can't leave a half written save behind.
 - **Loading another save keeps the old one.** `LOAD SAVE` renames your current save to a dated copy before putting the new one in place.
 
 ## Where your saves live
 
 A game finds its save by the ROM's file name: `Pokemon Emerald.gba` uses `Pokemon Emerald.sav` (or `.srm`). For a zipped game, it's the name of the ROM inside the archive, the same as RetroArch.
 
-PokeDaisy looks for a game's save in this order, and uses the first place that has one:
+Vyntra looks for a game's save in this order, and uses the first place that has one:
 
 1. **The game's own save folder**, if you gave it one (`SAVE FOLDER` in its library menu).
-2. **The saves folder**: PokeDaisy's own, or the one you picked in setup or Settings.
+2. **The saves folder**: Vyntra's own, or the one you picked in setup or Settings.
 3. **The `ALSO LOOK IN` folders**, in the order you added them.
 
 If none of them has a save yet, the game's first save goes into the saves folder (or its own folder, if it has one). Only the folders themselves are looked in, never the folders inside them.
@@ -36,7 +36,7 @@ If none of them has a save yet, the game's first save goes into the saves folder
 Open Settings > `FOLDERS` > `GAME SAVES`. You'll see the current folder and the saves in it:
 
 - `CHANGE FOLDER` picks another folder.
-- `USE DEFAULT` goes back to PokeDaisy's own folder, `Android/data/com.pokedaisy.app/files/saves/`.
+- `USE DEFAULT` goes back to Vyntra's own folder, `Android/data/com.pokedaisy.app/files/saves/`.
 - `COPY PATH` copies the folder's path, handy for a file manager.
 
 Changing the folder doesn't move any saves. Copy them over yourself if you want them in the new place.
@@ -45,16 +45,16 @@ Changing the folder doesn't move any saves. Copy them over yourself if you want 
 
 ### Share saves with RetroArch
 
-To keep playing the same saves in RetroArch and PokeDaisy, add RetroArch's save folders in Settings > `FOLDERS` > `ALSO LOOK IN` with `ADD FOLDER`. RetroArch often keeps one folder per core, so add each one you use, for example `RetroArch/saves/mGBA` and `RetroArch/saves/gpSP`.
+To keep playing the same saves in RetroArch and Vyntra, add RetroArch's save folders in Settings > `FOLDERS` > `ALSO LOOK IN` with `ADD FOLDER`. RetroArch often keeps one folder per core, so add each one you use, for example `RetroArch/saves/mGBA` and `RetroArch/saves/gpSP`.
 
 A save found in one of those folders is played and written right there, so RetroArch keeps seeing your latest progress. `REMOVE` takes a folder off the list.
 
-If RetroArch's SaveRAM Compression is on (Settings > Saving), its `.srm` files are packed much smaller than the game's save. PokeDaisy unpacks such a save the first time it opens it, after keeping a copy of the packed file with your backups, and RetroArch reads the unpacked one just as well. `LOAD SAVE` takes packed saves too. A few newer RetroArch builds pack saves in a way PokeDaisy can't read yet: then the game doesn't start and the save is left as it is, and turning SaveRAM Compression off in RetroArch (then saving there once) fixes it.
+If RetroArch's SaveRAM Compression is on (Settings > Saving), its `.srm` files are packed much smaller than the game's save. Vyntra unpacks such a save the first time it opens it, after keeping a copy of the packed file with your backups, and RetroArch reads the unpacked one just as well. `LOAD SAVE` takes packed saves too. A few newer RetroArch builds pack saves in a way Vyntra can't read yet: then the game doesn't start and the save is left as it is, and turning SaveRAM Compression off in RetroArch (then saving there once) fixes it.
 
 > [!WARNING]
 > If a game has a save in the saves folder *and* in an `ALSO LOOK IN` folder, the saves folder's copy wins. Keep one copy of each save to avoid surprises.
 
-If you sync your saves between devices (with Syncthing, say), it's fine to point PokeDaisy at the synced folder. Since only the folder itself is looked in, old copies kept in a folder inside it (like Syncthing's `.stversions`) are left alone.
+If you sync your saves between devices (with Syncthing, say), it's fine to point Vyntra at the synced folder. Since only the folder itself is looked in, old copies kept in a folder inside it (like Syncthing's `.stversions`) are left alone.
 
 ### Give one game its own folder
 
@@ -64,7 +64,7 @@ If that folder has no save for the game yet, your current save is copied there (
 
 ## Backups and RESTORE BACKUP
 
-Backups go into a `pokedaisy-backups` folder beside the save, named after the game with the date and time, like `Pokemon Emerald.backup-20261007-233512.sav`. Since they sit next to your saves (not hidden in the app), a file manager reaches them, and they stay even if you uninstall PokeDaisy.
+Backups go into a `pokedaisy-backups` folder beside the save, named after the game with the date and time, like `Pokemon Emerald.backup-20261007-233512.sav`. Since they sit next to your saves (not hidden in the app), a file manager reaches them, and they stay even if you uninstall Vyntra.
 
 To bring one back, long-press the game in the library and tap `RESTORE BACKUP`. Pick a backup by its date and time, then confirm with `LOAD`. Your current save is kept as a dated copy first, so restoring is never a one-way trip.
 
@@ -88,7 +88,7 @@ Backups you already have stay where they are when you change the folder, and `RE
 
 ## Load a save file
 
-To use a save from somewhere else (an old save from another emulator, a friend's file), long-press the game in the library and tap `LOAD SAVE`. Pick the file, and PokeDaisy tells you what it's about to do before you confirm with `LOAD`:
+To use a save from somewhere else (an old save from another emulator, a friend's file), long-press the game in the library and tap `LOAD SAVE`. Pick the file, and Vyntra tells you what it's about to do before you confirm with `LOAD`:
 
 - Your current save is renamed to `<game>.backup-<date and time>` next to it, so nothing is lost.
 - The new file is written under the name the game reads.

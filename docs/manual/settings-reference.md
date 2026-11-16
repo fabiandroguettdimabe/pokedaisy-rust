@@ -6,7 +6,7 @@ order: 2
 keywords: [options, preferences, configuration, config, defaults, menu, reference, list]
 ---
 
-PokeDaisy has two settings screens. **Settings** on the top screen opens from the library (`SETTINGS`, beside your games) and has everything, including the things that need a keyboard or a file picker. **SETTINGS** on the companion is the gear tab on the bottom screen, there while you play; changes made there show on the game straight away.
+Vyntra has two settings screens. **Settings** on the top screen opens from the library (`SETTINGS`, beside your games) and has everything, including the things that need a keyboard or a file picker. **SETTINGS** on the companion is the gear tab on the bottom screen, there while you play; changes made there show on the game straight away.
 
 The tools (`PATCH A ROM`, `LINK PLAY`, `SAVE EDITOR`, `TRADE SAVES`) aren't settings: they're under the library's `TOOLS`, beside `SETTINGS` (see [Games, tools and settings](library.md#games-tools-and-settings)).
 
@@ -119,11 +119,11 @@ The `SHADERS` page:
 | --- | --- | --- | --- |
 | `VERSION` | the version number | Tap to look for a newer version now. | [Install](install.md) |
 | `RUN SETUP` | | Back to the library with the first-time setup open again (ROMs folder, saves folder, game buttons, cover art). | [Install](install.md) |
-| `CRASH REPORTS` | `ON`, **`OFF`** | Sends a short report when the app crashes, only if you turn it on. Only in official builds. | [Troubleshooting](troubleshooting.md#what-does-pokedaisy-send-over-the-internet) |
+| `CRASH REPORTS` | `ON`, **`OFF`** | Sends a short report when the app crashes, only if you turn it on. Only in official builds. | [Troubleshooting](troubleshooting.md#what-does-vyntra-send-over-the-internet) |
 | `TIPS` | **`ON`**, `OFF` | Now and then, a card about a feature you haven't tried yet, shown in a game while you walk around. | [The companion](companion.md#tips) |
-| `LICENSES` | a page | The licenses of PokeDaisy and everything it includes. | |
+| `LICENSES` | a page | The licenses of Vyntra and everything it includes. | |
 | `LANGUAGE` | **`AUTO`**, `ENGLISH`, `日本語`, `FRANÇAIS`, `DEUTSCH`, `ITALIANO`, `ESPAÑOL`, `PORTUGUÊS (BR)`, `PORTUGUÊS (PT)`, `한국어` | The app's own text. `AUTO` follows the game's language in game and the device's in the library. Game names (Pokémon, moves, items) stay as the game has them. | [The companion](companion.md) |
-| `DISCORD` | | Opens PokeDaisy's Discord server, where you can get help, report a bug, share an idea or just chat. The `Discord` link under the list opens it too. | [Troubleshooting](troubleshooting.md#how-do-i-report-a-bug-or-ask-for-a-game) |
+| `DISCORD` | | Opens Vyntra's Discord server, where you can get help, report a bug, share an idea or just chat. The `Discord` link under the list opens it too. | [Troubleshooting](troubleshooting.md#how-do-i-report-a-bug-or-ask-for-a-game) |
 | `HELP` | a page | This manual, with a search box. It keeps a copy for reading offline. | [Welcome](welcome.md) |
 
 ## Companion SETTINGS
@@ -134,7 +134,7 @@ The companion's list puts what you change while you play first: speed and `SOUND
 
 | Setting | Choices | What it does | More |
 | --- | --- | --- | --- |
-| `PLAYS AS` | the game it's read as | Only for a ROM PokeDaisy doesn't know but reads as one it does. Opens **WHICH GAME IS THIS?** to pick another. | [Supported games](supported-games.md#which-game-is-this) |
+| `PLAYS AS` | the game it's read as | Only for a ROM Vyntra doesn't know but reads as one it does. Opens **WHICH GAME IS THIS?** to pick another. | [Supported games](supported-games.md#which-game-is-this) |
 
 ### FF and speed
 
@@ -257,7 +257,7 @@ The `DISPLAY OPTIONS` page:
 | --- | --- | --- | --- |
 | `TIPS` | as on the top screen | The same switch: a card now and then about a feature you haven't tried yet. | [The companion](companion.md#tips) |
 | `LANGUAGE` | as on the top screen | The app's own text, on both screens at once. | [The companion](companion.md) |
-| `DISCORD` | | Opens PokeDaisy's Discord server on the main screen, as on the top screen. | [Troubleshooting](troubleshooting.md#how-do-i-report-a-bug-or-ask-for-a-game) |
+| `DISCORD` | | Opens Vyntra's Discord server on the main screen, as on the top screen. | [Troubleshooting](troubleshooting.md#how-do-i-report-a-bug-or-ask-for-a-game) |
 | `HELP` | a page | This manual, without the search box (the bottom screen has no keyboard). | [Welcome](welcome.md) |
 
 ### Buttons at the bottom

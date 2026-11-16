@@ -609,7 +609,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 - **One-press picks**: `NativeConfig.actionCursor` / `moveCursor`, handed out only for a hash-verified ROM
   (`TelemetrySampler.knownCursorAddrs`; a randomized retail ROM's masked hash counts, `RandomizedRetail`), or for a hack
   whose code proves retail's engine (`RetailEngine`, note 30). Configs made with `.copy()` inherit them: zero them where the RAM moved.
-- **POKéMON switch**: `PokeDaisyActivity.switchAddrsFor` (by `GameKind`, game code and revision; `RetailEngine`'s proof first), or
+- **POKéMON switch**: `VyntraActivity.switchAddrsFor` (by `GameKind`, game code and revision; `RetailEngine`'s proof first), or
   `NativeConfig.partyMenu` for the games it reads from their config (SoulGold, Recharged Yellow, Recharged Emerald, Super
   Mariomon, the FireRed / LeafGreen ports); the Game Boy games through `TelemetrySampler.gbPartySwitch` (Yellow in every
   language, the Crystal family), with their addresses on `Gen1Config` / `Gen2Config` (`partyMenuType` /

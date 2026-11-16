@@ -6,28 +6,28 @@ order: 2
 keywords: [download, apk, sideload, 32-bit, armv7, older tablet, setup, first time, onboarding, permission, storage, update, upgrade, new version, unknown sources, wizard]
 ---
 
-PokeDaisy isn't on the Play Store. You install it from its GitHub page as an APK file, and the app then keeps itself up to date. The whole thing takes a few minutes.
+Vyntra isn't on the Play Store. You install it from its GitHub page as an APK file, and the app then keeps itself up to date. The whole thing takes a few minutes.
 
 ## Download and install the APK
 
 1. On the device, open the [latest release](https://github.com/lidor30/pokedaisy/releases/latest) in a browser.
-2. Under **Assets**, tap `PokeDaisy-<version>.apk` to download it. The same file works on every device, including older tablets running a 32-bit Android.
+2. Under **Assets**, tap `Vyntra-<version>.apk` to download it. The same file works on every device, including older tablets running a 32-bit Android.
 3. Open the downloaded file (from the browser's download notice, or your file manager's Downloads folder).
 4. If Android says it isn't allowed to install apps from this source, tap through to its settings, allow it for your browser or file manager, and go back. Then tap **Install**.
-5. Open PokeDaisy.
+5. Open Vyntra.
 
 > [!NOTE]
-> PokeDaisy comes with no games. You'll need your own ROMs, dumped from cartridges you own.
+> Vyntra comes with no games. You'll need your own ROMs, dumped from cartridges you own.
 
 ## First-time setup
 
-The first time you open PokeDaisy with an empty library, it shows `WELCOME TO POKéDAISY`: five short steps, numbered `1 / 5` to `5 / 5` in the corner. Every step is optional. The button at the bottom right says `SKIP` until you've chosen something, then `NEXT`, and `DONE` on the last step. `BACK` goes to the previous step.
+The first time you open Vyntra with an empty library, it shows `WELCOME TO POKéDAISY`: five short steps, numbered `1 / 5` to `5 / 5` in the corner. Every step is optional. The button at the bottom right says `SKIP` until you've chosen something, then `NEXT`, and `DONE` on the last step. `BACK` goes to the previous step.
 
 Everything you pick here can be changed later in Settings, so don't overthink it.
 
 ### Step 1: your ROMs folders
 
-If you keep your games in folders (say `ROMs/gba` and `ROMs/nds`), point PokeDaisy at them here. Tap `CHOOSE FOLDER` and pick a folder, then `ADD FOLDER` for each other one. PokeDaisy looks through them (`LOOKING FOR GAMES…`), then lists what it found under `FOUND 3 GAMES` or similar. `REMOVE` beside a folder takes it off again.
+If you keep your games in folders (say `ROMs/gba` and `ROMs/nds`), point Vyntra at them here. Tap `CHOOSE FOLDER` and pick a folder, then `ADD FOLDER` for each other one. Vyntra looks through them (`LOOKING FOR GAMES…`), then lists what it found under `FOUND 3 GAMES` or similar. `REMOVE` beside a folder takes it off again.
 
 Pick just the folders your games are in rather than one big folder of everything: there's less to look through, so it's quicker.
 
@@ -42,7 +42,7 @@ Skip this step if you'd rather add games one at a time with the `+` button in th
 This decides where your save files go. Your choices:
 
 - `KEEP THEM IN POKéDAISY` (the default): saves go in the app's own folder.
-- **A folder that already has saves in it.** PokeDaisy lists any folder it finds with `.sav` or `.srm` files, with how many saves are in each: your ROMs folders (and a `saves` folder inside each), and RetroArch's save folders (such as `RetroArch/saves/mGBA` or `RetroArch/saves/gpSP`) on the device and an SD card.
+- **A folder that already has saves in it.** Vyntra lists any folder it finds with `.sav` or `.srm` files, with how many saves are in each: your ROMs folders (and a `saves` folder inside each), and RetroArch's save folders (such as `RetroArch/saves/mGBA` or `RetroArch/saves/gpSP`) on the device and an SD card.
 - `CHOOSE ANOTHER FOLDER…` to pick any other folder.
 
 If you already play these games in another emulator, pick its save folder and carry on with the same saves. A game finds its save by the ROM's file name, so `Pokemon Emerald.gba` uses `Pokemon Emerald.sav` (or `.srm`). [Saves, backups and save states](saves.md) has more on sharing saves.
@@ -64,7 +64,7 @@ The library looks much better with box art. Covers come from two free services, 
 - **RetroAchievements** box art: tap `OPEN RetroAchievements`, copy your **Web API key** from the page that opens (it's on your RetroAchievements settings page) and paste it in the box beside the button.
 - **SteamGridDB** icons, for games RetroAchievements has no art for: tap `OPEN SteamGridDB`, copy your API key and paste it in the box beside that button.
 
-One key is enough. Tap `SAVE` and PokeDaisy fetches covers for your games (`FETCHING…`). Skip it now and add a key any time in Settings > `COVER ART`.
+One key is enough. Tap `SAVE` and Vyntra fetches covers for your games (`FETCHING…`). Skip it now and add a key any time in Settings > `COVER ART`.
 
 ![Setup's last step: COVER ART (OPTIONAL), with a key box for RetroAchievements and one for SteamGridDB](shots/setup-covers.png "Step 4: add cover art keys")
 
@@ -74,11 +74,11 @@ Open Settings (`SETTINGS` in the library, down the left or along the bottom) and
 
 ## All files access
 
-When you pick a folder (a ROMs folder, a saves folder, a game's own save folder), Android 11 and newer first ask you to allow PokeDaisy **All files access**. The app needs it to open games and saves by their path, wherever they are on the device, so it can play games from your folder without copying them and write saves where another emulator will see them.
+When you pick a folder (a ROMs folder, a saves folder, a game's own save folder), Android 11 and newer first ask you to allow Vyntra **All files access**. The app needs it to open games and saves by their path, wherever they are on the device, so it can play games from your folder without copying them and write saves where another emulator will see them.
 
 Android opens its own page for it: turn it on and come back. Setup picks up where you left off.
 
-If you don't allow it, PokeDaisy still works: import games with `+` and keep saves in its own folder.
+If you don't allow it, Vyntra still works: import games with `+` and keep saves in its own folder.
 
 > [!NOTE]
 > Only folders on the device's own storage and SD card work. Cloud folders from a file picker (Google Drive and the like) can't be linked.
@@ -94,9 +94,9 @@ Then pick a game and play. [Your game library](library.md) is the next page.
 
 ## Updates
 
-PokeDaisy checks for a new version each time you open the library. When there is one, it shows `UPDATE AVAILABLE` with what's new:
+Vyntra checks for a new version each time you open the library. When there is one, it shows `UPDATE AVAILABLE` with what's new:
 
-- `UPDATE` downloads the new APK and opens Android's installer. Tap **Update** there. If Android asks to allow installs from PokeDaisy, allow it and go back.
+- `UPDATE` downloads the new APK and opens Android's installer. Tap **Update** there. If Android asks to allow installs from Vyntra, allow it and go back.
 - `RELEASE PAGE` opens the release on GitHub.
 - `LATER` puts it off until the next time you open the library.
 
@@ -109,4 +109,4 @@ The first time you open the library after an update, `WHAT'S NEW` shows the main
 To check right now, open Settings and tap `VERSION` (in the `APP` group). It shows the version you have, and tapping it looks for a newer one.
 
 > [!TIP]
-> If an update keeps downloading but never installs, check that PokeDaisy is allowed to install apps (Android's settings, **Apps**, PokeDaisy, **Install unknown apps**). [Troubleshooting](troubleshooting.md) has more.
+> If an update keeps downloading but never installs, check that Vyntra is allowed to install apps (Android's settings, **Apps**, Vyntra, **Install unknown apps**). [Troubleshooting](troubleshooting.md) has more.

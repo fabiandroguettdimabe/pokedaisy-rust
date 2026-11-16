@@ -6,7 +6,7 @@ order: 3
 keywords: [ds resolution, internal resolution, upscaling, hd, sharper 3d, jagged, lag, slow device, input delay, light companion, widescreen, fullscreen, 16:9, 3:2, ratio, bezel, border, frame, crt, lcd, scanlines, xbrz, scalefx, upscale, unlit, backlight, pixel transparency, night, appearance, framerate, fps, performance, graphics, look, theme, themes, colour scheme, color scheme, skin, holiday, seasonal, christmas, halloween, easter, lunar new year, valentine, cherry, rainbow]
 ---
 
-The top screen is wider than a GBA, so there's a choice to make about the space around the game. You can keep the GBA's own shape, stretch it, or let PokeDaisy draw more of the world into the gaps. On top of that you can run the picture through a filter, put a frame around it and give the app's windows a theme or a dark look.
+The top screen is wider than a GBA, so there's a choice to make about the space around the game. You can keep the GBA's own shape, stretch it, or let Vyntra draw more of the world into the gaps. On top of that you can run the picture through a filter, put a frame around it and give the app's windows a theme or a dark look.
 
 Everything on this page is in the `SCREEN` group of Settings, on both screens: the top screen's Settings (from the library) and the companion's `SETTINGS` tab. `STATUS BAR`, `SHADERS`, `OVERLAY` and `LIGHT COMPANION` are on its `DISPLAY OPTIONS` page. A change made on the companion shows on the game straight away.
 
@@ -42,10 +42,10 @@ A few things worth knowing:
 In a game that doesn't support it yet, `EXPAND` shows as `ORIGINAL` and the companion's pick-list tags it `NOT YET`. You can leave it on: it kicks in for every game that has it.
 
 > [!NOTE]
-> On plorpOS, where PokeDaisy runs as a core, the picture is sized to the screen instead: see [Linux handhelds](linux.md#the-picture-in-the-launcher).
+> On plorpOS, where Vyntra runs as a core, the picture is sized to the screen instead: see [Linux handhelds](linux.md#the-picture-in-the-launcher).
 
 > [!TIP]
-> The first time you start a game that supports it, PokeDaisy may ask whether to turn `EXPAND` on (`TURN ON` or `NOT NOW`). Either answer is fine, and you can change it any time under `ASPECT`.
+> The first time you start a game that supports it, Vyntra may ask whether to turn `EXPAND` on (`TURN ON` or `NOT NOW`). Either answer is fine, and you can change it any time under `ASPECT`.
 
 ### Zoom and looking around
 
@@ -55,7 +55,7 @@ The **right stick** looks around (turn off `LOOK AROUND` in the `SCREEN` group i
 
 ## DS core: DS games on weaker devices
 
-PokeDaisy has two DS emulators. melonDS has every DS feature. DSperate needs far less from your device, so it keeps DS games at full speed on budget handhelds, older phones and tablets, and devices running 32-bit Android, where melonDS can be slow. `DS CORE` picks which one runs your DS games.
+Vyntra has two DS emulators. melonDS has every DS feature. DSperate needs far less from your device, so it keeps DS games at full speed on budget handhelds, older phones and tablets, and devices running 32-bit Android, where melonDS can be slow. `DS CORE` picks which one runs your DS games.
 
 | Choice | What you get |
 | --- | --- |
@@ -99,7 +99,7 @@ It costs your device more work, so it starts on only where the device has the sp
 
 ### When your device can't keep up
 
-On a device that can't run a DS game at full speed, PokeDaisy keeps the game at the DS's own speed by drawing fewer pictures: it draws one frame and skips drawing the next one (or up to three) while the game itself keeps running. The music, walking and battles stay at their real pace, and the picture is a little less smooth. It happens by itself, only when it's needed, and stops when the game is light enough again. On a device so slow that skipping wouldn't bring the speed back, every frame is drawn and the game simply runs slower. Fast-forward does its own skipping, so none of this applies while it's on.
+On a device that can't run a DS game at full speed, Vyntra keeps the game at the DS's own speed by drawing fewer pictures: it draws one frame and skips drawing the next one (or up to three) while the game itself keeps running. The music, walking and battles stay at their real pace, and the picture is a little less smooth. It happens by itself, only when it's needed, and stops when the game is light enough again. On a device so slow that skipping wouldn't bring the speed back, every frame is drawn and the game simply runs slower. Fast-forward does its own skipping, so none of this applies while it's on.
 
 ## Status bar
 
@@ -111,7 +111,7 @@ On a device that can't run a DS game at full speed, PokeDaisy keeps the game at 
 | `GAME` | Across the top of the game, exactly as wide as it. The game shrinks a little to make room. |
 | `COMPANION` | Over the companion's tabs on the bottom screen, so the game keeps its full size. |
 
-The clock follows your device's 12 or 24 hour setting. Money shows for the games where PokeDaisy can read it.
+The clock follows your device's 12 or 24 hour setting. Money shows for the games where Vyntra can read it.
 
 ![The status bar above the game, showing the game's name, the current town, money, the time and battery](shots/status-bar.png)
 
@@ -160,14 +160,14 @@ The first GBA had no light behind its screen. Light from the room went in throug
 
 ## Overlay: a frame around the game
 
-`OVERLAY` draws a frame around the game, filling the space a 3:2 picture leaves. PokeDaisy has two of its own:
+`OVERLAY` draws a frame around the game, filling the space a 3:2 picture leaves. Vyntra has two of its own:
 
-- `DAISY`: PokeDaisy's blue with a dot grid and the flower mark in the margin.
+- `DAISY`: Vyntra's blue with a dot grid and the flower mark in the margin.
 - `BEZEL`: a plain dark surround.
 
 They're drawn at the game's own pixel size and the game is shown at a whole-number scale inside them, so everything stays crisp (the game is a little smaller than without a frame).
 
-![The game inside the DAISY frame: a blue border with a dot pattern and the PokeDaisy flower beside the screen](shots/overlay-daisy.png)
+![The game inside the DAISY frame: a blue border with a dot pattern and the Vyntra flower beside the screen](shots/overlay-daisy.png)
 
 ### Your own RetroArch overlays
 
@@ -177,14 +177,14 @@ If you already use overlays in RetroArch, you can bring them over. On the top sc
 - a `.zip` with overlays in it,
 - or any PNG with a see-through hole where the screen goes.
 
-PokeDaisy finds where the game goes from the `.cfg`, or from the see-through part of the PNG. A PNG with no hole is used as a background behind the game. If a `.cfg` arrives without its picture, it asks you to `PICK THE IMAGE`. A pack with both landscape and portrait versions uses whichever fits the screen.
+Vyntra finds where the game goes from the `.cfg`, or from the see-through part of the PNG. A PNG with no hole is used as a background behind the game. If a `.cfg` arrives without its picture, it asks you to `PICK THE IMAGE`. A pack with both landscape and portrait versions uses whichever fits the screen.
 
 Imported overlays are listed under `IMPORTED`. Tap one to use it, or use `REMOVE` to delete them. Once imported, you can pick them from the companion's `OVERLAY` list too.
 
 ![The OVERLAY page: NONE, DAISY and BEZEL under BUILT-IN, an IMPORTED list, and the IMPORT FILE button](shots/settings-overlay.png)
 
 > [!NOTE]
-> PokeDaisy doesn't ship or link any third-party overlays. Most console borders carry the console maker's logo, so bring the ones you already have.
+> Vyntra doesn't ship or link any third-party overlays. Most console borders carry the console maker's logo, so bring the ones you already have.
 
 Overlays are switched off on a phone held upright, where the game sits across the top. With `STRETCH`, the game fills the overlay's screen area.
 
@@ -223,7 +223,7 @@ The dates follow your device's calendar. If two holidays overlap (`LUNAR NEW YEA
 
 ## FPS / CPU
 
-`FPS / CPU` shows a small readout in the game's top-left corner: how many frames the game ran in the last second and how much of the CPU PokeDaisy is using. It should read about 60 at normal speed.
+`FPS / CPU` shows a small readout in the game's top-left corner: how many frames the game ran in the last second and how much of the CPU Vyntra is using. It should read about 60 at normal speed.
 
 Tap the readout to open a longer panel with frame times, late frames, the screen's refresh and pacing, audio underruns, battery temperature, thermal state and memory. It's useful when a game feels choppy; see [Troubleshooting](troubleshooting.md#the-game-feels-choppy-or-the-device-runs-hot).
 

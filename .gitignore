@@ -67,3 +67,9 @@ __pycache__/
 
 # ROM lists for make rom-support LIST=... (scripts/rom_agent/): local paths, never committed
 roms-to-add*.txt
+
+# Vyntra Desktop: private local data and frontend build intermediates.
+/desktop-rust/data/
+/desktop-rust/ui/node_modules/
+/desktop-rust/ui/dist/app.js
+/desktop-rust/ui/dist/styles.css

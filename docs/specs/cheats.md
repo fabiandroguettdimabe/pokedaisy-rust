@@ -4,7 +4,7 @@ Status: implemented 2026-10-08 (see docs/DEVELOPMENT.md's "Cheats" for what was 
 differs from this plan: file formats parsed in Kotlin, Kotlin owns the list, only enabled cheats reach
 the core). Open: the manual Thor pass below, README line on release.
 Written for a fresh session; read CLAUDE.md first.
-Origin: a Reddit user asked "Is there .cht / action replay code support?" PokeDaisy has none today
+Origin: a Reddit user asked "Is there .cht / action replay code support?" Vyntra has none today
 (grep for cheat/GameShark finds nothing in `app/`).
 
 ## Goal
@@ -91,7 +91,7 @@ New JNI functions, same style as the existing `pk*` ones (`Java_com_pokedaisy_ap
 ## Interactions that must be handled
 
 - **RetroAchievements** (`achievements/RetroAchievements.kt`, `pokedaisy_ra.c`): RA's rule is no
-  cheats with achievements. PokeDaisy is softcore-only, which RA allows to use savestates, but the
+  cheats with achievements. Vyntra is softcore-only, which RA allows to use savestates, but the
   convention (RetroArch and others) is to **not award achievements while cheats are active**.
   Decision for the owner (default proposal): when a cheat is ON and the player is signed in, pause
   achievement processing (stop calling `rc_client_do_frame`, or `rc_client_set_...` pause API) and

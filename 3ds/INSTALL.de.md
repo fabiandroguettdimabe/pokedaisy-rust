@@ -2,28 +2,28 @@
 
 # Auf einem Nintendo 3DS installieren
 
-*Bring die Homebrew-App PokeDaisy Schritt für Schritt auf einen 3DS, füge deine Spiele und Speicherdateien hinzu und schalte den Ton ein.*
+*Bring die Homebrew-App Vyntra Schritt für Schritt auf einen 3DS, füge deine Spiele und Speicherdateien hinzu und schalte den Ton ein.*
 
 [English](INSTALL.md) · [日本語](INSTALL.ja.md) · [한국어](INSTALL.ko.md) · [Français](INSTALL.fr.md) · **Deutsch** · [Italiano](INSTALL.it.md) · [Español](INSTALL.es.md) · [Português (Brasil)](INSTALL.pt-br.md) · [Português (Portugal)](INSTALL.pt.md)
 
 Auch auf der Website: https://pokedaisy.com/de/docs/3ds/
 
-PokeDaisy läuft auch auf dem Nintendo 3DS, als Homebrew-App: Dein Spiel läuft auf dem oberen Bildschirm, und der Begleiter wohnt auf dem Touchscreen, mit eigener Spielebibliothek, einem Speicherstand-Editor und Tausch zwischen Speicherdateien. Diese Seite bringt dich von einer Konsole mit Custom Firmware bis zu deinem ersten Spiel.
+Vyntra läuft auch auf dem Nintendo 3DS, als Homebrew-App: Dein Spiel läuft auf dem oberen Bildschirm, und der Begleiter wohnt auf dem Touchscreen, mit eigener Spielebibliothek, einem Speicherstand-Editor und Tausch zwischen Speicherdateien. Diese Seite bringt dich von einer Konsole mit Custom Firmware bis zu deinem ersten Spiel.
 
 > [!NOTE]
 > Die 3DS-Version ist eine frühe Vorschau. Sie ist für den **New Nintendo 3DS, New Nintendo 3DS XL und New Nintendo 2DS XL** gemacht. Ein älterer 3DS, 3DS XL oder 2DS startet sie vielleicht, kann aber langsam laufen. Ihre Menüs sind vorerst auf Englisch.
 
-![Die PokeDaisy-Bibliothek auf einem 3DS: das gewählte Spiel auf dem oberen Bildschirm, die Spieleliste auf dem Touchscreen](../docs/manual/shots/3ds-library.png "Die Bibliothek: oben das Spiel unter dem Cursor, unten deine Spiele")
+![Die Vyntra-Bibliothek auf einem 3DS: das gewählte Spiel auf dem oberen Bildschirm, die Spieleliste auf dem Touchscreen](../docs/manual/shots/3ds-library.png "Die Bibliothek: oben das Spiel unter dem Cursor, unten deine Spiele")
 
 ## Was du brauchst
 
 - **Einen 3DS mit Custom Firmware (Luma3DS) und dem Homebrew Launcher.** Falls deine Konsole das noch nicht hat, folge [3ds.hacks.guide](https://3ds.hacks.guide/). Das ist die Anleitung der Community, für jede Konsole und Systemversion aktuell gehalten, und sie richtet alles ein, was diese Seite braucht. Komm danach hierher zurück.
 - **Die SD-Karte** und einen Computer, der sie lesen kann (oder eine FTP-App auf dem 3DS, wenn du die Karte nicht herausnehmen willst).
-- **Deine eigenen Spiele.** PokeDaisy enthält keine Spiele. Nutze ROMs, die du selbst aus Modulen ausgelesen hast, die dir gehören: Dateien mit der Endung `.gba`, `.gb` oder `.gbc`.
+- **Deine eigenen Spiele.** Vyntra enthält keine Spiele. Nutze ROMs, die du selbst aus Modulen ausgelesen hast, die dir gehören: Dateien mit der Endung `.gba`, `.gb` oder `.gbc`.
 
 ## Schritt 1: die App holen
 
-1. Öffne auf einem Computer die [Release-Seite von PokeDaisy](https://github.com/lidor30/pokedaisy/releases).
+1. Öffne auf einem Computer die [Release-Seite von Vyntra](https://github.com/lidor30/pokedaisy/releases).
 2. Lade beim neuesten Release, das eine 3DS-Datei anbietet, `pokedaisy.3dsx` herunter.
 
 ## Schritt 2: auf die SD-Karte kopieren
@@ -36,11 +36,11 @@ PokeDaisy läuft auch auf dem Nintendo 3DS, als Homebrew-App: Dein Spiel läuft 
 
 ## Schritt 3: Spiele und Speicherdateien hinzufügen
 
-1. Lege ganz oben auf der Karte einen Ordner `pokedaisy` an und darin einen Ordner `roms`: `sdmc:/pokedaisy/roms/`. (PokeDaisy legt beide beim ersten Start selbst an, falls du es lieber erst einmal startest.)
-2. Kopiere deine Spiele nach `roms`. Lege sie direkt in den Ordner, nicht in eigene Unterordner, und entpacke sie vorher: PokeDaisy liest auf dem 3DS nur lose Dateien mit der Endung `.gba`, `.gb` und `.gbc`.
+1. Lege ganz oben auf der Karte einen Ordner `pokedaisy` an und darin einen Ordner `roms`: `sdmc:/pokedaisy/roms/`. (Vyntra legt beide beim ersten Start selbst an, falls du es lieber erst einmal startest.)
+2. Kopiere deine Spiele nach `roms`. Lege sie direkt in den Ordner, nicht in eigene Unterordner, und entpacke sie vorher: Vyntra liest auf dem 3DS nur lose Dateien mit der Endung `.gba`, `.gb` und `.gbc`.
 3. Du bringst eine Speicherdatei aus einem anderen Emulator mit? Lege sie in `roms` neben ihr Spiel, mit demselben Namen und `.sav` am Ende: `Pokemon Emerald.gba` liest `Pokemon Emerald.sav`. Eine RetroArch-Speicherdatei endet auf `.srm`: Benenne sie in `.sav` um. Behalte zur Sicherheit auch eine Kopie auf deinem Computer.
 
-Ohne Speicherdatei beginnt das Spiel von vorn, und PokeDaisy legt seine `.sav` im selben Ordner an, sobald du im Spiel zum ersten Mal speicherst.
+Ohne Speicherdatei beginnt das Spiel von vorn, und Vyntra legt seine `.sav` im selben Ordner an, sobald du im Spiel zum ersten Mal speicherst.
 
 ## Schritt 4: den Ton einschalten
 
@@ -52,10 +52,10 @@ Ohne Speicherdatei beginnt das Spiel von vorn, und PokeDaisy legt seine `.sav` i
 
 Damit entsteht `sdmc:/3ds/dspfirm.cdc`. Ohne diese Datei laufen die Spiele stumm. Hast du das schon einmal für eine andere App gemacht, ist nichts zu tun.
 
-## Schritt 5: PokeDaisy starten
+## Schritt 5: Vyntra starten
 
 1. Öffne den Homebrew Launcher. Auf einer Konsole, die mit 3ds.hacks.guide eingerichtet wurde, öffnet er sich über die Download-Spiel-App (Download Play).
-2. Wähle **PokeDaisy** in der Liste.
+2. Wähle **Vyntra** in der Liste.
 
 Die Bibliothek öffnet sich: Der Touchscreen listet deine Spiele, und der obere Bildschirm zeigt das Spiel unter dem Cursor, mit deinem Spieler, deiner Spielzeit und deinem Team, sobald du es gespielt hast. Bewege dich mit dem Steuerkreuz oder tippe ein Spiel an, dann drücke **A** zum Spielen.
 
@@ -70,7 +70,7 @@ Zeigt die Bibliothek **No games yet**, prüfe, ob deine Spiele direkt in `sdmc:/
 | **A** | Das Spiel unter dem Cursor spielen |
 | **L** / **R** | Die Ansichten der Bibliothek wechseln: `ALL`, `RECENT`, `GBA`, `GB`, `HACKS` |
 | **SELECT** | Die nächste Seite: Spiele, `SAVE EDITOR`, `TRADE SAVES`, `SETTINGS` |
-| **START** | PokeDaisy schließen und zum Homebrew Launcher zurückkehren |
+| **START** | Vyntra schließen und zum Homebrew Launcher zurückkehren |
 
 Im Spiel sind die Tasten des GBA die gleichen Tasten des 3DS (das Schiebepad funktioniert wie das Steuerkreuz), und der Touchscreen ist der Begleiter. Dazu noch:
 
@@ -87,7 +87,7 @@ Um ein Spiel zu verlassen, nutze `CLOSE GAME` ganz unten in den `SETTINGS` des B
 
 ## Welche Spiele laufen
 
-Jedes Game-Boy-, Game-Boy-Color- oder Game-Boy-Advance-Spiel läuft. Der Begleiter liest die Spiele, die PokeDaisy auf Android kennt: FireRed, LeafGreen, Ruby, Sapphire und Emerald, Red, Blue, Yellow, Gold, Silver und Crystal sowie viele ROM-Hacks ([Unterstützte Spiele](https://pokedaisy.com/docs/supported-games/) hat die Liste). DS-Spiele laufen in der 3DS-Version nicht.
+Jedes Game-Boy-, Game-Boy-Color- oder Game-Boy-Advance-Spiel läuft. Der Begleiter liest die Spiele, die Vyntra auf Android kennt: FireRed, LeafGreen, Ruby, Sapphire und Emerald, Red, Blue, Yellow, Gold, Silver und Crystal sowie viele ROM-Hacks ([Unterstützte Spiele](https://pokedaisy.com/docs/supported-games/) hat die Liste). DS-Spiele laufen in der 3DS-Version nicht.
 
 ## Was wo auf der SD-Karte liegt
 
@@ -109,7 +109,7 @@ Lade die neuere `pokedaisy.3dsx` herunter und kopiere sie über die alte in `sdm
 ## Wenn etwas nicht klappt
 
 - **Kein Ton:** `sdmc:/3ds/dspfirm.cdc` fehlt. Mach Schritt 4.
-- **PokeDaisy fehlt im Homebrew Launcher:** Die Datei muss in `sdmc:/3ds/` liegen und auf `.3dsx` enden.
+- **Vyntra fehlt im Homebrew Launcher:** Die Datei muss in `sdmc:/3ds/` liegen und auf `.3dsx` enden.
 - **Ein Spiel fehlt in der Liste:** Es muss direkt in `sdmc:/pokedaisy/roms/` liegen, nicht in einem Ordner darin und nicht gepackt.
 - **Meine Speicherdatei wurde nicht geladen:** Sie braucht genau den Namen des Spiels mit `.sav` am Ende. Jeder Start kopiert die Speicherdatei zuerst nach `sdmc:/pokedaisy/roms/pokedaisy-backups/`, also liegt dort eine ältere Kopie, falls du sie brauchst.
 - **Es läuft langsam:** Ein älterer 3DS oder 2DS ist langsamer als die New-Modelle. Stelle in den `SETTINGS` der Bibliothek `SCREEN` auf `PIXEL 1x`, den leichtesten Modus.

@@ -42,7 +42,8 @@ function source(slug, code) {
 /** One language's page as GitHub Markdown: a title, the language links, links and pictures pointed at their homes. */
 function guide(slug, code, langs) {
   const src = readFileSync(source(slug, code), 'utf8');
-  const m = /^---\n([\s\S]*?)\n---\n/.exec(src);
+  // Manual files are checked out with either LF or CRLF depending on Git's Windows settings.
+  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/.exec(src);
   const meta = YAML.parse(m[1]);
   const body = src
     .slice(m[0].length)

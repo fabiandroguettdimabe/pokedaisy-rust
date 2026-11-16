@@ -6,7 +6,7 @@ order: 6
 keywords: [nuzlocke, challenge, hardcore, run, tracker, encounters, first encounter, route, permadeath, death, dead, fainted, graveyard, dupes clause, rules]
 ---
 
-A Nuzlocke is a way to play that makes the game harder and every Pokémon matter. The usual rules: you may only catch the first wild Pokémon you meet in each area, and a Pokémon that faints counts as gone for the rest of the run. Keeping track of that by hand gets tedious. PokeDaisy can do it for you.
+A Nuzlocke is a way to play that makes the game harder and every Pokémon matter. The usual rules: you may only catch the first wild Pokémon you meet in each area, and a Pokémon that faints counts as gone for the rest of the run. Keeping track of that by hand gets tedious. Vyntra can do it for you.
 
 It only keeps score. It never changes your game or your save: nothing stops you from throwing a ball where you shouldn't, it just tells you.
 

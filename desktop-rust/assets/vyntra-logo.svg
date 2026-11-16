@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 96" role="img" aria-labelledby="title">
+  <title id="title">Vyntra</title>
+  <path d="M12 13h18l18 48 18-48h18L54 83H42z" fill="#B31231"/>
+  <path d="M23 13h7l18 48 18-48h7L50 70z" fill="#E6E6E9" opacity=".92"/>
+  <text x="103" y="70" fill="#E6E6E9" font-family="Inter, Plus Jakarta Sans, Arial, sans-serif" font-size="66" font-weight="700" letter-spacing="-3">Vyntra</text>
+</svg>

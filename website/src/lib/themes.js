@@ -71,8 +71,8 @@ function make(o) {
         dark && `${s} .petal{opacity:.06}`,
         `${s} .topbar{background:${o.bar[0]};border-bottom-color:${o.bar[1]}}`,
         `${s} .footer{background:${o.foot[0]};border-top-color:${o.foot[1] ?? o.bar[1]}}`,
-        // PokeDaisy's own red stays on its name.
-        `${s} .brand .red,${s} .foot-name .red{color:#e83028}`,
+        // Vyntra crimson stays on the brand mark and wordmark.
+        `${s} .brand .red,${s} .foot-name .red{color:#b31231}`,
         `${s} .btn.primary{color:${o.primary[4]};text-shadow:var(--px) var(--px) 0 ${o.primary[5]}}`,
         `${s} .hero-title{color:${o.title ?? o.accent};text-shadow:var(--bold),calc(var(--px)*2) calc(var(--px)*2) 0 ${titleShadow},calc(var(--px)*2 + .0625em) calc(var(--px)*2) 0 ${titleShadow}}`,
         `${s} .glow{background:radial-gradient(closest-side,${o.glow[0]},${o.glow[1]} 60%,transparent)}`,

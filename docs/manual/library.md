@@ -6,9 +6,9 @@ order: 4
 keywords: [shortcut, home screen, launcher icon, search, find a game, filter, support, donate, donation, tip, patreon, ko-fi, kofi, buy me a coffee, games list, add rom, import, folder, folders, multiple folders, several folders, add folder, zip, 7z, archive, cover, box art, artwork, icon, steamgriddb, rename, delete, hide, favourite, star, sort, grid, list view, frontend, es-de, esde, iisu, cocoon, launcher, filter, tabs, recently played, history, hacks, game boy, gbc, gba, console, platform, patch, patching, bps, apply patch, base rom, checksum, crc32, rom hack patch, tools, toolbox, rail, bottom bar, where is settings]
 ---
 
-The library is the first thing you see when you open PokeDaisy: every game you've added, in the order you pick. Tap a game to play it.
+The library is the first thing you see when you open Vyntra: every game you've added, in the order you pick. Tap a game to play it.
 
-The first time you play a big game, like a DS game or one in a `.zip`, PokeDaisy reads it through before it starts, which can take a few seconds. The library dims and a little red and white ball rocks in the middle until the game opens; nothing else can be tapped meanwhile.
+The first time you play a big game, like a DS game or one in a `.zip`, Vyntra reads it through before it starts, which can take a few seconds. The library dims and a little red and white ball rocks in the middle until the game opens; nothing else can be tapped meanwhile.
 
 ![The library in list view: GAMES, TOOLS and SETTINGS down the left, the header's sort, search, view, add, refresh and help buttons, a row of coloured quick views (ALL, FAVORITES, RECENT, GB, GBC, GBA, DS, HACKS) and the games under them](shots/library-list.png "The library in list view")
 
@@ -30,7 +30,7 @@ The game you have open says `PLAYING`, and a small save icon next to a name mean
 Down the left edge of the library are three buttons: `GAMES`, `TOOLS` and `SETTINGS`. On a phone held upright they sit in a bar along the bottom edge instead. They stay on screen whichever one is open, and the page beside them changes.
 
 - `GAMES` is your library, the games and the quick views over them.
-- `TOOLS` shows, in the games' place, what PokeDaisy can do with your games besides playing them. Tap one to open it. Its header has only the help button, since sorting and adding are for your games.
+- `TOOLS` shows, in the games' place, what Vyntra can do with your games besides playing them. Tap one to open it. Its header has only the help button, since sorting and adding are for your games.
 - `SETTINGS` shows Settings in the same place, under the library's header. Tap `SETTINGS` again on one of its pages to go back to the first one, and `BACK` from there takes you to your games.
 
 | Tool | What it does |
@@ -84,7 +84,7 @@ Games in a linked folder are your own files, so the library never deletes them. 
 
 ### Import with +
 
-Tap `+` in the header, pick `ADD A ROM FILE` and pick a game file. PokeDaisy copies it into its own games folder and adds it to the library. If the file is zipped, it's unpacked as it's imported.
+Tap `+` in the header, pick `ADD A ROM FILE` and pick a game file. Vyntra copies it into its own games folder and adds it to the library. If the file is zipped, it's unpacked as it's imported.
 
 If the companion can't read the game, you're told it's `NOT SUPPORTED` and asked whether to add it anyway: the game still plays, only the companion won't show its party, map, items or battles.
 
@@ -94,27 +94,27 @@ Games copied straight into `Android/data/com.pokedaisy.app/files/roms/` on the d
 
 ### Patch a ROM hack
 
-Most ROM hacks come as a `.bps` patch: a file that turns a game you already have into the hack. PokeDaisy can apply it for you.
+Most ROM hacks come as a `.bps` patch: a file that turns a game you already have into the hack. Vyntra can apply it for you.
 
-1. Tap `+` and pick `PATCH A ROM` (it's also under `TOOLS`), then pick the `.bps` file. Picking a `.bps` with `ADD A ROM FILE`, or opening one with PokeDaisy from a file manager, does the same.
-2. PokeDaisy reads the patch and looks through your library for the game it was made for. A patch names that game by its checksum (CRC32, a fingerprint of every byte), so it finds the right file whatever it's called, zipped ones too. You don't pick it yourself.
+1. Tap `+` and pick `PATCH A ROM` (it's also under `TOOLS`), then pick the `.bps` file. Picking a `.bps` with `ADD A ROM FILE`, or opening one with Vyntra from a file manager, does the same.
+2. Vyntra reads the patch and looks through your library for the game it was made for. A patch names that game by its checksum (CRC32, a fingerprint of every byte), so it finds the right file whatever it's called, zipped ones too. You don't pick it yourself.
 3. When it's found, you see the patch, the game it goes on and where the patched game will be saved. Tap `APPLY PATCH` and a bar shows how far along it is.
 4. When it's done, you're told where the new game is. If the companion can read it, it's in your library right away and `PLAY` starts it.
 
-Your original game is never changed: the patched game is a new file, named after the patch (`My Hack.bps` makes `My Hack.gba`). It goes with your other games of its kind: a linked folder called `gba`, `gb`, `gbc` or `nds`, else the folder the original game is in, else PokeDaisy's own games folder. If a file with that name is already there, the new one gets a number (`My Hack (2).gba`); the same patched game made before is just kept.
+Your original game is never changed: the patched game is a new file, named after the patch (`My Hack.bps` makes `My Hack.gba`). It goes with your other games of its kind: a linked folder called `gba`, `gb`, `gbc` or `nds`, else the folder the original game is in, else Vyntra's own games folder. If a file with that name is already there, the new one gets a number (`My Hack (2).gba`); the same patched game made before is just kept.
 
-If you see `BASE ROM NOT FOUND`, none of your games has the checksum the patch wants. The message says which game it is when PokeDaisy knows it (an exact version, such as the first or second release of FireRed). Add that game to your library or a ROMs folder, then try again. Most hacks want a clean, unmodified US FireRed or Emerald: a game that was already patched, or another language or version, has a different checksum.
+If you see `BASE ROM NOT FOUND`, none of your games has the checksum the patch wants. The message says which game it is when Vyntra knows it (an exact version, such as the first or second release of FireRed). Add that game to your library or a ROMs folder, then try again. Most hacks want a clean, unmodified US FireRed or Emerald: a game that was already patched, or another language or version, has a different checksum.
 
-If the companion doesn't support the patched game, you're told so and it stays out of the library, but the file is still saved. `ASK FOR SUPPORT` asks for the game to be added. If it was saved in PokeDaisy's own games folder, Settings > `HIDDEN GAMES` can still show it in the library.
+If the companion doesn't support the patched game, you're told so and it stays out of the library, but the file is still saved. `ASK FOR SUPPORT` asks for the game to be added. If it was saved in Vyntra's own games folder, Settings > `HIDDEN GAMES` can still show it in the library.
 
 ### File types
 
 - `.gba` files, and Game Boy / Game Boy Color `.gb` and `.gbc`.
-- Zipped games, `.zip` or `.7z`. In your ROMs folder they stay zipped: PokeDaisy reads the game out of the archive when you play it. A zipped game's save is named after the game inside the archive, the way RetroArch does it.
+- Zipped games, `.zip` or `.7z`. In your ROMs folder they stay zipped: Vyntra reads the game out of the archive when you play it. A zipped game's save is named after the game inside the archive, the way RetroArch does it.
 
 ## Game names
 
-PokeDaisy recognizes the games it supports and shows their proper names ("Pokémon FireRed", "Pokémon Unbound") whatever the file is called. Other games show their file name, tidied up: dump tags like `(USA, Europe)` and numbering are dropped.
+Vyntra recognizes the games it supports and shows their proper names ("Pokémon FireRed", "Pokémon Unbound") whatever the file is called. Other games show their file name, tidied up: dump tags like `(USA, Europe)` and numbering are dropped.
 
 To call a game something else, use `RENAME` in its menu. It only changes what the library shows; the file keeps its name, so its save is still found.
 
@@ -136,7 +136,7 @@ Tap the sort button and pick under `SORT BY`:
 
 Favorites always come first, whatever the order. To make a game a favorite, open its menu and tap `FAVORITE` at the top; it gets a gold star next to its name. `UNFAVORITE` takes it off.
 
-A game that appeared in the last 24 hours wears a green `NEW` tag. Games that were already in your library when you set PokeDaisy up (or when you linked a folder) don't get one, so the tag only marks real arrivals.
+A game that appeared in the last 24 hours wears a green `NEW` tag. Games that were already in your library when you set Vyntra up (or when you linked a folder) don't get one, so the tag only marks real arrivals.
 
 ## The game menu
 
@@ -180,7 +180,7 @@ Covers come from two free services, and you need your own free key for each one 
 - `RetroAchievements WEB API KEY`: square box art for every game that has an achievement set. This is tried first.
 - `SteamGridDB API KEY`: icons for FireRed, Emerald and the supported hacks, used where RetroAchievements has no art.
 
-Tap `GET KEY` next to either one to open the page where your key is, copy it, paste it in the box and tap `SAVE`. PokeDaisy fetches a cover for each game once and keeps it on the device. `REPLACE ALL` fetches fresh covers for every game, replacing the ones you have (including ones you picked yourself). `CLEAR` removes the keys.
+Tap `GET KEY` next to either one to open the page where your key is, copy it, paste it in the box and tap `SAVE`. Vyntra fetches a cover for each game once and keeps it on the device. `REPLACE ALL` fetches fresh covers for every game, replacing the ones you have (including ones you picked yourself). `CLEAR` removes the keys.
 
 A game with no cover shows what kind of game it is instead, in pixel letters on its own colour: `GB` (grey) for a Game Boy game, `GBC` (yellow) for a Game Boy Color only one, `GBA` (purple) for a Game Boy Advance game, `NDS` (teal) for a DS game, or `HACK` (red) for a ROM hack.
 
@@ -210,7 +210,7 @@ Prefer the library without the cursor and legend? Turn off `DUAL-SCREEN LAUNCHER
 
 ## Game info
 
-`INFO` in a game's menu shows what PokeDaisy knows about it, in sections:
+`INFO` in a game's menu shows what Vyntra knows about it, in sections:
 
 - **GAME**: its name, which game it was recognized as, whether the companion supports it (`SECOND SCREEN`), when you last played it and where its cover came from.
 - **ROM**: the file, its folder, where it came from, its size and the game code from its header.
@@ -218,24 +218,24 @@ Prefer the library without the cursor and legend? Turn off `DUAL-SCREEN LAUNCHER
 - **SAVE STATES**: how many of the 10 slots are used, the newest one and the resume state.
 - **RetroAchievements**: whether the game has an achievement set, and how many you've earned if you're signed in.
 
-For a game the companion doesn't support, `ASK FOR SUPPORT` opens a game request on the PokeDaisy website with the file's name, size and fingerprint filled in. The ROM itself is never sent.
+For a game the companion doesn't support, `ASK FOR SUPPORT` opens a game request on the Vyntra website with the file's name, size and fingerprint filled in. The ROM itself is never sent.
 
 ## Supported, partly supported and not supported
 
 Every game plays, but the companion only reads the games it knows. The library tags the rest:
 
 - `NOT SUPPORTED`: the game plays, and the companion shows a notice instead of its tabs.
-- `PARTIALLY SUPPORTED`: a ROM PokeDaisy matched to a game it knows. The party, bag, map and battles work, and whatever didn't match is switched off.
+- `PARTIALLY SUPPORTED`: a ROM Vyntra matched to a game it knows. The party, bag, map and battles work, and whatever didn't match is switched off.
 
-From a linked folder, the library lists the supported games plus any unsupported hacks of FireRed, LeafGreen, Emerald, Ruby or Sapphire (tagged), so you can try them. When PokeDaisy can't tell which game a ROM is built on, `INFO` has `PICK A GAME` to tell it, and `FORGET MATCH` to undo a match. [Supported games](supported-games.md) has the full list and explains how matching works.
+From a linked folder, the library lists the supported games plus any unsupported hacks of FireRed, LeafGreen, Emerald, Ruby or Sapphire (tagged), so you can try them. When Vyntra can't tell which game a ROM is built on, `INFO` has `PICK A GAME` to tell it, and `FORGET MATCH` to undo a match. [Supported games](supported-games.md) has the full list and explains how matching works.
 
 Turn on `SUPPORTED ONLY` in Settings, in the `LIBRARY` group, to leave games the companion can't read out of the library.
 
-## Supporting PokeDaisy
+## Supporting Vyntra
 
-PokeDaisy is free, has no ads and is made by one person. After you've played for a good while, the library asks once whether you'd like to support it, with `BUY ME A COFFEE`, `PATREON` and `KO-FI`. Pick one and your browser opens that page. `REMIND ME LATER` (or BACK) asks again a few hours of play later, and `NO THANKS` means it never asks again. Picking a site counts as an answer too.
+Vyntra is free, has no ads and is made by one person. After you've played for a good while, the library asks once whether you'd like to support it, with `BUY ME A COFFEE`, `PATREON` and `KO-FI`. Pick one and your browser opens that page. `REMIND ME LATER` (or BACK) asks again a few hours of play later, and `NO THANKS` means it never asks again. Picking a site counts as an answer too.
 
-To know when to ask, PokeDaisy counts how long your games have been running. That count stays on your device and is never sent anywhere.
+To know when to ask, Vyntra counts how long your games have been running. That count stays on your device and is never sent anywhere.
 
 ## Using a D-pad or controller
 
@@ -243,11 +243,11 @@ The library works without touching the screen. Move with the D-pad; the selected
 
 ## Launching from a frontend
 
-If you use a frontend like **ES-DE**, **iiSU** or **Cocoon** to browse all your games, it can start your games straight in PokeDaisy, skipping the library. When you leave the game (hold `BACK`, or the exit hotkey), you're back in the frontend.
+If you use a frontend like **ES-DE**, **iiSU** or **Cocoon** to browse all your games, it can start your games straight in Vyntra, skipping the library. When you leave the game (hold `BACK`, or the exit hotkey), you're back in the frontend.
 
-Cocoon already knows PokeDaisy for GBA, Game Boy, Game Boy Color and DS games, zipped ones too. If it isn't offered, or Cocoon says `Incompatible Player` for a zipped game, refresh Cocoon's platforms (in its settings, under Library & Data) and pick PokeDaisy as the player.
+Cocoon already knows Vyntra for GBA, Game Boy, Game Boy Color and DS games, zipped ones too. If it isn't offered, or Cocoon says `Incompatible Player` for a zipped game, refresh Cocoon's platforms (in its settings, under Library & Data) and pick Vyntra as the player.
 
-In other frontends, add PokeDaisy as a custom or standalone emulator for each system with these values:
+In other frontends, add Vyntra as a custom or standalone emulator for each system with these values:
 
 | Field | Value |
 | --- | --- |
@@ -258,7 +258,7 @@ In other frontends, add PokeDaisy as a custom or standalone emulator for each sy
 
 A few things to know:
 
-- With All files access allowed, the game is played from where the frontend keeps it. Otherwise it's copied into PokeDaisy's games folder once and reused after that.
+- With All files access allowed, the game is played from where the frontend keeps it. Otherwise it's copied into Vyntra's games folder once and reused after that.
 - Saves are found by the ROM's file name in your save folders, as usual. To share saves with the frontend's emulator, add its save folder in Settings > `FOLDERS` (see [Saves, backups and save states](saves.md#where-your-saves-live)).
 - Starting another game from the frontend while one is open switches to it; the open one is suspended first.
 

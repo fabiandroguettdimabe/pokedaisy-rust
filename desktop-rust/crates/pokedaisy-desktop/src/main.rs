@@ -1,28 +1,32 @@
+mod settings;
+#[cfg(target_os = "windows")]
+mod shell;
 use fontdue::Font;
-use pokedaisy_libretro::{
-    CorePaths, JoypadButton, JoypadState, LibretroCore, PixelFormat, VideoFrame,
-};
 use sdl2::audio::AudioSpecDesired;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::rect::{Point, Rect};
-use sdl2::render::{Canvas, Texture, TextureCreator};
+use sdl2::render::{Canvas, TextureCreator};
 use sdl2::video::{Window, WindowContext};
+use settings::Settings;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
+use vyntra_libretro::{
+    CorePaths, JoypadButton, JoypadState, LibretroCore, PixelFormat, VideoFrame,
+};
 
-const BG: Color = Color::RGB(238, 236, 220);
-const INK: Color = Color::RGB(25, 42, 39);
-const MUTED: Color = Color::RGB(93, 108, 101);
-const GREEN: Color = Color::RGB(37, 102, 71);
-const AQUA: Color = Color::RGB(150, 211, 189);
-const PAPER: Color = Color::RGB(255, 255, 248);
-const BORDER: Color = Color::RGB(187, 197, 180);
-const SIDEBAR: Color = Color::RGB(25, 62, 52);
-const CORAL: Color = Color::RGB(226, 103, 75);
+const BG: Color = Color::RGB(11, 11, 13);
+const INK: Color = Color::RGB(230, 230, 233);
+const MUTED: Color = Color::RGB(165, 165, 175);
+const GREEN: Color = Color::RGB(179, 18, 49);
+const AQUA: Color = Color::RGB(230, 230, 233);
+const PAPER: Color = Color::RGB(23, 23, 27);
+const BORDER: Color = Color::RGB(57, 52, 60);
+const SIDEBAR: Color = Color::RGB(0, 0, 0);
+const DARK_CRIMSON: Color = Color::RGB(58, 10, 18);
 
 #[derive(Clone)]
 struct Game {
@@ -40,6 +44,14 @@ enum Screen {
 }
 
 fn main() -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    if !env::args().any(|s| s == "--emulator" || s == "--sdl") {
+        return shell::run();
+    }
+    sdl_main()
+}
+
+fn sdl_main() -> Result<(), String> {
     let args: Vec<String> = env::args().skip(1).collect();
     let mut root = env::current_dir().map_err(|e| e.to_string())?;
     let mut rom_arg = None;
@@ -59,15 +71,34 @@ fn main() -> Result<(), String> {
         }
     }
     let data = root.join("data");
-    let rom_dir = data.join("roms");
-    fs::create_dir_all(&rom_dir)
-        .map_err(|e| format!("No se pudo crear {}: {e}", rom_dir.display()))?;
-    let save_dir = data.join("saves");
-    let state_dir = data.join("states");
-    let system_dir = data.join("system");
-    for dir in [&save_dir, &state_dir, &system_dir] {
+    fs::create_dir_all(&data).map_err(|e| e.to_string())?;
+    let config_path = data.join("vyntra-settings.json");
+    let mut config = Settings::load(&config_path, &root)?;
+    let mut rom_dir = config.library.clone();
+    let mut save_dir = config.saves.clone();
+    let mut state_dir = config.states.clone();
+    let mut system_dir = config.system.clone();
+    for dir in [&rom_dir, &save_dir, &state_dir, &system_dir] {
         fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     }
+    let mut settings_tab = 0usize;
+    let mut settings_row = 0usize;
+    let mut settings_message =
+        "Selecciona una opción. Las rutas nuevas no trasladan partidas.".to_owned();
+    let mut capture_key = None;
+    let mut settings_action: Option<i32> = None;
+    let core_status =
+        [("GB/GBC", "GBC"), ("GBA", "GBA"), ("Nintendo DS", "DS")].map(|(label, system)| {
+            let status = find_core(system)
+                .map(|path| {
+                    format!(
+                        "Archivo detectado: {} · sin probar",
+                        path.file_name().unwrap_or_default().to_string_lossy()
+                    )
+                })
+                .unwrap_or_else(|_| "No instalado".to_owned());
+            (label, status)
+        });
 
     let sdl = sdl2::init()?;
     let video = sdl.video()?;
@@ -91,7 +122,7 @@ fn main() -> Result<(), String> {
     let window_w = ((display.w as f32 * 0.60) as u32).clamp(820, 1120);
     let window_h = ((display.h as f32 * 0.58) as u32).clamp(520, 740);
     let window = video
-        .window("PokeDaisy · Desktop", window_w, window_h)
+        .window("Vyntra Desktop", window_w.max(1000), window_h.max(660))
         .position_centered()
         .resizable()
         .allow_highdpi()
@@ -102,9 +133,19 @@ fn main() -> Result<(), String> {
         .accelerated()
         .build()
         .map_err(|e| e.to_string())?;
+    canvas
+        .window_mut()
+        .set_minimum_size(1000, 660)
+        .map_err(|e| e.to_string())?;
+    canvas.set_blend_mode(sdl2::render::BlendMode::Blend);
+    if config.fullscreen {
+        canvas
+            .window_mut()
+            .set_fullscreen(sdl2::video::FullscreenType::Desktop)?;
+    }
     let texture_creator = canvas.texture_creator();
     let pixel_font = Font::from_bytes(
-        include_bytes!("../../../assets/PixelOperator.ttf") as &[u8],
+        include_bytes!("../../../assets/AtkinsonHyperlegible-Bold.ttf") as &[u8],
         fontdue::FontSettings::default(),
     )
     .map_err(|e| e.to_string())?;
@@ -118,18 +159,8 @@ fn main() -> Result<(), String> {
         fontdue::FontSettings::default(),
     )
     .map_err(|e| e.to_string())?;
-    let logo_image = image::load_from_memory(include_bytes!("../../../assets/pokedaisy-mark.png"))
-        .map_err(|e| e.to_string())?
-        .to_rgba8();
-    let (logo_w, logo_h) = logo_image.dimensions();
-    let mut logo = texture_creator
-        .create_texture_static(sdl2::pixels::PixelFormatEnum::RGBA32, logo_w, logo_h)
-        .map_err(|e| e.to_string())?;
-    logo.set_blend_mode(sdl2::render::BlendMode::Blend);
-    logo.update(None, logo_image.as_raw(), logo_w as usize * 4)
-        .map_err(|e| e.to_string())?;
     let mut event_pump = sdl.event_pump()?;
-    let mut games = scan_games(&rom_dir);
+    let mut games = scan_games(&rom_dir, config.recursive);
     let mut selected = 0usize;
     let mut screen = Screen::Library;
     let mut core: Option<LibretroCore> = None;
@@ -144,18 +175,32 @@ fn main() -> Result<(), String> {
             games.insert(0, game_from_path(path));
         }
         if let Some(game) = games.get(selected) {
-            match open_game(game, &save_dir, &system_dir) {
+            match open_game(game, &save_dir, &system_dir, &config) {
                 Ok(c) => {
                     core = Some(c);
                     screen = Screen::Playing;
                     last_error = None;
                 }
-                Err(e) => last_error = Some(e),
+                Err(e) => {
+                    if args.iter().any(|s| s == "--emulator") {
+                        rfd::MessageDialog::new()
+                            .set_title("No se pudo iniciar el juego")
+                            .set_description(&e)
+                            .set_level(rfd::MessageLevel::Error)
+                            .show();
+                        return Err(e);
+                    }
+                    last_error = Some(e);
+                }
             }
         }
     }
 
     'app: loop {
+        let (logical_w, logical_h) = canvas.window().size();
+        canvas
+            .set_logical_size(logical_w, logical_h)
+            .map_err(|e| e.to_string())?;
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } => break 'app,
@@ -194,14 +239,59 @@ fn main() -> Result<(), String> {
                         };
                         continue;
                     }
+                    if matches!(screen, Screen::Settings) {
+                        let (w, h) = canvas.window().size();
+                        if (116..160).contains(&y) && x >= 204 && x < w as i32 - 32 {
+                            settings_tab = ((x - 204) / ((w - 236) / 4) as i32).min(3) as usize;
+                            settings_row = 0;
+                        } else if y >= 178 && y < h as i32 - 72 {
+                            let visible = ((h.saturating_sub(250)) / 72).max(1) as usize;
+                            let row = settings_row / visible * visible + ((y - 178) / 72) as usize;
+                            if row < config.rows(settings_tab).len() {
+                                settings_row = row;
+                                settings_action = Some(1);
+                            }
+                        }
+                        continue;
+                    }
                     if !matches!(screen, Screen::Library) {
                         continue;
                     }
-                    let (w, _) = canvas.output_size()?;
-                    let add_rom_clicked = (y <= 100 && x >= w as i32 - 205)
-                        || (games.is_empty()
-                            && (407..=458).contains(&y)
-                            && (226..=410).contains(&x));
+                    if y >= canvas.window().size().1 as i32 - 95 {
+                        if let Some(error) = last_error.as_deref() {
+                            rfd::MessageDialog::new()
+                                .set_title("Diagnóstico de Vyntra")
+                                .set_description(error)
+                                .set_level(rfd::MessageLevel::Error)
+                                .show();
+                            continue;
+                        }
+                    }
+                    let (w, _) = canvas.window().size();
+                    let right = w as i32 - 228;
+                    if x >= right && x < w as i32 - 24 && (468..512).contains(&y) {
+                        screen = Screen::Settings;
+                        settings_tab = 1;
+                        settings_row = 0;
+                        continue;
+                    }
+                    if x >= right && x < w as i32 - 24 && (360..404).contains(&y) {
+                        if let Some(game) = games.get(selected).cloned() {
+                            match open_game(&game, &save_dir, &system_dir, &config) {
+                                Ok(c) => {
+                                    core = Some(c);
+                                    screen = Screen::Playing;
+                                    last_error = None;
+                                }
+                                Err(e) => {
+                                    last_error = Some(e);
+                                }
+                            }
+                        }
+                        continue;
+                    }
+                    let add_rom_clicked =
+                        x >= right && x < w as i32 - 24 && (414..458).contains(&y);
                     if add_rom_clicked {
                         if let Some(path) = pick_rom() {
                             if let Some(i) = games.iter().position(|g| g.path == path) {
@@ -212,7 +302,7 @@ fn main() -> Result<(), String> {
                             }
                             if clicks >= 1 {
                                 if let Some(game) = games.get(selected).cloned() {
-                                    match open_game(&game, &save_dir, &system_dir) {
+                                    match open_game(&game, &save_dir, &system_dir, &config) {
                                         Ok(c) => {
                                             core = Some(c);
                                             screen = Screen::Playing;
@@ -225,13 +315,13 @@ fn main() -> Result<(), String> {
                         }
                         continue;
                     }
-                    let layout = library_grid_metrics(w, canvas.output_size()?.1);
+                    let layout = library_grid_metrics(w, canvas.window().size().1);
                     if let Some(index) = layout.index_at(x, y, selected) {
                         if index < games.len() {
                             selected = index;
                             if clicks >= 2 {
                                 if let Some(game) = games.get(selected).cloned() {
-                                    match open_game(&game, &save_dir, &system_dir) {
+                                    match open_game(&game, &save_dir, &system_dir, &config) {
                                         Ok(c) => {
                                             core = Some(c);
                                             screen = Screen::Playing;
@@ -244,8 +334,43 @@ fn main() -> Result<(), String> {
                         }
                     }
                 }
+                Event::MouseWheel { y, .. } if matches!(screen, Screen::Settings) => {
+                    settings_row = (settings_row as i32 - y)
+                        .clamp(0, config.rows(settings_tab).len() as i32 - 1)
+                        as usize;
+                }
+                Event::KeyDown {
+                    keycode: Some(key),
+                    repeat: false,
+                    ..
+                } if capture_key.is_some() => {
+                    if key != Keycode::Escape {
+                        let reserved = [Keycode::Space, Keycode::F2, Keycode::F4, Keycode::F11];
+                        if reserved.contains(&key)
+                            || config.keys.iter().enumerate().any(|(i, k)| {
+                                Some(i) != capture_key && Keycode::from_name(k) == Some(key)
+                            })
+                        {
+                            settings_message =
+                                "Tecla reservada o ya asignada. Elige otra; Esc cancela.".into();
+                            continue;
+                        }
+                        let mut next = config.clone();
+                        next.keys[capture_key.unwrap()] = key.name();
+                        match next.save(&config_path) {
+                            Ok(()) => {
+                                config = next;
+                                settings_message = "Asignación guardada.".into();
+                            }
+                            Err(e) => settings_message = e,
+                        }
+                    } else {
+                        settings_message = "Asignación cancelada.".into();
+                    }
+                    capture_key = None;
+                }
                 Event::MouseWheel { y, .. } if matches!(screen, Screen::Library) => {
-                    let (w, h) = canvas.output_size()?;
+                    let (w, h) = canvas.window().size();
                     let step = library_grid_metrics(w, h).columns.max(1);
                     if y < 0 {
                         selected = (selected + step).min(games.len().saturating_sub(1));
@@ -267,7 +392,7 @@ fn main() -> Result<(), String> {
                         Keycode::Up | Keycode::K => selected = selected.saturating_sub(1),
                         Keycode::Return | Keycode::Space => {
                             if let Some(game) = games.get(selected).cloned() {
-                                match open_game(&game, &save_dir, &system_dir) {
+                                match open_game(&game, &save_dir, &system_dir, &config) {
                                     Ok(c) => {
                                         core = Some(c);
                                         screen = Screen::Playing;
@@ -277,15 +402,32 @@ fn main() -> Result<(), String> {
                                 }
                             }
                         }
-                        Keycode::F5 => games = scan_games(&rom_dir),
+                        Keycode::F5 => games = scan_games(&rom_dir, config.recursive),
                         Keycode::Escape => break 'app,
                         _ => {}
                     },
-                    Screen::Tools | Screen::Settings => match key {
+                    Screen::Settings => match key {
+                        Keycode::Escape => screen = Screen::Library,
+                        Keycode::Tab => {
+                            settings_tab = (settings_tab + 1) % 4;
+                            settings_row = 0;
+                        }
+                        Keycode::Up => settings_row = settings_row.saturating_sub(1),
+                        Keycode::Down => {
+                            settings_row =
+                                (settings_row + 1).min(config.rows(settings_tab).len() - 1)
+                        }
+                        Keycode::Return | Keycode::Right | Keycode::Space => {
+                            settings_action = Some(1)
+                        }
+                        Keycode::Left => settings_action = Some(-1),
+                        _ => {}
+                    },
+                    Screen::Tools => match key {
                         Keycode::Escape | Keycode::G | Keycode::Home => screen = Screen::Library,
                         Keycode::Return | Keycode::Space => {
                             if let Some(game) = games.get(selected).cloned() {
-                                match open_game(&game, &save_dir, &system_dir) {
+                                match open_game(&game, &save_dir, &system_dir, &config) {
                                     Ok(c) => {
                                         core = Some(c);
                                         screen = Screen::Playing;
@@ -338,9 +480,16 @@ fn main() -> Result<(), String> {
                             }
                         }
                         Keycode::F11 => {
-                            let _ = canvas
-                                .window_mut()
-                                .set_fullscreen(sdl2::video::FullscreenType::Desktop);
+                            let target = if canvas.window().fullscreen_state()
+                                == sdl2::video::FullscreenType::Off
+                            {
+                                sdl2::video::FullscreenType::Desktop
+                            } else {
+                                sdl2::video::FullscreenType::Off
+                            };
+                            if let Err(e) = canvas.window_mut().set_fullscreen(target) {
+                                last_error = Some(e);
+                            }
                         }
                         _ => {}
                     },
@@ -349,7 +498,50 @@ fn main() -> Result<(), String> {
             }
         }
 
-        let (w, h) = canvas.output_size()?;
+        if let Some(direction) = settings_action.take() {
+            if settings_tab == 3 && settings_row < 14 {
+                capture_key = Some(settings_row);
+                settings_message =
+                    "Pulsa la nueva tecla; Esc cancela. Espacio/F2/F4/F11 están reservadas.".into();
+            } else {
+                let mut next = config.clone();
+                match next.activate(settings_tab, settings_row, direction, &config_path) {
+                    Ok(true) => {
+                        let fullscreen = if next.fullscreen {
+                            sdl2::video::FullscreenType::Desktop
+                        } else {
+                            sdl2::video::FullscreenType::Off
+                        };
+                        match canvas
+                            .window_mut()
+                            .set_fullscreen(fullscreen)
+                            .and_then(|_| next.save(&config_path))
+                        {
+                            Ok(()) => {
+                                let rescan = config.library != next.library
+                                    || config.recursive != next.recursive;
+                                config = next;
+                                rom_dir = config.library.clone();
+                                save_dir = config.saves.clone();
+                                state_dir = config.states.clone();
+                                system_dir = config.system.clone();
+                                if rescan {
+                                    games = scan_games(&rom_dir, config.recursive);
+                                    selected = 0;
+                                }
+                                settings_message =
+                                    "Cambios guardados. Los archivos anteriores se conservan."
+                                        .into();
+                            }
+                            Err(e) => settings_message = format!("No se pudo guardar: {e}"),
+                        }
+                    }
+                    Ok(false) => {}
+                    Err(e) => settings_message = e,
+                }
+            }
+        }
+        let (w, h) = canvas.window().size();
         canvas.set_draw_color(BG);
         canvas.clear();
         match screen {
@@ -358,39 +550,40 @@ fn main() -> Result<(), String> {
                 &pixel_font,
                 &body_font,
                 &strong_font,
-                &logo,
                 &games,
                 selected,
                 w,
                 h,
                 last_error.as_deref(),
+                &config,
             )?,
             Screen::Tools => draw_info_page(
                 &mut canvas,
                 &pixel_font,
                 &body_font,
                 &strong_font,
-                &logo,
+                &core_status,
                 w,
                 h,
                 false,
             )?,
-            Screen::Settings => draw_info_page(
+            Screen::Settings => settings::draw(
                 &mut canvas,
-                &pixel_font,
                 &body_font,
                 &strong_font,
-                &logo,
+                &config,
+                settings_tab,
+                settings_row,
                 w,
                 h,
-                true,
+                &settings_message,
             )?,
             Screen::Playing => {
                 let fast_forward = event_pump
                     .keyboard_state()
                     .is_scancode_pressed(sdl2::keyboard::Scancode::Space);
                 let frame_interval = if fast_forward {
-                    Duration::from_millis(1)
+                    Duration::from_micros(16_667 / config.fast_forward as u64)
                 } else {
                     Duration::from_micros(16_667)
                 };
@@ -399,7 +592,7 @@ fn main() -> Result<(), String> {
                         c.set_fast_forward(fast_forward);
                         let keys = event_pump.keyboard_state();
                         let mut input = JoypadState::default();
-                        for (k, b) in [
+                        for (binding, (k, b)) in [
                             (Keycode::Z, JoypadButton::A),
                             (Keycode::X, JoypadButton::B),
                             (Keycode::F, JoypadButton::Y),
@@ -414,7 +607,11 @@ fn main() -> Result<(), String> {
                             (Keycode::E, JoypadButton::R),
                             (Keycode::Num1, JoypadButton::L2),
                             (Keycode::Num2, JoypadButton::R2),
-                        ] {
+                        ]
+                        .into_iter()
+                        .enumerate()
+                        {
+                            let k = Keycode::from_name(&config.keys[binding]).unwrap_or(k);
                             if keys.is_scancode_pressed(pressed_key(k)) {
                                 input.set(b, true);
                             }
@@ -453,14 +650,21 @@ fn main() -> Result<(), String> {
                                     if fast_forward {
                                         audio_device.clear();
                                     } else {
-                                        let _ = audio_device.queue_audio(&f.audio);
+                                        let samples: Vec<i16> = f
+                                            .audio
+                                            .iter()
+                                            .map(|s| {
+                                                (*s as i32 * config.volume as i32 / 100) as i16
+                                            })
+                                            .collect();
+                                        let _ = audio_device.queue_audio(&samples);
                                     }
                                 }
                             }
                             Err(e) => last_error = Some(format!("Error del core: {e:?}")),
                         }
                         if let Some(frame) = last_frame.as_ref() {
-                            draw_play(&mut canvas, &texture_creator, frame, w, h)?;
+                            draw_play(&mut canvas, &texture_creator, frame, w, h, config.smooth)?;
                         }
                         if let Some(e) = last_error.as_deref() {
                             text(
@@ -473,7 +677,7 @@ fn main() -> Result<(), String> {
                                 Color::RGB(196, 48, 48),
                             );
                         }
-                        if last_save.elapsed() > Duration::from_secs(20) {
+                        if last_save.elapsed() > Duration::from_secs(config.autosave) {
                             if let Some(p) = games.get(selected).map(|g| g.path.clone()) {
                                 if let Some(c) = core.as_mut() {
                                     save_battery(c, &p, &save_dir);
@@ -484,13 +688,19 @@ fn main() -> Result<(), String> {
                     }
                     last_auto = Instant::now();
                 } else if let Some(frame) = last_frame.as_ref() {
-                    draw_play(&mut canvas, &texture_creator, frame, w, h)?;
+                    draw_play(&mut canvas, &texture_creator, frame, w, h, config.smooth)?;
                 }
                 draw_play_header(&mut canvas, &pixel_font, w)?;
             }
         }
         canvas.present();
-        std::thread::sleep(Duration::from_millis(4));
+        std::thread::sleep(Duration::from_millis(
+            if matches!(screen, Screen::Playing) {
+                4
+            } else {
+                16
+            },
+        ));
     }
     if let Some(c) = core.as_mut() {
         if let Some(g) = games.get(selected) {
@@ -505,8 +715,13 @@ fn pressed_key(key: Keycode) -> sdl2::keyboard::Scancode {
     sdl2::keyboard::Scancode::from_keycode(key).unwrap_or(sdl2::keyboard::Scancode::A)
 }
 
-fn open_game(game: &Game, saves: &Path, system: &Path) -> Result<LibretroCore, String> {
-    let core_path = find_core(game.system)?;
+fn open_game(
+    game: &Game,
+    saves: &Path,
+    system: &Path,
+    config: &Settings,
+) -> Result<LibretroCore, String> {
+    let core_path = config.core(game.system)?;
     let mut core = LibretroCore::load(
         &core_path,
         CorePaths {
@@ -531,25 +746,52 @@ fn open_game(game: &Game, saves: &Path, system: &Path) -> Result<LibretroCore, S
 
 fn find_core(system: &str) -> Result<PathBuf, String> {
     let mut dirs = vec![env::current_dir().map_err(|e| e.to_string())?.join("cores")];
-    if let Ok(d) = env::var("POKEDAISY_CORE_DIR") {
-        dirs.insert(0, PathBuf::from(d));
+    if let Some(dir) = env::var_os("POKEDAISY_CORE_DIR") {
+        if cfg!(debug_assertions) && env::var_os("VYNTRA_CORE_DIR").is_none() {
+            eprintln!("POKEDAISY_CORE_DIR está obsoleta; usa VYNTRA_CORE_DIR.");
+        }
+        dirs.insert(0, PathBuf::from(dir));
     }
-    let names: &[&str] = match system {
-        "GBA" => &["pokedaisy_gba_libretro.dll", "pokedaisy_gba_libretro.so"],
-        "DS" => &["pokedaisy_ds_libretro.dll", "pokedaisy_ds_libretro.so"],
-        _ => &["pokedaisy_gbc_libretro.dll", "pokedaisy_gbc_libretro.so"],
-    };
-    dirs.iter()
-        .flat_map(|d| names.iter().map(move |n| d.join(n)))
-        .find(|p| p.exists())
-        .ok_or_else(|| {
-            format!(
-                "Falta el core de {system}. Coloca el DLL en ./cores o define POKEDAISY_CORE_DIR."
-            )
-        })
+    if let Some(dir) = env::var_os("VYNTRA_CORE_DIR") {
+        dirs.insert(0, PathBuf::from(dir));
+    }
+    find_core_in_dirs(&dirs, system).ok_or_else(|| {
+        format!(
+            "No se encontró un núcleo Vyntra compatible para {system}. Coloca un núcleo Vyntra en ./cores o define VYNTRA_CORE_DIR. Los núcleos estándar de RetroArch no se consideran compatibles sin validar su interfaz."
+        )
+    })
 }
 
-fn scan_games(root: &Path) -> Vec<Game> {
+fn find_core_in_dirs(dirs: &[PathBuf], system: &str) -> Option<PathBuf> {
+    dirs.iter()
+        .flat_map(|dir| core_names(system).iter().map(move |name| dir.join(name)))
+        .find(|path| path.is_file())
+}
+
+fn core_names(system: &str) -> &'static [&'static str] {
+    match system {
+        "GBA" => &[
+            "vyntra_gba_libretro.dll",
+            "pokedaisy_gba_libretro.dll",
+            "vyntra_gba_libretro.so",
+            "pokedaisy_gba_libretro.so",
+        ],
+        "DS" => &[
+            "vyntra_ds_libretro.dll",
+            "pokedaisy_ds_libretro.dll",
+            "vyntra_ds_libretro.so",
+            "pokedaisy_ds_libretro.so",
+        ],
+        _ => &[
+            "vyntra_gbc_libretro.dll",
+            "pokedaisy_gbc_libretro.dll",
+            "vyntra_gbc_libretro.so",
+            "pokedaisy_gbc_libretro.so",
+        ],
+    }
+}
+
+fn scan_games(root: &Path, recursive: bool) -> Vec<Game> {
     let mut out = Vec::new();
     let mut stack = vec![root.to_path_buf()];
     while let Some(dir) = stack.pop() {
@@ -558,8 +800,13 @@ fn scan_games(root: &Path) -> Vec<Game> {
         };
         for entry in entries.flatten() {
             let p = entry.path();
+            if p.is_symlink() {
+                continue;
+            }
             if p.is_dir() {
-                stack.push(p)
+                if recursive {
+                    stack.push(p);
+                }
             } else if supported(&p) {
                 out.push(game_from_path(p));
             }
@@ -578,7 +825,7 @@ fn supported(p: &Path) -> bool {
 }
 fn pick_rom() -> Option<PathBuf> {
     rfd::FileDialog::new()
-        .set_title("Open a Pokémon game or ROM hack")
+        .set_title("Selecciona una ROM")
         .add_filter(
             "Game Boy / Game Boy Color / GBA / Nintendo DS",
             &["gb", "gbc", "gba", "nds"],
@@ -639,6 +886,9 @@ struct GridLayout {
 
 impl GridLayout {
     fn index_at(self, x: i32, y: i32, selected: usize) -> Option<usize> {
+        if x < self.left || y < self.top {
+            return None;
+        }
         let col = (x - self.left) / (self.card_w + self.gap);
         let row = (y - self.top) / (self.card_h + self.gap);
         if col < 0 || row < 0 || col as usize >= self.columns || row as usize >= self.rows {
@@ -655,286 +905,283 @@ impl GridLayout {
 }
 
 fn library_grid_metrics(w: u32, h: u32) -> GridLayout {
-    let left = 202;
-    let available = (w as i32 - left - 30).max(260);
-    let columns = if available >= 940 {
-        3
-    } else if available >= 620 {
-        2
-    } else {
-        1
-    };
-    let gap = 15;
-    let card_w = ((available - (columns as i32 - 1) * gap) / columns as i32).max(240);
-    let top = 168;
-    let card_h = 184;
-    let rows = ((h as i32 - top - 62) / (card_h + gap)).max(1) as usize;
+    let available = (w as i32 - 452).max(320);
+    let columns = (available / 156).max(2) as usize;
+    let gap = 12;
     GridLayout {
-        left,
-        top,
-        card_w,
-        card_h,
+        left: 200,
+        top: 130,
+        card_w: (available - (columns as i32 - 1) * gap) / columns as i32,
+        card_h: 216,
         gap,
         columns,
-        rows,
+        rows: ((h as i32 - 350) / 228).max(1) as usize,
     }
 }
 
 fn draw_library(
     c: &mut Canvas<Window>,
-    pixel: &Font,
+    _pixel: &Font,
     body: &Font,
     strong: &Font,
-    logo: &Texture<'_>,
     games: &[Game],
     selected: usize,
     w: u32,
     h: u32,
     error: Option<&str>,
+    config: &Settings,
 ) -> Result<(), String> {
-    c.set_draw_color(BG);
-    c.clear();
-    draw_sidebar(c, body, logo, h, 0)?;
-    text(c, pixel, "GAME LIBRARY", 203, 43, 26, INK);
+    draw_sidebar(c, body, h, 0)?;
+    text(c, strong, "Biblioteca de juegos", 200, 34, 27, INK);
     text(
         c,
         body,
-        "Your collection, ready when you are.",
-        204,
-        83,
+        &format!("{} juegos · Colección local", games.len()),
+        200,
+        77,
         16,
         MUTED,
     );
-    draw_button(
-        c,
-        strong,
-        Rect::new((w as i32) - 198, 34, 166, 48),
-        "OPEN A GAME",
-    )?;
     c.set_draw_color(BORDER);
-    c.draw_line(Point::new(202, 112), Point::new((w as i32) - 32, 112))
-        .map_err(|e| e.to_string())?;
+    c.draw_line(Point::new(200, 110), Point::new(w as i32 - 24, 110))?;
+    let right = w as i32 - 228;
+    let layout = library_grid_metrics(w, h);
     if games.is_empty() {
-        let x = 202;
-        let y = 145;
-        let content_w = (w as i32 - x - 30).max(500);
-        let guide_w = if content_w >= 660 { 225 } else { 0 };
-        let hero_w = content_w - guide_w - 16;
-        let hero_h = if h < 600 { 320 } else { 350 };
-        panel(c, Rect::new(x, y, hero_w as u32, hero_h), PAPER)?;
-        c.set_draw_color(Color::RGB(231, 242, 230));
-        c.fill_rect(Rect::new(x + 1, y + 1, hero_w as u32 - 2, 9))
-            .map_err(|e| e.to_string())?;
-        draw_logo(c, logo, x + 24, y + 28, 78)?;
-        text(c, pixel, "A place for every", x + 126, y + 42, 23, INK);
-        text(c, pixel, "adventure.", x + 126, y + 70, 23, INK);
+        panel(c, Rect::new(200, 130, (right - 224) as u32, 216), PAPER)?;
+        draw_logo(c, 222, 152, 58)?;
+        text(c, strong, "Tu biblioteca empieza aquí", 222, 226, 22, INK);
         text(
             c,
             body,
-            "Choose a ROM to add it to your library.",
-            x + 25,
-            y + 143,
+            "Añade tus ROMs de GB, GBC, GBA o DS.",
+            222,
+            266,
             16,
             MUTED,
         );
         text(
             c,
             body,
-            "The launcher accepts every GB, GBC, GBA and NDS",
-            x + 25,
-            y + 172,
-            14,
-            INK,
-        );
-        text(
-            c,
-            body,
-            "file, including hacks. PokeDaisy tools follow the",
-            x + 25,
-            y + 195,
-            14,
-            INK,
-        );
-        text(
-            c,
-            body,
-            "game profiles provided by its core.",
-            x + 25,
-            y + 218,
-            14,
-            INK,
-        );
-        draw_button(
-            c,
-            strong,
-            Rect::new(x + 24, y + 262, 176, 46),
-            "BROWSE ROMS",
-        )?;
-        draw_chip(
-            c,
-            strong,
-            x + 218,
-            y + 271,
-            "GB / GBC / GBA / NDS",
-            Color::RGB(235, 241, 229),
-        )?;
-        if guide_w > 0 {
-            let gx = x + hero_w + 16;
-            panel(
-                c,
-                Rect::new(gx, y, guide_w as u32, hero_h),
-                Color::RGB(229, 238, 225),
-            )?;
-            text(c, strong, "GETTING STARTED", gx + 20, y + 27, 14, GREEN);
-            for (i, (title, detail)) in [
-                ("Add a game", "Browse or drop a ROM."),
-                ("Place its core", "Add the matching core."),
-                ("Keep your saves", "Saves stay in ./data."),
-            ]
-            .iter()
-            .enumerate()
-            {
-                let sy = y + 75 + i as i32 * 82;
-                c.set_draw_color(if i == 0 { CORAL } else { GREEN });
-                c.fill_rect(Rect::new(gx + 20, sy, 30, 30))
-                    .map_err(|e| e.to_string())?;
-                text(c, strong, &(i + 1).to_string(), gx + 31, sy + 5, 16, PAPER);
-                text(c, strong, title, gx + 63, sy + 1, 14, INK);
-                text(c, body, detail, gx + 63, sy + 24, 12, MUTED);
-            }
-        }
-        text(
-            c,
-            body,
-            "RADICAL RED  ·  UNBOUND  ·  GAIA  ·  AND MORE",
-            202,
-            (h as i32) - 34,
-            13,
-            GREEN,
+            "Arrastra un archivo o pulsa Importar ROM.",
+            222,
+            295,
+            16,
+            MUTED,
         );
     } else {
-        let layout = library_grid_metrics(w, h);
+        let count = layout.columns * layout.rows;
+        let start = selected / count * count;
+        for (slot, game) in games.iter().enumerate().skip(start).take(count) {
+            let x = layout.left
+                + ((slot - start) % layout.columns) as i32 * (layout.card_w + layout.gap);
+            let y = layout.top
+                + ((slot - start) / layout.columns) as i32 * (layout.card_h + layout.gap);
+            let rect = Rect::new(x, y, layout.card_w as u32, layout.card_h as u32);
+            panel(
+                c,
+                rect,
+                if slot == selected {
+                    DARK_CRIMSON
+                } else {
+                    PAPER
+                },
+            )?;
+            c.set_clip_rect(rect);
+            // Original geometric cover, explicitly identified as a placeholder.
+            c.set_draw_color(Color::RGB(28, 23, 30));
+            c.fill_rect(Rect::new(x + 8, y + 8, layout.card_w as u32 - 16, 118))?;
+            c.set_draw_color(system_color(game.system));
+            c.draw_line(
+                Point::new(x + 8, y + 125),
+                Point::new(x + layout.card_w - 8, y + 8),
+            )?;
+            draw_logo(c, x + (layout.card_w - 64) / 2, y + 28, 64)?;
+            text(c, body, "Sin portada", x + 14, y + 101, 14, MUTED);
+            let label = fit_label(strong, &game.title, 17, (layout.card_w - 24) as f32);
+            text(c, strong, &label, x + 12, y + 140, 17, INK);
+            text(c, body, game.system, x + 12, y + 170, 15, MUTED);
+            if slot == selected {
+                c.set_draw_color(GREEN);
+                c.draw_rect(rect)?;
+                c.fill_rect(Rect::new(x + 12, y + 199, layout.card_w as u32 - 24, 2))?;
+            }
+            c.set_clip_rect(None);
+        }
+    }
+    panel(c, Rect::new(right, 130, 204, 216), PAPER)?;
+    text(c, strong, "Sistemas", right + 16, 144, 18, INK);
+    for (i, system) in ["GB", "GBC", "GBA", "DS"].iter().enumerate() {
+        let yy = 182 + i as i32 * 38;
+        let count = games.iter().filter(|g| g.system == *system).count();
+        text(c, strong, system, right + 16, yy, 16, INK);
+        text(
+            c,
+            body,
+            &format!("{count} juegos"),
+            right + 107,
+            yy,
+            15,
+            MUTED,
+        );
+    }
+    let can_play = games
+        .get(selected)
+        .is_some_and(|game| game.path.is_file() && config.core(game.system).is_ok());
+    if can_play {
+        draw_button(c, strong, Rect::new(right, 360, 204, 44), "Jugar  →")?;
+    } else {
+        panel(c, Rect::new(right, 360, 204, 44), PAPER)?;
         text(
             c,
             strong,
-            &format!("{} games", games.len()),
-            202,
-            139,
+            if games.is_empty() {
+                "Selecciona un juego"
+            } else {
+                "Configura el núcleo"
+            },
+            right + 12,
+            372,
+            15,
+            MUTED,
+        );
+    }
+    draw_button(c, strong, Rect::new(right, 414, 204, 44), "+  Importar ROM")?;
+    panel(c, Rect::new(right, 468, 204, 44), PAPER)?;
+    text(c, strong, "Ajustes de núcleos", right + 16, 480, 16, INK);
+
+    let bottom = (h as i32 - 236).max(370);
+    let center_width = right - 224;
+    let half = (center_width - 12) / 2;
+    for (xx, title) in [(200, "Vyntra Vault"), (212 + half, "Estado de núcleos")] {
+        panel(c, Rect::new(xx, bottom, half as u32, 158), PAPER)?;
+        text(c, strong, title, xx + 14, bottom + 12, 17, INK);
+        c.set_draw_color(BORDER);
+        c.draw_line(
+            Point::new(xx + 14, bottom + 42),
+            Point::new(xx + half - 14, bottom + 42),
+        )?;
+    }
+    // Snapshot file metadata only; no state is claimed compatible merely for existing.
+    let mut saves: Vec<_> = fs::read_dir(&config.saves)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|entry| {
+            let meta = entry.metadata().ok()?;
+            if !meta.is_file() {
+                return None;
+            }
+            Some((meta.modified().ok(), entry.file_name(), meta.len()))
+        })
+        .collect();
+    saves.sort_by(|a, b| b.0.cmp(&a.0));
+    if saves.is_empty() {
+        text(
+            c,
+            body,
+            "Sin guardados en esta carpeta",
+            214,
+            bottom + 56,
+            14,
+            MUTED,
+        );
+    } else {
+        for (i, (_, name, size)) in saves.iter().take(2).enumerate() {
+            let label = fit_label(body, &name.to_string_lossy(), 15, (half - 28) as f32);
+            text(c, body, &label, 214, bottom + 52 + i as i32 * 45, 15, INK);
+            text(
+                c,
+                body,
+                &format!("{} KB · guardado del juego", size / 1024),
+                214,
+                bottom + 73 + i as i32 * 45,
+                14,
+                MUTED,
+            );
+        }
+    }
+    for (i, system) in ["GBC", "GBA", "DS"].iter().enumerate() {
+        let status = if config.core(system).is_ok() {
+            "Detectado · sin probar"
+        } else {
+            "No instalado"
+        };
+        let label = fit_label(body, &format!("{system}: {status}"), 14, (half - 28) as f32);
+        text(
+            c,
+            body,
+            &label,
+            226 + half,
+            bottom + 55 + i as i32 * 29,
+            14,
+            MUTED,
+        );
+    }
+    text(
+        c,
+        body,
+        "↑ ↓ seleccionar   ·   Intro jugar   ·   F5 actualizar",
+        200,
+        h as i32 - 46,
+        14,
+        MUTED,
+    );
+    if let Some(msg) = error {
+        let yy = h as i32 - 95;
+        panel(
+            c,
+            Rect::new(200, yy, w.saturating_sub(224), 80),
+            DARK_CRIMSON,
+        )?;
+        text(
+            c,
+            strong,
+            "No se pudo iniciar el juego",
+            216,
+            yy + 8,
+            17,
+            INK,
+        );
+        text(
+            c,
+            body,
+            &fit_label(body, msg, 15, w.saturating_sub(264) as f32),
+            216,
+            yy + 32,
             15,
             INK,
         );
         text(
             c,
             body,
-            "Choose a game. Double-click or press Enter to play.",
-            (w as i32) - 440,
-            140,
-            13,
+            "Haz clic aquí para ver el diagnóstico completo.",
+            216,
+            yy + 54,
+            14,
             MUTED,
         );
-        let page_size = layout.columns * layout.rows;
-        let start = (selected / page_size) * page_size;
-        for i in start..(start + page_size).min(games.len()) {
-            let slot = i - start;
-            let col = slot % layout.columns;
-            let row = slot / layout.columns;
-            let x = layout.left + col as i32 * (layout.card_w + layout.gap);
-            let y = layout.top + row as i32 * (layout.card_h + layout.gap);
-            let active = i == selected;
-            let fill = if active {
-                Color::RGB(229, 239, 222)
-            } else {
-                PAPER
-            };
-            panel(
-                c,
-                Rect::new(x, y, layout.card_w as u32, layout.card_h as u32),
-                fill,
-            )?;
-            let accent = system_color(games[i].system);
-            c.set_draw_color(accent);
-            c.fill_rect(Rect::new(x + 1, y + 1, layout.card_w as u32 - 2, 7))
-                .map_err(|e| e.to_string())?;
-            draw_cartridge(c, x + 18, y + 24, games[i].system)?;
-            let title_x = x + 91;
-            text(c, strong, &games[i].title, title_x, y + 28, 18, INK);
-            text(c, body, games[i].system, title_x, y + 59, 14, MUTED);
-            let ext = games[i]
-                .path
-                .extension()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .to_ascii_uppercase();
-            draw_chip(
-                c,
-                strong,
-                title_x,
-                y + 91,
-                &format!("{ext} ROM"),
-                Color::RGB(238, 240, 229),
-            )?;
-            c.set_draw_color(BORDER);
-            c.draw_line(
-                Point::new(x + 18, y + 132),
-                Point::new(x + layout.card_w - 18, y + 132),
-            )
-            .map_err(|e| e.to_string())?;
-            text(
-                c,
-                strong,
-                if active {
-                    "ENTER TO PLAY  →"
-                } else {
-                    "DOUBLE-CLICK TO PLAY"
-                },
-                x + 18,
-                y + 148,
-                12,
-                if active { GREEN } else { MUTED },
-            );
-        }
-        text(
-            c,
-            body,
-            "↑ ↓ navigate     F5 rescan     Drop ROM files anywhere",
-            202,
-            (h as i32) - 28,
-            13,
-            MUTED,
-        );
-    }
-    if let Some(msg) = error {
-        let yy = (h as i32) - 57;
-        panel(
-            c,
-            Rect::new(202, yy, (w - 234).max(300), 34),
-            Color::RGB(250, 229, 220),
-        )?;
-        text(c, strong, msg, 214, yy + 8, 12, Color::RGB(142, 52, 40));
     }
     Ok(())
 }
 
-fn draw_sidebar(
-    c: &mut Canvas<Window>,
-    body: &Font,
-    logo: &Texture<'_>,
-    h: u32,
-    active: u8,
-) -> Result<(), String> {
+fn draw_sidebar(c: &mut Canvas<Window>, body: &Font, h: u32, active: u8) -> Result<(), String> {
     c.set_draw_color(SIDEBAR);
     c.fill_rect(Rect::new(0, 0, 176, h))
         .map_err(|e| e.to_string())?;
-    draw_logo(c, logo, 23, 24, 48)?;
-    text(c, &body, "PokeDaisy", 24, 82, 20, PAPER);
-    text(c, body, "DESKTOP EDITION", 25, 109, 11, AQUA);
-    for (i, label, y) in [(0, "Games", 134), (1, "Tools", 200), (2, "Settings", 266)] {
+    draw_logo(c, 23, 24, 48)?;
+    text(c, body, "Vyntra", 24, 82, 22, INK);
+    text(c, body, "DESKTOP", 25, 109, 11, AQUA);
+    for (i, label, y) in [
+        (0, "Biblioteca", 134),
+        (1, "Acompañante", 200),
+        (2, "Ajustes", 266),
+    ] {
         if active == i {
-            c.set_draw_color(Color::RGB(47, 91, 72));
+            c.set_draw_color(DARK_CRIMSON);
             c.fill_rect(Rect::new(12, y - 7, 152, 48))
                 .map_err(|e| e.to_string())?;
         }
-        draw_nav_icon(c, i, 27, y + 7, if active == i { PAPER } else { AQUA })?;
+        draw_nav_icon(c, i, 27, y + 7, if active == i { INK } else { AQUA })?;
         text(
             c,
             body,
@@ -942,43 +1189,15 @@ fn draw_sidebar(
             58,
             y + 7,
             16,
-            if active == i {
-                PAPER
-            } else {
-                Color::RGB(191, 212, 198)
-            },
+            if active == i { INK } else { MUTED },
         );
     }
-    c.set_draw_color(Color::RGB(60, 91, 76));
+    c.set_draw_color(BORDER);
     c.draw_line(Point::new(22, 352), Point::new(154, 352))
         .map_err(|e| e.to_string())?;
-    text(
-        c,
-        body,
-        "Made for your",
-        24,
-        378,
-        13,
-        Color::RGB(191, 212, 198),
-    );
-    text(
-        c,
-        body,
-        "Pokémon library.",
-        24,
-        399,
-        13,
-        Color::RGB(191, 212, 198),
-    );
-    text(
-        c,
-        body,
-        "v0.1 · WINDOWS",
-        24,
-        h as i32 - 28,
-        11,
-        Color::RGB(150, 182, 163),
-    );
+    text(c, body, "Tu biblioteca", 24, 378, 13, MUTED);
+    text(c, body, "de juegos.", 24, 399, 13, MUTED);
+    text(c, body, "VYNTRA · WINDOWS", 24, h as i32 - 28, 11, MUTED);
     Ok(())
 }
 
@@ -987,25 +1206,25 @@ fn draw_info_page(
     pixel: &Font,
     body: &Font,
     strong: &Font,
-    logo: &Texture<'_>,
+    core_status: &[(&str, String); 3],
     w: u32,
     h: u32,
     settings: bool,
 ) -> Result<(), String> {
-    draw_sidebar(c, body, logo, h, if settings { 2 } else { 1 })?;
+    draw_sidebar(c, body, h, if settings { 2 } else { 1 })?;
     let title = if settings {
-        "Desktop settings"
+        "Ajustes de Vyntra Desktop"
     } else {
-        "Companion tools"
+        "Vyntra Companion"
     };
     text(c, pixel, title, 203, 45, 26, INK);
     text(
         c,
         body,
         if settings {
-            "Controls and storage for this Windows build."
+            "Configura núcleos, biblioteca y guardados."
         } else {
-            "Your game-aware tools stay beside the game."
+            "Los datos se muestran solo si el juego y el núcleo los admiten."
         },
         204,
         86,
@@ -1014,36 +1233,34 @@ fn draw_info_page(
     );
     if settings {
         let rows = [
-            ("CORE FOLDER", "./cores or POKEDAISY_CORE_DIR"),
-            ("GAME LIBRARY", "./data/roms · F5 rescans this folder"),
+            ("NÚCLEO GB / GBC", core_status[0].1.as_str()),
+            ("NÚCLEO GBA", core_status[1].1.as_str()),
+            ("NÚCLEO DS", core_status[2].1.as_str()),
+            ("BIBLIOTECA", "./data/roms · F5 actualiza esta carpeta"),
+            ("DATOS", "./data/saves y ./data/states"),
             (
-                "BATTERY SAVES",
-                "./data/saves · saved as standard .sav files",
+                "RUTA DE NÚCLEOS",
+                "./cores o VYNTRA_CORE_DIR · POKEDAISY_CORE_DIR legado",
             ),
-            ("SAVE STATES", "./data/states · F2 saves, F4 loads"),
-            ("CONTROLS", "Keyboard and SDL GameController gamepads"),
         ];
         for (i, (label, value)) in rows.iter().enumerate() {
-            let y = 137 + i as i32 * 74;
+            let y = 137 + i as i32 * 56;
             panel(
                 c,
-                Rect::new(202, y, (w.saturating_sub(234)).max(400), 60),
+                Rect::new(202, y, (w.saturating_sub(234)).max(400), 48),
                 PAPER,
             )?;
-            text(c, strong, label, 220, y + 11, 13, GREEN);
-            text(c, body, value, 388, y + 11, 15, INK);
+            text(c, strong, label, 220, y + 9, 12, GREEN);
+            text(c, body, value, 388, y + 9, 13, INK);
         }
     } else {
         let rows = [
-            (
-                "Party & boxes",
-                "Party details, summaries, deposit and withdraw",
-            ),
-            ("Bag & items", "Game-aware inventory and item actions"),
-            ("Map & flight", "Region maps and searchable places"),
-            ("Pokédex & guide", "Game data, moves and guides"),
-            ("Battle HUD", "Battle information and quick actions"),
-            ("Quick menu", "Fast access to companion actions"),
+            ("Equipo", "Aún no disponible en Desktop"),
+            ("Mochila", "Aún no disponible en Desktop"),
+            ("Atlas", "Aún no disponible en Desktop"),
+            ("Vyntra Dex", "Aún no disponible en Desktop"),
+            ("Combate", "Aún no disponible en Desktop"),
+            ("Menú rápido", "Solo disponible durante una partida"),
         ];
         for (i, (label, value)) in rows.iter().enumerate() {
             let y = 143 + i as i32 * 67;
@@ -1053,7 +1270,7 @@ fn draw_info_page(
                 if i % 2 == 0 {
                     PAPER
                 } else {
-                    Color::RGB(246, 245, 231)
+                    Color::RGB(23, 23, 27)
                 },
             )?;
             text(c, strong, label, 220, y + 8, 14, INK);
@@ -1062,7 +1279,7 @@ fn draw_info_page(
         text(
             c,
             body,
-            "Start a game, then press Tab for the companion or F for the quick menu.",
+            "La integración del acompañante de escritorio está pendiente.",
             202,
             h as i32 - 31,
             13,
@@ -1072,15 +1289,28 @@ fn draw_info_page(
     Ok(())
 }
 
-fn draw_logo(
-    c: &mut Canvas<Window>,
-    logo: &Texture<'_>,
-    x: i32,
-    y: i32,
-    size: u32,
-) -> Result<(), String> {
-    c.copy(logo, None, Rect::new(x, y, size, size))
-        .map_err(|e| e.to_string())
+fn draw_logo(c: &mut Canvas<Window>, x: i32, y: i32, size: u32) -> Result<(), String> {
+    let size = size as i32;
+    let left = x + size / 7;
+    let center = x + size / 2;
+    let right = x + size * 6 / 7;
+    let top = y + size / 6;
+    let bottom = y + size * 5 / 6;
+    let stroke = (size / 9).max(3);
+    c.set_draw_color(GREEN);
+    for offset in 0..stroke {
+        c.draw_line(
+            Point::new(left + offset, top),
+            Point::new(center + offset, bottom),
+        )
+        .map_err(|e| e.to_string())?;
+        c.draw_line(
+            Point::new(center + offset, bottom),
+            Point::new(right + offset, top),
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 fn draw_nav_icon(
     c: &mut Canvas<Window>,
@@ -1121,43 +1351,7 @@ fn draw_nav_icon(
 fn draw_button(c: &mut Canvas<Window>, font: &Font, r: Rect, label: &str) -> Result<(), String> {
     c.set_draw_color(GREEN);
     c.fill_rect(r).map_err(|e| e.to_string())?;
-    text(c, font, label, r.x() + 16, r.y() + 13, 14, PAPER);
-    Ok(())
-}
-fn draw_chip(
-    c: &mut Canvas<Window>,
-    font: &Font,
-    x: i32,
-    y: i32,
-    label: &str,
-    color: Color,
-) -> Result<(), String> {
-    let width = (label.chars().count() as u32 * 8 + 22).max(58);
-    c.set_draw_color(color);
-    c.fill_rect(Rect::new(x, y, width, 28))
-        .map_err(|e| e.to_string())?;
-    text(c, font, label, x + 11, y + 6, 11, GREEN);
-    Ok(())
-}
-fn draw_cartridge(c: &mut Canvas<Window>, x: i32, y: i32, system: &str) -> Result<(), String> {
-    let color = system_color(system);
-    c.set_draw_color(Color::RGB(49, 64, 58));
-    c.fill_rect(Rect::new(x, y + 4, 54, 62))
-        .map_err(|e| e.to_string())?;
-    c.set_draw_color(Color::RGB(223, 226, 211));
-    c.fill_rect(Rect::new(x + 4, y, 46, 59))
-        .map_err(|e| e.to_string())?;
-    c.set_draw_color(color);
-    c.fill_rect(Rect::new(x + 9, y + 8, 36, 24))
-        .map_err(|e| e.to_string())?;
-    c.set_draw_color(Color::RGB(255, 255, 248));
-    c.fill_rect(Rect::new(x + 14, y + 14, 26, 3))
-        .map_err(|e| e.to_string())?;
-    c.set_draw_color(Color::RGB(178, 186, 169));
-    c.fill_rect(Rect::new(x + 8, y + 43, 38, 3))
-        .map_err(|e| e.to_string())?;
-    c.fill_rect(Rect::new(x + 8, y + 50, 30, 3))
-        .map_err(|e| e.to_string())?;
+    text(c, font, label, r.x() + 16, r.y() + 13, 16, INK);
     Ok(())
 }
 fn system_color(system: &str) -> Color {
@@ -1166,7 +1360,7 @@ fn system_color(system: &str) -> Color {
         "DS" => Color::RGB(62, 125, 177),
         "GBC" => Color::RGB(210, 157, 55),
         "GB" => Color::RGB(83, 140, 105),
-        _ => CORAL,
+        _ => GREEN,
     }
 }
 fn panel(c: &mut Canvas<Window>, r: Rect, color: Color) -> Result<(), String> {
@@ -1180,11 +1374,11 @@ fn draw_play_header(c: &mut Canvas<Window>, f: &Font, w: u32) -> Result<(), Stri
     c.set_draw_color(Color::RGBA(24, 37, 39, 220));
     c.fill_rect(Rect::new(0, 0, w, 48))
         .map_err(|e| e.to_string())?;
-    text(c, f, "POKEDAISY", 20, 16, 13, PAPER);
+    text(c, f, "VYNTRA", 20, 16, 13, PAPER);
     text(
         c,
         f,
-        "ESC  LIBRARY      F11  FULLSCREEN",
+        "Esc: biblioteca    F11: pantalla completa",
         (w as i32) - 325,
         16,
         11,
@@ -1198,6 +1392,7 @@ fn draw_play(
     frame: &VideoFrame,
     w: u32,
     h: u32,
+    smooth: bool,
 ) -> Result<(), String> {
     if frame.width == 0 || frame.height == 0 {
         return Ok(());
@@ -1243,6 +1438,11 @@ fn draw_play(
             frame.height,
         )
         .map_err(|e| e.to_string())?;
+    tex.set_scale_mode(if smooth {
+        sdl2::render::ScaleMode::Linear
+    } else {
+        sdl2::render::ScaleMode::Nearest
+    });
     tex.update(None, &rgba, frame.width as usize * 4)
         .map_err(|e| e.to_string())?;
     let margin = 24;
@@ -1263,24 +1463,149 @@ fn draw_play(
         .map_err(|e| e.to_string())?;
     Ok(())
 }
+// Rasterize with the font's coverage mask intact. Thresholding the mask destroyed
+// antialiasing and made small text illegible. Blend a single texture per label.
+fn fit_label(font: &Font, value: &str, size: u32, available: f32) -> String {
+    let width = |s: &str| {
+        s.chars()
+            .map(|c| font.metrics(c, size as f32).advance_width)
+            .sum::<f32>()
+    };
+    if width(value) <= available {
+        return value.to_owned();
+    }
+    let mut result = String::new();
+    for ch in value.chars() {
+        if width(&result) + width(&ch.to_string()) + width("…") > available {
+            break;
+        }
+        result.push(ch);
+    }
+    result.push('…');
+    result
+}
+
 fn text(c: &mut Canvas<Window>, font: &Font, s: &str, x: i32, y: i32, size: u32, color: Color) {
-    let size_px = size as f32;
-    let mut pen = x;
-    for ch in s.chars() {
-        let (metrics, bitmap) = font.rasterize(ch, size_px);
-        if metrics.width > 0 && metrics.height > 0 {
-            c.set_draw_color(color);
-            for by in 0..metrics.height {
-                for bx in 0..metrics.width {
-                    if bitmap[by * metrics.width + bx] > 110 {
-                        let _ = c.draw_point(Point::new(
-                            pen + metrics.xmin + bx as i32,
-                            y + size as i32 - metrics.height as i32 - metrics.ymin + by as i32,
-                        ));
-                    }
+    let color = if color == GREEN {
+        Color::RGB(255, 142, 163)
+    } else if color == PAPER {
+        INK
+    } else {
+        color
+    };
+    let logical_size = size.max(14);
+    let density = c
+        .output_size()
+        .map(|(w, _)| w as f32 / c.window().size().0 as f32)
+        .unwrap_or(1.0)
+        .max(1.0);
+    let size = (logical_size as f32 * density).round() as u32;
+    let limit = ((c.window().size().0 as i32 - x - 20).max(1) as f32 * density) as usize;
+    let glyphs: Vec<_> = s
+        .chars()
+        .map(|ch| font.rasterize(ch, size as f32))
+        .collect();
+    let width = (glyphs
+        .iter()
+        .map(|(m, _)| m.advance_width)
+        .sum::<f32>()
+        .ceil() as usize
+        + 4)
+    .min(limit)
+    .max(1);
+    let height = size as usize + 8;
+    let mut rgba = vec![0u8; width * height * 4];
+    let mut pen = 0.0f32;
+    for (m, bitmap) in glyphs {
+        for by in 0..m.height {
+            for bx in 0..m.width {
+                let px = pen.round() as i32 + m.xmin + bx as i32;
+                let py = size as i32 - m.height as i32 - m.ymin + by as i32;
+                if px >= 0 && px < width as i32 && py >= 0 && py < height as i32 {
+                    let offset = (py as usize * width + px as usize) * 4;
+                    rgba[offset..offset + 4].copy_from_slice(&[
+                        color.r,
+                        color.g,
+                        color.b,
+                        bitmap[by * m.width + bx],
+                    ]);
                 }
             }
         }
-        pen += metrics.advance_width.round() as i32;
+        pen += m.advance_width;
+        if pen > width as f32 {
+            break;
+        }
+    }
+    let creator = c.texture_creator();
+    if let Ok(mut texture) = creator.create_texture_streaming(
+        sdl2::pixels::PixelFormatEnum::RGBA32,
+        width as u32,
+        height as u32,
+    ) {
+        texture.set_blend_mode(sdl2::render::BlendMode::Blend);
+        texture.set_scale_mode(sdl2::render::ScaleMode::Linear);
+        if texture.update(None, &rgba, width * 4).is_ok() {
+            let _ = c.copy(
+                &texture,
+                None,
+                Rect::new(
+                    x,
+                    y,
+                    (width as f32 / density).ceil() as u32,
+                    (height as f32 / density).ceil() as u32,
+                ),
+            );
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{core_names, find_core_in_dirs};
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn each_system_prefers_vyntra_core_names_and_keeps_legacy_aliases() {
+        for (system, expected, legacy) in [
+            (
+                "GB",
+                "vyntra_gbc_libretro.dll",
+                "pokedaisy_gbc_libretro.dll",
+            ),
+            (
+                "GBA",
+                "vyntra_gba_libretro.dll",
+                "pokedaisy_gba_libretro.dll",
+            ),
+            ("DS", "vyntra_ds_libretro.dll", "pokedaisy_ds_libretro.dll"),
+        ] {
+            let names = core_names(system);
+            assert_eq!(names.first(), Some(&expected));
+            assert!(names.contains(&legacy));
+        }
+    }
+
+    #[test]
+    fn core_search_keeps_directory_priority_and_requires_the_expected_name() {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("vyntra-core-test-{nonce}"));
+        let preferred = root.join("preferred");
+        let fallback = root.join("fallback");
+        fs::create_dir_all(&preferred).unwrap();
+        fs::create_dir_all(&fallback).unwrap();
+        fs::write(preferred.join("pokedaisy_gba_libretro.dll"), b"legacy").unwrap();
+        fs::write(fallback.join("vyntra_gba_libretro.dll"), b"current").unwrap();
+
+        assert_eq!(
+            find_core_in_dirs(&[preferred.clone(), fallback], "GBA"),
+            Some(preferred.join("pokedaisy_gba_libretro.dll"))
+        );
+        assert!(find_core_in_dirs(&[root.clone()], "GBA").is_none());
+        fs::remove_dir_all(root).unwrap();
     }
 }

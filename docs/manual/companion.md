@@ -106,7 +106,7 @@ Ever wanted to walk around Emerald as the hero of FireRed, or the other way roun
 
 Tap the row and every hero you can wear shows as a tile, each one walking in place as they look on the map, with the game they come from under their name. The first tile, `OFF`, is your own hero. Tap a tile to put it on.
 
-PokeDaisy doesn't come with any of these pictures: they're taken from your own copy of the other game. So the tiles only show heroes from FireRed, LeafGreen, Ruby, Sapphire or Emerald carts, or from Heart and Soul, that you've played here once or that are in your library. Each of those games gives you its two heroes (Ruby and Sapphire's look a little different from Emerald's, and Heart and Soul brings Gold and Kris), and you can also pick the other hero of the game you're playing. Heart and Soul's heroes can be worn in the other games, but Heart and Soul itself keeps its own. Until one is found the row shows `N/A`. It starts on `OFF` (your own hero), and each game remembers its own pick.
+Vyntra doesn't come with any of these pictures: they're taken from your own copy of the other game. So the tiles only show heroes from FireRed, LeafGreen, Ruby, Sapphire or Emerald carts, or from Heart and Soul, that you've played here once or that are in your library. Each of those games gives you its two heroes (Ruby and Sapphire's look a little different from Emerald's, and Heart and Soul brings Gold and Kris), and you can also pick the other hero of the game you're playing. Heart and Soul's heroes can be worn in the other games, but Heart and Soul itself keeps its own. Until one is found the row shows `N/A`. It starts on `OFF` (your own hero), and each game remembers its own pick.
 
 Your save stays exactly as it was. The change only lives in the game's memory while you play, and the save just notes which of the game's two heroes you are. Turn it `OFF` and your own hero is back at once, and the save opens the same in any other emulator.
 
@@ -130,7 +130,7 @@ Like the heroes, the box and the letters come from your own copy of the other ga
 
 ### FOLLOWER
 
-With `FOLLOWER` on, the first Pokémon in your party walks a step behind you on the map, turning corners with you, keeping up when you run or ride your bike, and waiting while you surf. It's drawn by PokeDaisy over the game, so your game and your save don't change. It doesn't block anyone and you can't talk to it, and after you go through a door it shows up again with your first step.
+With `FOLLOWER` on, the first Pokémon in your party walks a step behind you on the map, turning corners with you, keeping up when you run or ride your bike, and waiting while you surf. It's drawn by Vyntra over the game, so your game and your save don't change. It doesn't block anyone and you can't talk to it, and after you go through a door it shows up again with your first step.
 
 Its sprite comes from a game whose Pokémon follow you (Heart and Soul, R.O.W.E., Recharged Yellow or Emerald Seaglass), like the Pokémon you can wear with `PLAYER LOOK`, so the row shows `N/A` until one of those has been played here or is in your library. It's off to start with, and games whose Pokémon already follow you don't have it.
 
@@ -145,7 +145,7 @@ It works in FireRed, LeafGreen, Ruby, Sapphire and Emerald (both of Emerald's bi
 
 `FLY ON` picks what carries you when you [fly over the map](map.md#flying-over-the-map) with `TAKE OFF`, or fly to a town the scenic way: your Pokémon's bird (`BIRD`, the game's own), an `AIR BALLOON`, a `HELICOPTER`, a `ZEPPELIN` or a small `PLANE`. You ride in it, your head and shoulders showing over the basket, through the cockpit glass or the gondola's window, and it comes in empty to pick you up and flies off empty after you land. You face the way you fly, left or right; in the balloon you also turn your back going up and face the front going down. The burner flickers, the rotors spin and the propellers turn; the helicopter, the zeppelin and the plane lean a little as they turn, and the balloon floats upright.
 
-The vehicles are drawn by PokeDaisy over the game, so your game and your save don't change. The row shows in the games that have `TAKE OFF`, it starts on `BIRD`, and your pick is the same in every game. Changing it in the air swaps your ride at once. The game's own flying animation (`FLY STYLE` set to `CLASSIC`) keeps its bird.
+The vehicles are drawn by Vyntra over the game, so your game and your save don't change. The row shows in the games that have `TAKE OFF`, it starts on `BIRD`, and your pick is the same in every game. Changing it in the air swaps your ride at once. The game's own flying animation (`FLY STYLE` set to `CLASSIC`) keeps its bird.
 ### DAY AND NIGHT
 
 With `DAY AND NIGHT` on, the map follows your device's clock: a soft pink at dawn, the game's own colours by day, an orange glow at dusk and a deep blue at night. Only the outdoors changes, and only while you walk around: text boxes and menus keep their colours, buildings stay lit, and battles look as they always do. It eases in and out as you go between them.
@@ -154,7 +154,7 @@ It works in every GBA game except those that already change with the time of day
 
 ### TIPS
 
-PokeDaisy does a lot, and some of it is easy to miss. Once you've played for about half an hour, a small card with the PokeDaisy flower now and then shows you a feature you haven't tried yet, like the zoom and look around with `EXPAND`, the `QUICK MENU`, `AUTO-RUN` or the PC from anywhere. With two screens it shows on the companion, so the game stays clear; on one screen it sits at the top of the game.
+Vyntra does a lot, and some of it is easy to miss. Once you've played for about half an hour, a small card with the Vyntra flower now and then shows you a feature you haven't tried yet, like the zoom and look around with `EXPAND`, the `QUICK MENU`, `AUTO-RUN` or the PC from anywhere. With two screens it shows on the companion, so the game stays clear; on one screen it sits at the top of the game.
 
 Most cards come up when the feature would help right then: `AUTO-RUN` after you've held B to run for a while, `WILD ENCOUNTERS` after a few wild battles in a row, `REUSABLE TMS` right after a TM gets used up.
 
@@ -172,7 +172,7 @@ The app's own text comes in English, Japanese, Korean, French, German, Italian, 
 
 No game came out in Portuguese, so on a phone or handheld set to Portuguese, `AUTO` shows Portuguese over an English game too. A Korean DS game picks Korean by itself; on a device set to Korean, the library and settings are in Korean too. The GUIDE's written pages stay in English in Portuguese and Korean.
 
-This only changes PokeDaisy's words (buttons, labels, hints). Pokémon, move and item names stay as your game has them, so a French game shows its French names whatever you pick, and an English game keeps its English ones.
+This only changes Vyntra's words (buttons, labels, hints). Pokémon, move and item names stay as your game has them, so a French game shows its French names whatever you pick, and an English game keeps its English ones.
 
 ## Closing and restarting
 

@@ -30,7 +30,7 @@ The game keeps running while the map, bag, wild list or a summary is open. Tap a
 
 ## When it shows
 
-Only while you're walking around. The first time you play a game, it shows up once you've taken a few steps (PokeDaisy learns what that game's field looks like, and remembers it). It fades out for a battle, a menu screen like the party or the bag, the game's own town map, and a moment later it comes back. With `EXPAND` on it also steps aside for a conversation or a sign. On a phone held upright it's off for now: the companion sits right under the game there.
+Only while you're walking around. The first time you play a game, it shows up once you've taken a few steps (Vyntra learns what that game's field looks like, and remembers it). It fades out for a battle, a menu screen like the party or the bag, the game's own town map, and a moment later it comes back. With `EXPAND` on it also steps aside for a conversation or a sign. On a phone held upright it's off for now: the companion sits right under the game there.
 
 Without `EXPAND`, the HUD stays on the game's picture, not in the bars beside it (except `RAILS`, which is made for those bars). If the touch controls are showing, the HUD moves its corners in so it never covers the rows of buttons along the top and bottom of the game. Held sideways it keeps to the middle of the screen with `EXPAND` too, away from the sides where the buttons sit. Buttons you move further in with `EDIT LAYOUT` don't push it around: with `CORNERS` and `CORNERS 2`, the party, the minimap and the buttons each step just far enough to sit beside a button that's in their corner, and go back to the corner when it's clear.
 
@@ -54,7 +54,7 @@ Tap `LAYOUT`, `LOOK` or `SIZE` to step to the next choice. The HUD changes right
 
 ## On Linux and in other launchers
 
-When PokeDaisy runs as a libretro core (the [Linux program](linux.md), plorpOS, the NXRedux collection, RetroArch), the
+When Vyntra runs as a libretro core (the [Linux program](linux.md), plorpOS, the NXRedux collection, RetroArch), the
 HUD is drawn in the game's own pixels, and the screen shows those several times larger. So at `SMALL` and `NORMAL` it's
 drawn at about half the app's size: smaller pictures of your party and Poké Balls, small numbers, and buttons with
 their pictures but no names. `LARGE` draws it at full size, with the names on the buttons. Every `LAYOUT` works at each

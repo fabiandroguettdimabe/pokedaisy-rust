@@ -1,17 +1,17 @@
-# Launch PokeDaisy from iiSU
+# Launch Vyntra from iiSU
 
-[iiSU](https://github.com/iisu-network/iiSU) doesn't list PokeDaisy as an emulator
-yet, but its emulator list is a JSON file you can import. This guide adds PokeDaisy
+[iiSU](https://github.com/iisu-network/iiSU) doesn't list Vyntra as an emulator
+yet, but its emulator list is a JSON file you can import. This guide adds Vyntra
 to that list and then picks it for the games you want, say FireRed, while every
 other GBA game keeps the emulator it uses now.
 
 Checked with iiSU 0.0.7.3 on the AYN Thor. Menu names can differ a little
 between iiSU versions.
 
-## 1. Add PokeDaisy to iiSU's emulator list (once)
+## 1. Add Vyntra to iiSU's emulator list (once)
 
 iiSU's own lists belong to iiSU, so this repo doesn't ship copies of them: you add
-PokeDaisy's entry to the list your iiSU already has.
+Vyntra's entry to the list your iiSU already has.
 
 1. Find iiSU's current list: `emuladores.json` in the `iiSULauncher/Emuladores/`
    folder of iiSU's storage location (for example
@@ -26,15 +26,15 @@ PokeDaisy's entry to the list your iiSU already has.
    ```json
    {
      "id": "POKEDAISY",
-     "name": "PokeDaisy (Standalone)",
+     "name": "Vyntra (Standalone)",
      "routeType": "uri",
      "commands": [
        {
-         "description": "PokeDaisy",
+         "description": "Vyntra",
          "command": "com.pokedaisy.app/.LaunchActivity -a android.intent.action.VIEW -d %ROM_URI%"
        },
        {
-         "description": "PokeDaisy Path",
+         "description": "Vyntra Path",
          "command": "com.pokedaisy.app/.LaunchActivity -e rom %ROM_PATH%"
        }
      ],
@@ -55,11 +55,11 @@ PokeDaisy's entry to the list your iiSU already has.
    d = json.load(open("emuladores.json"))
    gba = next(c for c in d["consoles"] if c["shortName"] == "gba")
    gba["emulators"] = [e for e in gba["emulators"] if e["id"] != "POKEDAISY"] + [{
-       "id": "POKEDAISY", "name": "PokeDaisy (Standalone)", "routeType": "uri",
+       "id": "POKEDAISY", "name": "Vyntra (Standalone)", "routeType": "uri",
        "commands": [
-           {"description": "PokeDaisy",
+           {"description": "Vyntra",
             "command": "com.pokedaisy.app/.LaunchActivity -a android.intent.action.VIEW -d %ROM_URI%"},
-           {"description": "PokeDaisy Path",
+           {"description": "Vyntra Path",
             "command": "com.pokedaisy.app/.LaunchActivity -e rom %ROM_PATH%"}],
        "packages": ["com.pokedaisy.app"]}]
    json.dump(d, open("emuladores.json", "w"), indent=2, ensure_ascii=False)
@@ -72,36 +72,36 @@ PokeDaisy's entry to the list your iiSU already has.
 3. In iiSU, open Settings (Select) > iiSU Settings > Updates > **Import
    emuladores.json** and pick your edited file. To do the same for
    `supported_emulators.json` (from the same folder), add
-   `{"name": "PokeDaisy", "packages": ["com.pokedaisy.app"]}` to the end of its
+   `{"name": "Vyntra", "packages": ["com.pokedaisy.app"]}` to the end of its
    list.
 
-Leave the GBA console's own emulator as it is: the next step sets PokeDaisy for
+Leave the GBA console's own emulator as it is: the next step sets Vyntra for
 single games only.
 
-## 2. Open a game in PokeDaisy
+## 2. Open a game in Vyntra
 
-For each game you want in PokeDaisy:
+For each game you want in Vyntra:
 
 1. Focus the game and press the minus button (`−`) to open its details.
 2. Select **Settings**, then **Launch options**.
-3. Choose **Override emulator** and pick **PokeDaisy (Standalone)**.
+3. Choose **Override emulator** and pick **Vyntra (Standalone)**.
 
-That game now opens straight in PokeDaisy. Leaving the game (hold BACK) takes you
+That game now opens straight in Vyntra. Leaving the game (hold BACK) takes you
 back to iiSU. Other games in the GBA folder still open in the console's emulator.
 
 ## If something goes wrong
 
 - **The game doesn't start**: in the game's **Launch options**, switch its
-  command to **PokeDaisy Path**.
-  It hands PokeDaisy the file's path instead of a link, which needs PokeDaisy's
+  command to **Vyntra Path**.
+  It hands Vyntra the file's path instead of a link, which needs Vyntra's
   All files access (it asks for it the first time).
-- **PokeDaisy is gone from the list**: iiSU replaces its emulator list when it
-  downloads an update. Add PokeDaisy to the new list again (step 1).
-  The games you set to PokeDaisy may need step 2 again too.
+- **Vyntra is gone from the list**: iiSU replaces its emulator list when it
+  downloads an update. Add Vyntra to the new list again (step 1).
+  The games you set to Vyntra may need step 2 again too.
 - **The bottom screen says the game isn't supported**: the game plays, but the
   companion only works with the games in the main README's
   [supported games](../../README.md#supported-games) list. Keep other games on
   your usual emulator.
-- **No save**: PokeDaisy finds a save by the ROM's file name in its saves folder.
-  Point PokeDaisy's Settings > Folders at the folder your other emulator saves to
+- **No save**: Vyntra finds a save by the ROM's file name in its saves folder.
+  Point Vyntra's Settings > Folders at the folder your other emulator saves to
   (RetroArch's, for example) to share saves.

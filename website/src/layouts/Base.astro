@@ -38,8 +38,8 @@ const nav = [
   [msg('ROM CHECK'), '/compatibility/'],
   [msg('RELEASES'), '/releases/'],
 ];
-// Petals drifting behind the page: [left %, top %, size, delay s, duration s].
-const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 78, 2, 2, 28], [46, 92, 1, 6, 25], [95, 70, 1, 12, 30]];
+// Small angular V marks drifting behind the page: [left %, top %, size, delay s, duration s].
+const marks = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 78, 2, 2, 28], [46, 92, 1, 6, 25], [95, 70, 1, 12, 30]];
 ---
 <!doctype html>
 <html lang={localized ? lang.hreflang : 'en'} data-theme={themed ? theme : undefined}>
@@ -131,7 +131,7 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     <div class="backdrop" aria-hidden="true">
       <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
       <div class="dots"></div>
-      {petals.map(([x, y, s, d, t]) => (
+      {marks.map(([x, y, s, d, t]) => (
         <span class="petal" style={`left:${x}%;top:${y}%;animation-delay:-${d}s;animation-duration:${t}s`}>
           <Pixel name="logo" scale={s * 0.667} />
         </span>
@@ -140,15 +140,15 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
 
     <header class="topbar">
       <div class="container bar">
-        <a class="brand" href={tr.path('/')} aria-label={tr('PokeDaisy home')}>
+        <a class="brand" href={tr.path('/')} aria-label={tr('Vyntra home')}>
           <span class="brand-mark"><Pixel name="logo" scale={0.5} /></span>
-          <span class="brand-name"><span class="red">POKE</span>DAISY</span>
+          <span class="brand-name"><span class="red">V</span>YNTRA</span>
         </a>
         <nav class="links" aria-label={tr('Main')}>
           {nav.map(([label, href]) => (
             <a href={tr.path(href)} aria-current={here === href || (href === '/docs/' && path.startsWith('/docs/')) ? 'page' : undefined}>{tr(label)}</a>
           ))}
-          <a href={DISCORD_URL} class="icon-link" aria-label={tr('PokeDaisy on Discord')}><Pixel name="discord" scale={0.5} /></a>
+          <a href={DISCORD_URL} class="icon-link" aria-label={tr('Vyntra on Discord')}><Pixel name="discord" scale={0.5} /></a>
           <a href={REPO_URL} class="icon-link" aria-label="GitHub"><Pixel name="github" scale={0.5} /></a>
         </nav>
         <!-- Phones: GitHub beside COFFEE, bigger, instead of squeezed onto the end of the scrolling links (Discord stays there: no room). -->
@@ -199,7 +199,7 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
           <a href={PATREON_URL}>PATREON</a>
           <a href={COFFEE_URL}>{tr('BUY ME A COFFEE')}</a>
         </div>
-        <p class="legal tiny muted" set:html={tr('PokeDaisy is a fan project, not affiliated with or endorsed by Nintendo, Game Freak, Creatures or The Pokémon Company. Pokémon and all related names are trademarks of their respective owners; Game Boy, Game Boy Color, Game Boy Advance and Nintendo DS are trademarks of Nintendo. Device names belong to their makers, and ScreenScraper, RetroAchievements and SteamGridDB are independent services. ROM hacks belong to their creators. No games are included: use your own legally dumped ROMs. Games run on <a href="https://mgba.io">mGBA</a> and <a href="https://melonds.kuribo64.net">melonDS</a>; fonts: Pixel Operator by Jayvee Enaguas (CC0), PixelMplus by Itouhiro (M+ FONT LICENSE), Galmuri by Lee Minseo (OFL) and Atkinson Hyperlegible by the Braille Institute (OFL).')} />
+        <p class="legal tiny muted" set:html={tr('Vyntra is a fan project, not affiliated with or endorsed by Nintendo, Game Freak, Creatures or The Pokémon Company. Pokémon and all related names are trademarks of their respective owners; Game Boy, Game Boy Color, Game Boy Advance and Nintendo DS are trademarks of Nintendo. Device names belong to their makers, and ScreenScraper, RetroAchievements and SteamGridDB are independent services. ROM hacks belong to their creators. No games are included: use your own legally dumped ROMs. Games run on <a href="https://mgba.io">mGBA</a> and <a href="https://melonds.kuribo64.net">melonDS</a>; fonts: Pixel Operator by Jayvee Enaguas (CC0), PixelMplus by Itouhiro (M+ FONT LICENSE), Galmuri by Lee Minseo (OFL) and Atkinson Hyperlegible by the Braille Institute (OFL).')} />
       </div>
     </footer>
 
@@ -268,16 +268,18 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     --t-xxl: 80px;
     /* Pixel bold: each glyph again, one font pixel to the right (how the app bolds Gen 1's font). */
     --bold: 0.0625em 0 0 currentColor;
-    --ink: #1d1b26;
-    --ink-2: #4f4c5e;
-    --muted: #6f6c82;
-    --bg: #f7f6fb;
-    --red: #e83028;
-    --red-ink: #c41e16;
+    color-scheme: dark;
+    --ink: #e6e6e9;
+    --ink-2: #d0cdd5;
+    --muted: #a5a5af;
+    --bg: #0b0b0d;
+    --surface: #17171b;
+    --red: #b31231;
+    --red-ink: #f0dbe0;
     --yellow: #f8d030;
     --blue: #3d6fe0;
     --green: #2c9a44;
-    --hard-shadow: drop-shadow(calc(var(--px) * 2) calc(var(--px) * 2) 0 rgba(29, 27, 38, 0.14));
+    --hard-shadow: drop-shadow(calc(var(--px) * 2) calc(var(--px) * 2) 0 rgba(0, 0, 0, 0.55));
     --step: steps(4, end);
   }
   /* Between the phone layout and a wide window, a tighter nav: the longest language's labels (Spanish), the coffee
@@ -330,16 +332,16 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
   .red { color: var(--red); }
   .container { width: min(1200px, 100% - 32px); margin: 0 auto; }
 
-  /* Backdrop: soft colour that drifts, a pixel dot grid, a few daisies floating by. */
+  /* Backdrop: restrained crimson glow and a faint pixel grid. */
   .backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
   .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.55; animation: drift 30s ease-in-out infinite alternate; }
-  .b1 { width: 46vw; height: 46vw; left: -12vw; top: -14vw; background: #ffd2cc; }
-  .b2 { width: 40vw; height: 40vw; right: -10vw; top: 18vh; background: #fff0b0; animation-delay: -10s; }
-  .b3 { width: 50vw; height: 50vw; left: 20vw; bottom: -30vw; background: #d6e2ff; animation-delay: -20s; }
+  .b1 { width: 46vw; height: 46vw; left: -12vw; top: -14vw; background: #3a0a12; }
+  .b2 { width: 40vw; height: 40vw; right: -10vw; top: 18vh; background: #17171b; animation-delay: -10s; }
+  .b3 { width: 50vw; height: 50vw; left: 20vw; bottom: -30vw; background: #3a0a12; animation-delay: -20s; }
   @keyframes drift { to { transform: translate(6vw, 4vh) scale(1.08); } }
   .dots {
     position: absolute; inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Crect x='0' y='0' width='2' height='2' fill='%231d1b26' fill-opacity='0.09'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Crect x='0' y='0' width='2' height='2' fill='%23e6e6e9' fill-opacity='0.045'/%3E%3C/svg%3E");
     mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.35) 60%, #000 100%);
   }
   .petal { position: absolute; opacity: 0.13; animation: float 24s steps(48) infinite; }
@@ -349,10 +351,10 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     100% { transform: translateY(0) rotate(360deg); }
   }
 
-  /* Top bar: frosted, with a pixel rule under it. */
+  /* Top bar: dark translucent surface, with a crimson pixel rule under it. */
   .topbar {
     position: sticky; top: 0; z-index: 50;
-    background: rgba(247, 246, 251, 0.78);
+    background: rgba(11, 11, 13, 0.92);
     backdrop-filter: blur(14px) saturate(1.4);
     -webkit-backdrop-filter: blur(14px) saturate(1.4);
     border-bottom: var(--px) solid var(--ink);
