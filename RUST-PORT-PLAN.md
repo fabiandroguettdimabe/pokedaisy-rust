@@ -48,6 +48,55 @@ This file is the project checkpoint and continuation guide for the standalone Ru
 - Package a reproducible Windows build with clear core setup and compatibility information.
 - Verify a clean install, ROM selection, controls, gameplay, and save preservation.
 
+## Further improvements
+
+These improvements build on the core port milestones and can be prioritized as the Windows runtime becomes stable.
+
+### Compatibility and core management
+
+- [ ] Add a compatibility view per game showing verified ROM version/hash and support for each companion feature.
+- [ ] Provide a useful status for unknown games and a simple way to export a local diagnostic report for improving compatibility.
+- [ ] Pin and display core versions, verify expected DLLs at startup, and explain missing or mismatched cores.
+- [ ] Let contributors add reviewed game profiles without changing ROM-launch rules.
+
+### Library and per-game setup
+
+- [ ] Add search, favorites, system filters, duplicate detection, and optional cover art.
+- [ ] Store per-game controls, core options, display layout, scaling, and audio settings.
+- [ ] Import and export library settings and profile data so a reinstall does not require configuring everything again.
+
+### Save safety and portability
+
+- [ ] Keep battery saves in standard `.sav` / `.srm` formats where the selected core supports them; make backup and restore actions visible.
+- [ ] Explain that save states can depend on the core and its version; identify the core used to create each state before offering to load it.
+- [ ] Add recovery guidance for interrupted writes and provide an easy way to open the save folder.
+
+### Performance and display quality
+
+- [ ] Measure frame pacing, dropped frames, and audio underruns on representative hardware before tuning buffers.
+- [ ] Keep audio and video synchronized during normal speed, fast-forward, and slow motion.
+- [ ] Support high-DPI displays, window movement between monitors, integer scaling, and resizable companion layouts.
+- [ ] Offer optional shaders and overlays after the baseline renderer is stable.
+
+### Input, accessibility, and support
+
+- [ ] Detect gamepads connected or disconnected while the app is running; offer standard mappings and per-game remapping.
+- [ ] Support keyboard-only navigation, scalable text, clear focus states, and readable contrast.
+- [ ] Add searchable local logs and a copyable diagnostic summary; keep ROM paths and user data out of reports unless the user chooses to include them.
+- [ ] Reuse available project translations and make missing strings easy to identify.
+
+### Broaden platform support
+
+- [ ] Keep platform-specific core loading and packaging isolated so Linux and macOS can follow after the Windows release is reliable.
+- [ ] Track platform-specific core availability separately from game and companion compatibility.
+
+## Technical references
+
+- [Libretro core development](https://docs.libretro.com/development/cores/developing-cores/) describes the frontend/core boundary, fixed-rate audio and video expectations, input callbacks, and save-state serialization considerations.
+- [SDL2 controller device events](https://wiki.libsdl.org/SDL2/SDL_ControllerDeviceEvent) document controller connect, disconnect, and remap notifications.
+- [SDL high-DPI window guidance](https://wiki.libsdl.org/SDL2/SDL_CreateWindow) explains the difference between window coordinates and drawable pixels when high-DPI support is enabled.
+- [SDL audio device documentation](https://wiki.libsdl.org/SDL2/SDL_OpenAudioDevice) documents the latency and underrun tradeoff when choosing audio buffer sizes.
+
 ## Compatibility rule
 
 The launcher should not reject a ROM because its title is unfamiliar. The emulator core determines whether it can run the file; a separate Rust game profile determines which companion features are available. Profile support must be stated per game and per feature.
