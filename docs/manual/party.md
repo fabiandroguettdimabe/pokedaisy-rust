@@ -1,0 +1,99 @@
+---
+title: Party and summaries
+summary: Your team at a glance, each Pokémon's full summary, its exact IVs and EVs, and which new moves are worth learning.
+section: companion
+order: 2
+keywords: [team, pokemon, summary, ivs, evs, nature, hidden power, stats, moves, exp, experience, learn, tm, forget, move advice, weakness, resistance, held item, holding, item, shiny, shiny icon, colours, deposit, pc, box, trade, trade evolution, evolve, evolution, no trade]
+---
+
+The `PARTY` tab is your team, live. Glance down and you know who's hurt, who's poisoned and who's about to level up, without pausing to open the game's menu.
+
+## Your party
+
+Each Pokémon gets a slot with its icon, name, level and HP bar, plus its status if it has one (poisoned, asleep and so on). A fainted Pokémon's slot changes colour the way the game shows it. The name is its nickname, as your game's own party screen shows it, on the Game Boy and Game Boy Advance games (the DS games show the kind of Pokémon for now). In SoulGold, whose party screen shows shiny Pokémon in their shiny colours, so does the icon here. In the original FireRed, LeafGreen, Ruby, Sapphire and Emerald (every language), and in the hacks [SHINY ODDS](controls.md#shiny-odds) lists, a shiny Pokémon's icon shows in its shiny colours too, here, in its summary and on the HUD, even though the games' own party screens don't: the colours are the shiny ones the game uses in battle, read from your ROM. Its summary marks it too: a gold sparkle after its name and a gold frame around its icon.
+
+A Pokémon holding an item gets a small tag in its slot's top right corner with the item's icon and name, so you can see who holds what without opening each summary. The game's own little held-item marker sits by its icon too.
+
+The slots are your game's own party screen: FireRed and Emerald use their real slot art, and many hacks have their own colours. Games without a look of their own get a FireRed-style slot. The art is rebuilt from your own ROM the first time you play it, so it can take a moment to appear the very first time.
+
+![The PARTY tab: EMBERPUP Lv12 with full HP, GALEFINCH poisoned and low on HP, BUBBLEFIN and THORNLET](shots/companion-party.png "The PARTY tab")
+
+The icons bounce like they do in the game. If you'd rather they stood still, turn off `PARTY ICONS MOVE` in SETTINGS > `TWEAKS`.
+
+To change the order, press and hold a Pokémon, drag it onto another one and let go: they trade places, in your game too. The summary's `SWITCH` does the same: tap it, your party opens, and tap the Pokémon to trade with. `CANCEL` or BACK goes back to the summary. This works in the Game Boy Advance games while you're free to walk around, not in a battle or a conversation.
+
+These controls also work in the supported English version of Pokémon Unbound. Changing party order is separate from choosing a Pokémon to send into battle.
+
+## The summary
+
+Tap any slot to open that Pokémon's summary. It fills the tab:
+
+- **Top left**: name, gender (a nicknamed Pokémon's kind comes after its name), icon, level, status, types, the HP bar, and an EXP bar. `NEXT` is how much experience it still needs for the next level (`MAX` at level 100).
+- **Bottom left**: `WEAK TO`, `RESISTS` and `IMMUNE TO`, with the multiplier on each type (2x, ½x, 0x and so on). It's the quickest way to see what to keep this Pokémon away from.
+- **Right**: its four moves, each with its type, power (`PWR`) and remaining `PP`. An icon beside the type tells a physical move (a burst) from a special one (rings) and a status move (a grey dot), in the games where PokeDaisy knows the split.
+
+![EMBERPUP's summary: level, HP and EXP on the left above its weaknesses and resistances, its four moves on the right](shots/companion-summary.png "A Pokémon's summary")
+
+If the Pokémon holds an item, its `ITEM` line shows it. In games where the companion can use items, a `TAKE` button puts the item back in your bag, after asking first. When the bag has no room for it, the line says `BAG FULL` instead, just as the game would refuse.
+
+Down the right side is a column with every Pokémon in your party, the one on show framed in red: tap another one to switch to its summary. The page you're on (moves, stats or learn) stays put while you switch, so you can compare the whole team's IVs one after another. The blue button under the column, or BACK, returns to the party.
+
+## DEPOSIT: into a PC box
+
+In the games where the [BOXES tab](boxes.md) can move Pokémon, the summary has a green `DEPOSIT` button, like the game's own PC. Tap it, then pick a box from the list, which shows how full each one is. The Pokémon goes into that box's first free slot, right there in your game, and the rest of your party moves up. Back on your party you see it fly over to the box, then a message says where it went.
+
+The game's own rules still apply: your last Pokémon that can battle has to stay, a Pokémon holding Mail can't go in until you take the Mail off, and a full box says so. You have to be walking around, with no battle, menu or text box open. **Save in the game** to keep it, just as you would after using a PC.
+
+## Trade evolutions
+
+Some Pokémon only evolve when traded, some of them while holding an item. If you have no one to trade with, turn on `TRADE EVOS` in the companion's `SETTINGS`, `GAMEPLAY` group (it's `OFF` until you turn it on). A Pokémon in your party that would evolve from a trade right now then gets an `EVOLVE` button on its summary. Tap it and confirm: the game plays its own evolution on the game's screen, as it would after a trade, and you're back where you were when it's done. The Pokémon stays yours, with your name on it.
+
+The game decides, by its own rules: a Pokémon holding the item that stops evolution doesn't get the button, and one that needs a held item uses it up, as in a real trade. It works on the field, with no menu, text or battle open. **Save in the game** to keep it.
+
+> [!NOTE]
+> `TRADE EVOS` works in the English FireRed (the later release), LeafGreen and Emerald. In other games it shows `N/A`. To trade for real between two of your games, see [Link play](link-play.md).
+
+## STATS: IVs, EVs and nature
+
+Tap `STATS` to swap the moves for the numbers behind them, including the ones the game never shows you:
+
+- Each stat's current value, its **IV** (0 to 31, as a bar that turns gold at a perfect 31) and its **EV**, with totals underneath.
+- `NATURE`, with the stat it raises marked in red and the one it lowers in blue. Monomyth names its own natures, which raise and lower nothing, so none is marked there.
+- `HIDDEN POWER`: the type that move would have for this Pokémon, and its power in FireRed, Emerald and the other original games.
+
+Tap `MOVES` to go back to the moves.
+
+The stats shown are the ones the game stored, which it only recalculates on a level up. So right after a battle where your Pokémon earned EVs, a stat can read a point lower than it will be after the next level.
+
+`STATS` appears for most games. A few, where the numbers can't be read reliably yet, don't have it.
+
+## LEARN: which moves are worth it
+
+Tap `LEARN` to see what this Pokémon could learn soon, and whether it should. Its current moves move to the left, and the right side lists:
+
+- `NEXT LEVELS`: the next moves it learns by leveling up, with the level for each.
+- `TMs IN THE BAG`: the TMs and HMs you're carrying that it can learn.
+
+Each entry shows the move's type, power, accuracy (`ACC`) and PP, and a verdict:
+
+| Verdict | Meaning |
+| --- | --- |
+| `LEARN` | It has a free move slot. Take it. |
+| `FORGET` and a move name | Worth learning, in place of that move. |
+| `SKIP` | Not better than what it already knows. |
+| `LEARNED` | It already knows this one. |
+
+Tap an entry to see why. The reasons are short and specific, such as `NEW 2x ON` and the types it would start hitting hard, `YOUR TYPE: x1.5`, `ACCURACY 70%`, or that the move runs on its weaker attacking stat. The move it would replace gets a red `FORGET` tag on the left, so you can see exactly what you'd give up. Tap the entry again to close it.
+
+A few rules behind the verdicts:
+
+- A move has to be clearly better to be worth a swap. A tiny gain is a `SKIP`.
+- HMs are never suggested for forgetting, and an HM is only suggested for learning when it's worth a lot more, because it's hard to get rid of afterwards.
+- It weighs damage against every type, not one opponent, so it's advice for your team in general rather than for the next fight.
+
+> [!NOTE]
+> `LEARN` works in FireRed, LeafGreen, Ruby, Sapphire and Emerald (the original games) so far. Hacks change too many moves for the advice to be right there yet.
+
+The verdicts follow `BATTLE HINTS` in SETTINGS. With it off, `LEARN` still lists what the Pokémon can learn and the move details, but without the verdicts and reasons.
+
+You can also come at it from the other side: pick a TM in the [Bag](bag.md) to see which of your Pokémon can learn it.

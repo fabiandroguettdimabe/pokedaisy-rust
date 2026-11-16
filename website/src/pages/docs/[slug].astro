@@ -1,0 +1,19 @@
+---
+// One docs page, rendered at build time from docs/manual/<slug>.md (src/lib/docs.js) so search engines get
+// the whole text. The app shows the same page from the docs API. Its translations, where it has any, are
+// src/pages/[lang]/docs/[slug].astro.
+import DocPage from '../../views/DocPage.astro';
+import { loadDocs, loadTranslations } from '../../lib/docs.js';
+
+export function getStaticPaths() {
+  const docs = loadDocs();
+  const { bySlug } = loadTranslations(docs);
+  return docs.pages.map((page, i) => ({
+    params: { slug: page.slug },
+    props: { page, docs, prev: docs.pages[i - 1], next: docs.pages[i + 1], langs: bySlug.get(page.slug) ?? [] },
+  }));
+}
+
+const { page, docs, prev, next, langs } = Astro.props;
+---
+<DocPage page={page} docs={docs} prev={prev} next={next} langs={langs} />

@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">PokeDaisy PC gameplay concept</title>
+  <desc id="desc">A desktop game window with the original GBA game on the left and a live, pixel-styled PokeDaisy companion on the right.</desc>
+  <rect width="1440" height="900" fill="#25292d"/>
+  <rect x="0" y="0" width="1440" height="42" fill="#353a40"/>
+  <rect x="0" y="41" width="1440" height="1" fill="#59636a"/>
+  <rect x="20" y="10" width="22" height="22" rx="4" fill="#fff" stroke="#60727a" stroke-width="2"/>
+  <circle cx="31" cy="21" r="6" fill="#e53935" stroke="#44535a" stroke-width="2"/>
+  <path d="M25 21h12" stroke="#44535a" stroke-width="2"/>
+  <text x="54" y="28" fill="#f3f2ee" font-family="Segoe UI, sans-serif" font-size="16" font-weight="600">Pokémon Emerald</text>
+  <text x="1304" y="27" fill="#aeb6ba" font-family="Segoe UI, sans-serif" font-size="15">—　□　×</text>
+
+  <rect x="24" y="62" width="915" height="775" fill="#101718" stroke="#727d80" stroke-width="2"/>
+  <rect x="42" y="80" width="879" height="739" fill="#343e3c"/>
+  <rect x="52" y="90" width="859" height="719" fill="#7ac8dd"/>
+  <!-- Pixel-art overworld, deliberately schematic rather than a game screenshot. -->
+  <rect x="52" y="90" width="859" height="245" fill="#73c5db"/>
+  <rect x="52" y="335" width="859" height="474" fill="#5bb67a"/>
+  <path d="M52 572h297v-49h172v-67h140v-55h250v408H52z" fill="#bca77a"/>
+  <path d="M52 590h300v-48h166v-67h145v-55h248" fill="none" stroke="#e3d09a" stroke-width="18"/>
+  <path d="M117 443h132v78H117zM672 210h177v72H672z" fill="#efead0" stroke="#536967" stroke-width="8"/>
+  <path d="M124 451h43v28h-43zM183 451h59v28h-59zM681 219h66v18h-66zM766 219h74v18h-74z" fill="#75a0a0"/>
+  <path d="M62 330h232v42H62zM310 330h49v42h-49zM692 330h212v42H692z" fill="#27734f"/>
+  <g fill="#2b7652">
+    <rect x="76" y="271" width="46" height="61"/><rect x="90" y="247" width="18" height="24"/>
+    <rect x="357" y="242" width="56" height="91"/><rect x="376" y="215" width="20" height="27"/>
+    <rect x="529" y="267" width="46" height="66"/><rect x="543" y="240" width="18" height="27"/>
+    <rect x="849" y="285" width="48" height="47"/><rect x="864" y="257" width="18" height="28"/>
+  </g>
+  <g fill="#2e8060" stroke="#2d674f" stroke-width="3">
+    <rect x="68" y="692" width="84" height="54"/><rect x="172" y="701" width="78" height="44"/>
+    <rect x="756" y="711" width="74" height="41"/><rect x="842" y="688" width="59" height="65"/>
+  </g>
+  <!-- Small trainer sprite -->
+  <rect x="466" y="504" width="46" height="39" fill="#293d87"/>
+  <rect x="474" y="479" width="30" height="27" fill="#f0c99a"/>
+  <rect x="465" y="472" width="48" height="12" fill="#a43b24"/>
+  <rect x="459" y="539" width="18" height="33" fill="#3d3a4d"/>
+  <rect x="500" y="539" width="18" height="33" fill="#3d3a4d"/>
+  <rect x="466" y="475" width="9" height="8" fill="#202427"/>
+  <rect x="484" y="475" width="9" height="8" fill="#202427"/>
+  <rect x="52" y="775" width="859" height="34" fill="#27333a" opacity=".92"/>
+  <text x="70" y="798" fill="#f0f0e9" font-family="Consolas, monospace" font-size="14">FPS 60　·　A Confirm　B Back　·　Hold Space Fast-forward</text>
+
+  <rect x="958" y="62" width="458" height="775" fill="#dedede" stroke="#5b6970" stroke-width="4"/>
+  <rect x="968" y="72" width="438" height="755" fill="#f3f3f3" stroke="#fff" stroke-width="4"/>
+  <rect x="978" y="82" width="418" height="61" fill="#fff" stroke="#66777e" stroke-width="3"/>
+  <text x="1000" y="107" fill="#4d5356" font-family="Consolas, monospace" font-size="19">POKéMON EMERALD</text>
+  <text x="1000" y="129" fill="#838b8f" font-family="Consolas, monospace" font-size="12">PARTY  ·  LIVE FROM GAME</text>
+
+  <g font-family="Consolas, monospace" font-size="14" text-anchor="middle">
+    <rect x="978" y="154" width="88" height="38" fill="#fff" stroke="#77858a" stroke-width="2"/>
+    <text x="1022" y="178" fill="#c54a2e" font-weight="700">PARTY</text>
+    <rect x="1067" y="154" width="77" height="38" fill="#dedede" stroke="#879398" stroke-width="2"/>
+    <text x="1105" y="178" fill="#51585b">MAP</text>
+    <rect x="1145" y="154" width="77" height="38" fill="#dedede" stroke="#879398" stroke-width="2"/>
+    <text x="1183" y="178" fill="#51585b">BAG</text>
+    <rect x="1223" y="154" width="91" height="38" fill="#dedede" stroke="#879398" stroke-width="2"/>
+    <text x="1268" y="178" fill="#51585b">GUIDE</text>
+    <rect x="1315" y="154" width="81" height="38" fill="#dedede" stroke="#879398" stroke-width="2"/>
+    <text x="1355" y="178" fill="#51585b">MORE</text>
+  </g>
+  <text x="990" y="221" fill="#737d81" font-family="Consolas, monospace" font-size="12">YOUR PARTY</text>
+
+  <g font-family="Consolas, monospace">
+    <rect x="978" y="235" width="418" height="116" fill="#a8e6f3" stroke="#f36e37" stroke-width="4"/>
+    <rect x="990" y="247" width="62" height="62" fill="#f2c48a" stroke="#53666e" stroke-width="3"/>
+    <path d="M997 294l11-23 12 6 12-13 13 30v12h-48z" fill="#d56b25"/>
+    <text x="1070" y="270" fill="#323d43" font-size="19" font-weight="700">EMBERPUP</text>
+    <text x="1070" y="294" fill="#536168" font-size="14">Lv12　·　♂</text>
+    <text x="1070" y="327" fill="#bc8122" font-size="13">HP</text>
+    <rect x="1102" y="312" width="252" height="13" fill="#fff" stroke="#5f6e73" stroke-width="2"/>
+    <rect x="1105" y="315" width="212" height="7" fill="#51bd7c"/>
+    <text x="1360" y="329" text-anchor="end" fill="#485358" font-size="12">30 / 35</text>
+
+    <rect x="978" y="361" width="418" height="116" fill="#58a4df" stroke="#4a697d" stroke-width="3"/>
+    <rect x="990" y="373" width="62" height="62" fill="#c2e0ea" stroke="#53666e" stroke-width="3"/>
+    <path d="M997 424l12-22 12 9 12-17 13 29v12h-49z" fill="#376fa7"/>
+    <text x="1070" y="396" fill="#fff" font-size="19" font-weight="700">GALEFINCH</text>
+    <text x="1070" y="420" fill="#e8f1f5" font-size="14">Lv12　·　PSN</text>
+    <text x="1070" y="453" fill="#fff0a7" font-size="13">HP</text>
+    <rect x="1102" y="438" width="252" height="13" fill="#fff" stroke="#5f6e73" stroke-width="2"/>
+    <rect x="1105" y="441" width="48" height="7" fill="#ef7941"/>
+    <text x="1360" y="455" text-anchor="end" fill="#f4f4ee" font-size="12">5 / 26</text>
+
+    <rect x="978" y="487" width="418" height="116" fill="#58a4df" stroke="#4a697d" stroke-width="3"/>
+    <rect x="990" y="499" width="62" height="62" fill="#8bd5d7" stroke="#53666e" stroke-width="3"/>
+    <circle cx="1021" cy="529" r="19" fill="#58afb5"/><circle cx="1015" cy="525" r="3" fill="#242a2c"/><circle cx="1027" cy="525" r="3" fill="#242a2c"/>
+    <text x="1070" y="522" fill="#fff" font-size="19" font-weight="700">BUBBLEFIN</text>
+    <text x="1070" y="546" fill="#e8f1f5" font-size="14">Lv11　·　♂</text>
+    <text x="1070" y="579" fill="#fff0a7" font-size="13">HP</text>
+    <rect x="1102" y="564" width="252" height="13" fill="#fff" stroke="#5f6e73" stroke-width="2"/>
+    <rect x="1105" y="567" width="248" height="7" fill="#51bd7c"/>
+    <text x="1360" y="581" text-anchor="end" fill="#f4f4ee" font-size="12">31 / 31</text>
+
+    <rect x="978" y="613" width="418" height="116" fill="#58a4df" stroke="#4a697d" stroke-width="3"/>
+    <rect x="990" y="625" width="62" height="62" fill="#e0a9cc" stroke="#53666e" stroke-width="3"/>
+    <circle cx="1021" cy="656" r="19" fill="#8754a3"/><path d="M1005 642l6-13 6 13M1025 642l6-13 6 13" fill="#8754a3"/>
+    <text x="1070" y="648" fill="#fff" font-size="19" font-weight="700">THORNLET</text>
+    <text x="1070" y="672" fill="#e8f1f5" font-size="14">Lv10　·　♂</text>
+    <text x="1070" y="705" fill="#fff0a7" font-size="13">HP</text>
+    <rect x="1102" y="690" width="252" height="13" fill="#fff" stroke="#5f6e73" stroke-width="2"/>
+    <rect x="1105" y="693" width="101" height="7" fill="#d9bd35"/>
+    <text x="1360" y="707" text-anchor="end" fill="#f4f4ee" font-size="12">12 / 30</text>
+  </g>
+  <rect x="978" y="752" width="418" height="60" fill="#e4e4e4" stroke="#879398" stroke-width="2"/>
+  <text x="995" y="777" fill="#51585b" font-family="Consolas, monospace" font-size="12">TAB  SWITCH　　F1  QUICK MENU　　F2  SAVE</text>
+  <text x="995" y="798" fill="#838b8f" font-family="Segoe UI, sans-serif" font-size="11">Concept sketch • Companion layout reflows the existing GBA-styled interface for a PC window.</text>
+</svg>

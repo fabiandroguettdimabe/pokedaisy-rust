@@ -1,0 +1,19 @@
+[workspace]
+members = [
+    "crates/pokedaisy-libretro",
+    "crates/pokedaisy-desktop",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2024"
+version = "0.1.0"
+license = "GPL-3.0-only"
+
+[workspace.dependencies]
+libloading = "0.8.9"
+sdl2 = { version = "0.38.0", features = ["bundled", "static-link"] }
+fontdue = "0.9.3"
+image = { version = "0.25", default-features = false, features = ["png"] }
+rfd = "0.15"
+

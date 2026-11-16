@@ -1,0 +1,13 @@
+[package]
+name = "pokedaisy-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+pokedaisy-libretro = { path = "../pokedaisy-libretro" }
+sdl2.workspace = true
+fontdue.workspace = true
+image.workspace = true
+rfd.workspace = true
+

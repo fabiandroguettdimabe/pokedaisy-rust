@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">PokeDaisy PC library concept</title>
+  <desc id="desc">A Windows desktop library using PokeDaisy's pixel-art menus, cover art tiles, and clear controls.</desc>
+  <defs>
+    <pattern id="pixel" width="8" height="8" patternUnits="userSpaceOnUse">
+      <path d="M0 0h8v8H0z" fill="#e7e7e7"/>
+      <path d="M0 0h4v4H0zM4 4h4v4H4z" fill="#dedede"/>
+    </pattern>
+  </defs>
+  <rect width="1440" height="900" fill="#25292d"/>
+  <rect x="0" y="0" width="1440" height="42" fill="#353a40"/>
+  <rect x="0" y="41" width="1440" height="1" fill="#59636a"/>
+  <rect x="20" y="10" width="22" height="22" rx="4" fill="#fff" stroke="#60727a" stroke-width="2"/>
+  <circle cx="31" cy="21" r="6" fill="#e53935" stroke="#44535a" stroke-width="2"/>
+  <path d="M25 21h12" stroke="#44535a" stroke-width="2"/>
+  <text x="54" y="28" fill="#f3f2ee" font-family="Segoe UI, sans-serif" font-size="16" font-weight="600">PokeDaisy</text>
+  <text x="1384" y="27" fill="#aeb6ba" font-family="Segoe UI, sans-serif" font-size="15">—　□　×</text>
+
+  <rect x="0" y="42" width="84" height="858" fill="#353a40"/>
+  <rect x="83" y="42" width="1" height="858" fill="#59636a"/>
+  <g fill="none" stroke="#d7dcde" stroke-width="2" stroke-linecap="square">
+    <path d="M31 83h22v18H31zM35 78h14v5M37 88h10M37 94h10"/>
+    <circle cx="42" cy="145" r="12"/><path d="M42 133v24M30 145h24M34 137l16 16M50 137l-16 16"/>
+    <path d="M30 196h24v18H30zM34 192h16v4M35 201h14M35 207h9"/>
+  </g>
+  <rect x="13" y="62" width="58" height="58" fill="#465158" stroke="#879399" stroke-width="2"/>
+  <path d="M33 351h18l-9-10zM42 341v-27" fill="#f16c4c" stroke="#cad0d2" stroke-width="2"/>
+  <path d="M30 401h24v15H30zM34 396h16v5" fill="none" stroke="#d7dcde" stroke-width="2"/>
+  <path d="M31 846l4 7 8-3 8 3 4-7-4-7 4-8-8-4-4 5-8-5-4 8 4 7z" fill="none" stroke="#cdd3d5" stroke-width="2"/>
+
+  <text x="122" y="101" fill="#f1f0ec" font-family="Segoe UI, sans-serif" font-size="28" font-weight="650">Library</text>
+  <text x="122" y="130" fill="#aeb6ba" font-family="Segoe UI, sans-serif" font-size="15">Your games and recent saves</text>
+  <rect x="1110" y="72" width="180" height="42" fill="#454c52" stroke="#78848a" stroke-width="2"/>
+  <text x="1140" y="99" fill="#f1f0ec" font-family="Segoe UI, sans-serif" font-size="15">＋ Add games</text>
+  <rect x="1302" y="72" width="82" height="42" fill="#454c52" stroke="#78848a" stroke-width="2"/>
+  <text x="1324" y="99" fill="#f1f0ec" font-family="Segoe UI, sans-serif" font-size="15">⚙</text>
+
+  <rect x="111" y="155" width="1276" height="60" fill="#30353a" stroke="#59636a" stroke-width="2"/>
+  <g font-family="Segoe UI, sans-serif" font-size="15" text-anchor="middle">
+    <rect x="127" y="166" width="94" height="38" fill="#e2e2e2" stroke="#fff" stroke-width="2"/>
+    <text x="174" y="190" fill="#3c4348" font-weight="700">RECENT</text>
+    <text x="278" y="190" fill="#c4cbce">ALL GAMES</text>
+    <text x="395" y="190" fill="#c4cbce">GAME BOY</text>
+    <text x="510" y="190" fill="#c4cbce">GBA</text>
+    <text x="622" y="190" fill="#c4cbce">NDS</text>
+    <text x="741" y="190" fill="#c4cbce">ROM HACKS</text>
+  </g>
+  <rect x="1080" y="166" width="287" height="38" fill="#25292d" stroke="#59636a" stroke-width="1"/>
+  <text x="1098" y="190" fill="#9da8ad" font-family="Segoe UI, sans-serif" font-size="14">⌕  Search your library</text>
+
+  <text x="122" y="262" fill="#c5cccf" font-family="Segoe UI, sans-serif" font-size="15">RECENTLY PLAYED</text>
+  <text x="1269" y="262" fill="#9da8ad" font-family="Segoe UI, sans-serif" font-size="14">12 GAMES　 ·　 SORT: LAST PLAYED</text>
+  <g>
+    <rect x="111" y="282" width="1276" height="132" fill="#30353a" stroke="#566168" stroke-width="2"/>
+    <rect x="126" y="297" width="94" height="102" fill="url(#pixel)" stroke="#aab4b7" stroke-width="2"/>
+    <rect x="141" y="312" width="64" height="71" fill="#b4e4f0" stroke="#59636a" stroke-width="3"/>
+    <path d="M143 365l20-24 15 13 10-10 15 17v19h-60z" fill="#32a76f"/>
+    <path d="M143 377h60v6h-60z" fill="#dbdcdf"/>
+    <text x="246" y="324" fill="#f0efeb" font-family="Segoe UI, sans-serif" font-size="21" font-weight="600">Pokémon Emerald</text>
+    <rect x="246" y="340" width="50" height="24" fill="#4b3f8d" stroke="#bcb2f6" stroke-width="1"/>
+    <text x="271" y="357" fill="#f5f2ff" text-anchor="middle" font-family="Consolas, monospace" font-size="13">GBA</text>
+    <text x="313" y="357" fill="#abb4b8" font-family="Segoe UI, sans-serif" font-size="14">Last played yesterday　·　Save found　·　03:42:18</text>
+    <rect x="1164" y="326" width="184" height="48" fill="#e8e8e8" stroke="#fff" stroke-width="3"/>
+    <text x="1256" y="356" fill="#424a4f" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="16" font-weight="700">PLAY</text>
+    <text x="1370" y="354" fill="#b8c0c3" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="22">⋯</text>
+  </g>
+  <g>
+    <rect x="111" y="430" width="1276" height="132" fill="#30353a" stroke="#566168" stroke-width="2"/>
+    <rect x="126" y="445" width="94" height="102" fill="#e4e4e4" stroke="#aab4b7" stroke-width="2"/>
+    <rect x="141" y="460" width="64" height="71" fill="#e4d382" stroke="#59636a" stroke-width="3"/>
+    <path d="M144 514l14-21 12 11 13-20 22 26v21h-61z" fill="#759458"/>
+    <text x="246" y="472" fill="#f0efeb" font-family="Segoe UI, sans-serif" font-size="21" font-weight="600">Pokémon Crystal</text>
+    <rect x="246" y="488" width="50" height="24" fill="#b78409" stroke="#f4dc7e" stroke-width="1"/>
+    <text x="271" y="505" fill="#fff7d4" text-anchor="middle" font-family="Consolas, monospace" font-size="13">GBC</text>
+    <text x="313" y="505" fill="#abb4b8" font-family="Segoe UI, sans-serif" font-size="14">Last played 3 days ago　·　Save found　·　01:18:44</text>
+    <rect x="1164" y="474" width="184" height="48" fill="#454c52" stroke="#78848a" stroke-width="2"/>
+    <text x="1256" y="504" fill="#ecece8" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="16">PLAY</text>
+    <text x="1370" y="502" fill="#b8c0c3" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="22">⋯</text>
+  </g>
+  <g>
+    <rect x="111" y="578" width="1276" height="132" fill="#30353a" stroke="#566168" stroke-width="2"/>
+    <rect x="126" y="593" width="94" height="102" fill="#e4e4e4" stroke="#aab4b7" stroke-width="2"/>
+    <rect x="141" y="608" width="64" height="71" fill="#e5c7b7" stroke="#59636a" stroke-width="3"/>
+    <path d="M143 659l20-25 14 13 12-16 16 17v31h-62z" fill="#598a81"/>
+    <text x="246" y="620" fill="#f0efeb" font-family="Segoe UI, sans-serif" font-size="21" font-weight="600">Pokémon FireRed</text>
+    <rect x="246" y="636" width="50" height="24" fill="#4b3f8d" stroke="#bcb2f6" stroke-width="1"/>
+    <text x="271" y="653" fill="#f5f2ff" text-anchor="middle" font-family="Consolas, monospace" font-size="13">GBA</text>
+    <text x="313" y="653" fill="#abb4b8" font-family="Segoe UI, sans-serif" font-size="14">Last played last week　·　Save found　·　00:56:12</text>
+    <rect x="1164" y="622" width="184" height="48" fill="#454c52" stroke="#78848a" stroke-width="2"/>
+    <text x="1256" y="652" fill="#ecece8" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="16">PLAY</text>
+    <text x="1370" y="650" fill="#b8c0c3" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="22">⋯</text>
+  </g>
+  <text x="112" y="770" fill="#9da8ad" font-family="Segoe UI, sans-serif" font-size="14">Concept sketch • The library keeps PokeDaisy's game-shaped pixel art and adapts navigation to a desktop window.</text>
+</svg>
