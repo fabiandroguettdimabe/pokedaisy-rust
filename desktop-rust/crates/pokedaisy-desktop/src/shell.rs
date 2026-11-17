@@ -263,7 +263,7 @@ pub fn run() -> Result<(), String> {
                 let cmd = match protocol::parse_ui_command(&body) {
                     Ok(cmd) => cmd,
                     Err(error) => {
-                        let ack = protocol::UiAck::failure("legacy-invalid", error.clone());
+                        let ack = protocol::UiAck::failure("invalid-envelope", error.clone());
                         let _ = webview.evaluate_script(&format!(
                             "window.vyntraAck&&window.vyntraAck({});",
                             json!(ack)

@@ -391,104 +391,65 @@ impl UiAck {
     }
 }
 
-/// Parse a versioned command envelope, while accepting the prior flat action
-/// shape during the frontend migration.
+/// Parse and validate a versioned command envelope.
 pub fn parse_ui_command(body: &str) -> Result<UiCommandEnvelope, AppError> {
-    const MAX_LEGACY_BYTES: usize = 32 * 1024;
-    if body.len() > MAX_LEGACY_BYTES {
+    const MAX_ENVELOPE_BYTES: usize = 32 * 1024;
+    if body.len() > MAX_ENVELOPE_BYTES {
         return Err(AppError::new("payload_too_large", "Mensaje demasiado grande").retryable());
     }
     let payload: Value = serde_json::from_str(body)
         .map_err(|e| AppError::new("invalid_json", format!("JSON inválido: {e}")))?;
-    if payload.get("protocol_version").is_some() || payload.get("command_id").is_some() {
-        if payload.get("command_id").is_some() && payload.get("protocol_version").is_none() {
-            return Err(AppError::new(
-                "missing_protocol_version",
-                "Falta la versión del protocolo",
-            ));
-        }
-        let command: UiCommandEnvelope = serde_json::from_value(payload.clone())
-            .map_err(|e| AppError::new("invalid_envelope", format!("Envelope inválido: {e}")))?;
-        if command.protocol_version != CONTRACT_VERSION {
-            return Err(AppError::new(
-                "unsupported_protocol_version",
-                "Versión del protocolo no compatible",
-            ));
-        }
-        if command.command_id.trim().is_empty() {
-            return Err(AppError::new(
-                "invalid_command_id",
-                "Falta un command_id válido",
-            ));
-        }
-        for (name, value) in [
-            ("command_id", Some(command.command_id.as_str())),
-            ("request_id", command.request_id.as_deref()),
-            ("session_id", command.session_id.as_deref()),
-        ] {
-            if value.is_some_and(|value| {
-                value.is_empty() || value.len() > 128 || value.chars().any(char::is_control)
-            }) {
-                return Err(AppError::new(
-                    "invalid_envelope",
-                    format!("El campo `{name}` no es válido"),
-                ));
-            }
-        }
-        let action = command.action.trim();
-        if action.is_empty() || action != command.action {
-            return Err(AppError::new("invalid_action", "Falta una acción válida"));
-        }
-        if !SUPPORTED_ACTIONS.contains(&action) {
-            return Err(AppError::new("unknown_action", "Acción no disponible"));
-        }
-        validate_versioned_payload(action, &command.payload)?;
-        return Ok(command);
+    if payload.get("protocol_version").is_none() {
+        return Err(AppError::new(
+            "missing_protocol_version",
+            "Falta la versión del protocolo",
+        ));
     }
-    let action = payload
-        .get("action")
-        .and_then(|v| v.as_str())
-        .filter(|action| !action.trim().is_empty())
-        .ok_or_else(|| AppError::new("invalid_action", "Falta una acción válida"))?;
+    if payload.get("action").is_none() {
+        return Err(AppError::new("invalid_action", "Falta una acción válida"));
+    }
+    let command: UiCommandEnvelope = serde_json::from_value(payload)
+        .map_err(|e| AppError::new("invalid_envelope", format!("Envelope inválido: {e}")))?;
+    if command.protocol_version != CONTRACT_VERSION {
+        return Err(AppError::new(
+            "unsupported_protocol_version",
+            "Versión del protocolo no compatible",
+        ));
+    }
+    if command.command_id.trim().is_empty() {
+        return Err(AppError::new(
+            "invalid_command_id",
+            "Falta un command_id válido",
+        ));
+    }
+    for (name, value) in [
+        ("command_id", Some(command.command_id.as_str())),
+        ("request_id", command.request_id.as_deref()),
+        ("session_id", command.session_id.as_deref()),
+    ] {
+        if value.is_some_and(|value| {
+            value.is_empty() || value.len() > 128 || value.chars().any(char::is_control)
+        }) {
+            return Err(AppError::new(
+                "invalid_envelope",
+                format!("El campo `{name}` no es válido"),
+            ));
+        }
+    }
+    let action = command.action.trim();
+    if action.is_empty() || action != command.action {
+        return Err(AppError::new("invalid_action", "Falta una acción válida"));
+    }
     if !SUPPORTED_ACTIONS.contains(&action) {
         return Err(AppError::new("unknown_action", "Acción no disponible"));
     }
-    let action = action.to_owned();
-    Ok(UiCommandEnvelope {
-        protocol_version: CONTRACT_VERSION,
-        command_id: format!("legacy-{action}"),
-        action,
-        request_id: payload
-            .get("request_id")
-            .and_then(|v| v.as_str())
-            .map(str::to_owned),
-        session_id: payload
-            .get("session_id")
-            .and_then(|v| v.as_str())
-            .map(str::to_owned),
-        epoch: payload.get("epoch").and_then(|v| v.as_u64()),
-        expected_revision: payload.get("expected_revision").and_then(|v| v.as_u64()),
-        payload,
-    })
-}
-
-/// Compatibility entry point for callers and tests that still use the legacy
-/// protocol name.
-pub fn parse_legacy_action(body: &str) -> Result<UiCommandEnvelope, AppError> {
-    parse_ui_command(body)
+    validate_versioned_payload(action, &command.payload)?;
+    Ok(command)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn legacy_action_parses_and_preserves_payload() {
-        let cmd = parse_legacy_action(r#"{"action":"scan","x":1}"#).unwrap();
-        assert_eq!(cmd.action, "scan");
-        assert_eq!(cmd.command_id, "legacy-scan");
-        assert_eq!(cmd.payload["x"], 1);
-    }
 
     #[test]
     fn versioned_envelope_parses_command_and_nested_payload() {
@@ -504,8 +465,18 @@ mod tests {
     }
 
     #[test]
+    fn flat_commands_are_rejected_without_protocol_version() {
+        let error = parse_ui_command(r#"{"action":"scan"}"#).unwrap_err();
+        assert_eq!(error.code, "missing_protocol_version");
+    }
+
+    #[test]
     fn versioned_envelopes_reject_unsupported_versions_and_missing_ids() {
         for (body, code) in [
+            (
+                r#"{"protocol_version":1,"command_id":"x","payload":{}}"#,
+                "invalid_action",
+            ),
             (
                 r#"{"protocol_version":2,"command_id":"x","action":"scan"}"#,
                 "unsupported_protocol_version",
@@ -690,14 +661,14 @@ mod tests {
     #[test]
     fn oversized_payload_rejected() {
         let big = format!(r#"{{"action":"x","d":"{}"}}"#, "a".repeat(40_000));
-        let err = parse_legacy_action(&big).unwrap_err();
+        let err = parse_ui_command(&big).unwrap_err();
         assert_eq!(err.code, "payload_too_large");
     }
 
     #[test]
     fn malformed_and_truncated_json_return_a_structured_error() {
         for body in [r#"{"action":"scan""#, "{"] {
-            let error = parse_legacy_action(body).unwrap_err();
+            let error = parse_ui_command(body).unwrap_err();
             assert_eq!(error.code, "invalid_json");
             assert!(!error.reason.is_empty());
         }
@@ -706,11 +677,16 @@ mod tests {
     #[test]
     fn missing_and_unknown_actions_are_rejected_with_stable_codes() {
         for (body, code) in [
-            (r#"{}"#, "invalid_action"),
-            (r#"{"action":"  "}"#, "invalid_action"),
-            (r#"{"action":"run_shell"}"#, "unknown_action"),
+            (
+                r#"{"protocol_version":1,"command_id":"x","action":"  ","payload":{}}"#,
+                "invalid_action",
+            ),
+            (
+                r#"{"protocol_version":1,"command_id":"x","action":"run_shell","payload":{}}"#,
+                "unknown_action",
+            ),
         ] {
-            assert_eq!(parse_legacy_action(body).unwrap_err().code, code);
+            assert_eq!(parse_ui_command(body).unwrap_err().code, code);
         }
     }
 
@@ -724,29 +700,28 @@ mod tests {
 
     #[test]
     fn command_ack_cache_replays_only_the_same_revisioned_command() {
-        let command = parse_legacy_action(
-            r#"{"action":"import_roots","expected_revision":7,"roots":["C:/roms"]}"#,
+        let command = parse_ui_command(
+            r#"{"protocol_version":1,"command_id":"scan-1","action":"scan","expected_revision":7,"payload":{}}"#,
         )
         .unwrap();
         let mut cache = CommandAckCache::new(2);
-        let ack = UiAck::success(
-            "legacy-import_roots",
-            Some(serde_json::json!({"started":true})),
-        );
+        let ack = UiAck::success("scan-1", Some(serde_json::json!({"started":true})));
         cache.remember(&command, ack.clone());
 
         assert_eq!(cache.lookup(&command), Some(&ack));
-        let next_revision = parse_legacy_action(
-            r#"{"action":"import_roots","expected_revision":8,"roots":["C:/roms"]}"#,
+        let next_revision = parse_ui_command(
+            r#"{"protocol_version":1,"command_id":"scan-2","action":"scan","expected_revision":8,"payload":{}}"#,
         )
         .unwrap();
         assert!(cache.lookup(&next_revision).is_none());
-        let legacy = parse_legacy_action(r#"{"action":"import_roots"}"#).unwrap();
-        cache.remember(&legacy, ack);
-        assert!(cache.lookup(&legacy).is_none());
+        let replayed_command = parse_ui_command(
+            r#"{"protocol_version":1,"command_id":"scan-3","action":"scan","session_id":"other-session","expected_revision":7,"payload":{}}"#,
+        )
+        .unwrap();
+        assert!(cache.lookup(&replayed_command).is_none());
 
-        let second = parse_legacy_action(r#"{"action":"scan","expected_revision":8}"#).unwrap();
-        let third = parse_legacy_action(r#"{"action":"scan","expected_revision":9}"#).unwrap();
+        let second = parse_ui_command(r#"{"protocol_version":1,"command_id":"scan-2","action":"scan","expected_revision":8,"payload":{}}"#).unwrap();
+        let third = parse_ui_command(r#"{"protocol_version":1,"command_id":"scan-3","action":"scan","expected_revision":9,"payload":{}}"#).unwrap();
         cache.remember(&second, UiAck::success("second", None));
         cache.remember(&third, UiAck::success("third", None));
         assert!(cache.lookup(&command).is_none());
