@@ -21,3 +21,11 @@ Los dos nombres GBC son copias exactas del mismo core mGBA; el nombre del archiv
 ## Decisión de distribución
 
 El core mGBA local está identificado por coincidencia exacta con el artefacto del buildbot y el hash queda fijado arriba. La versión declarada del melonDS local coincide con una versión upstream, pero su binario no coincide con las compilaciones oficiales comparadas; su procedencia sigue **sin verificar**. No incluir ese binario local ni tratar sus tres nombres como cores distintos en paquetes publicados. Se puede usar el artefacto oficial verificado de v1.4.0 en validaciones separadas, sujeto a revisar y conservar sus avisos/licencias.
+
+## Build local reproducible T07 (2026-11-17)
+
+`desktop-rust/scripts/build-vyntra-cores-windows.ps1` construye localmente mGBA GBC/GBA y DSperate DS desde las fuentes fijadas, ejecuta CTest y prueba los tres DLL con `--probe-core`. La ejecución en WinLibs GCC 16.2.0, CMake 4.4.3 y Ninja 1.13.2 terminó con CTest 9/9 y probes GBC/GBA/DS `loadable`, arquitectura x86_64, API 1 y sistema esperado. Fuentes: mGBA `26b7884bc25a5933960f3cdcd98bac1ae14d42e2`, wrapper DSperate `801a2dc2bd9ddc6ec66eefd7b8f621d1d4b8adb6`, DSperate anidado `99618eb956c66083618395dbae9bb5cbf0241d16`; commit del repositorio `9845c758b2d6d131918859a20f6ae3805c23041f`.
+
+Los DLL generados en `desktop-rust/target/windows-cores/cores` tuvieron SHA-256 GBC/GBA `fee4752b7c1e1469c78d1e8b1bb538a5f752221e07ed0879290181d22f6374bd` y DS `f83a197bb8f716eaf5f259d80af34fb3adec1852a944c3e3216adbf553c055f3`. El GBC pasó el smoke de ROM diagnóstica; GBA pasó diagnóstico de video/estado, entrada A y el Player SDL con SRAM `0xA5` comprometida; DS pasó ROM diagnóstica y Player SDL. El manifiesto local `provenance.json` registra herramientas, fuentes y hashes y se mantiene fuera de Git junto con los binarios.
+
+Este resultado acredita una receta de build y pruebas en ese entorno, no una reconstrucción bit a bit ni la atribución de esos DLL al artefacto oficial del buildbot. Los nuevos hashes son distintos del DLL mGBA oficial auditado arriba. No distribuirlos todavía: completar revisión de avisos/licencias y procedencia del paquete.
