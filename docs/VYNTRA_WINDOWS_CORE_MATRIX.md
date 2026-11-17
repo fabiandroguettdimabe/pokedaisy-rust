@@ -14,7 +14,7 @@ Actualizado: 2026-11-17. Hito T07 / WIN-CORE-02, spike de compilación en Window
 |---|---|---|---|
 | GBC (mGBA adaptado) | CMake configura | `libretro/pd_libretro.c`: llamada POSIX `mkdir(path, mode)` no coincide con la API Windows de un argumento. El enlace también usa `--version-script` ELF. | No hay DLL ni ABI validada. Requiere capa Windows y exports PE. |
 | GBA (armGBA) | CMake configura | `sys/mman.h` no existe en MinGW; el JIT/recompiler usa APIs POSIX. El enlace usa version script ELF. | Portabilidad del JIT no resuelta. La fuente local declara GPL-2; revisar compatibilidad de distribución frente a licencia raíz GPL-3.0-only antes de publicar binarios. |
-| DS (DSperate libretro) | CMake configura; JIT desactivado para AMD64 | `std::aligned_alloc` no está disponible con esta biblioteca estándar MinGW. Después quedan exports ELF `--version-script`. | Port de asignación alineada y exports PE pendientes. No es melonDS. |
+| DS (DSperate libretro) | CMake configura; JIT desactivado para AMD64 | En el target completo, MinGW también rechaza `mkdir(path, 0755)` y `fsync` en `linux/libretro-ds/companion_ui.cpp`. La compilación del core además había identificado `std::aligned_alloc` no disponible. Después quedan exports ELF `--version-script`. | Port de APIs POSIX, asignación alineada y exports PE pendientes. No es melonDS. |
 
 Los scripts `linux/dsperate/gen_data.py` y `gen_guide.py` ahora especifican UTF-8 al leer/escribir. Esto corrige el fallo del generador al leer Kotlin UTF-8 bajo la página de códigos Windows. Ambos generadores se ejecutaron con salidas temporales y finalizaron correctamente; el generador de datos informó que coincide con las declaraciones Kotlin.
 
@@ -33,5 +33,7 @@ cmake --build $env:LOCALAPPDATA/Temp/vyntra-t07-ds --target pokedaisy_ds_libretr
 python linux/dsperate/gen_data.py --output $env:TEMP/vyntra-t07-ds/data_gen.h
 python linux/dsperate/gen_guide.py app/src/main/kotlin/com/pokedaisy/app/companion/data $env:TEMP/vyntra-t07-ds/guide_gen.h
 ```
+
+Una repetición desde el checkout con MinGW x64 (`cmake -S linux/libretro-ds -B desktop-rust/target/t07-ds-win -G Ninja -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ -DCMAKE_BUILD_TYPE=Release`) confirmó que la configuración termina, pero el target `pokedaisy_ds_libretro` no compila por las llamadas POSIX de `companion_ui.cpp` (`mkdir` de dos argumentos y `fsync`). El árbol de build está bajo `desktop-rust/target` y no forma parte del repositorio.
 
 T07 queda **HECHO-PARCIAL**: la matriz identifica bloqueos concretos y los generadores ya toleran UTF-8 en Windows. El DoD de DLL reproducible, exports PE y smoke con fuente/procedencia validada sigue pendiente.
