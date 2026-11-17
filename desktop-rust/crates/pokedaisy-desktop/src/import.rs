@@ -608,6 +608,16 @@ pub fn import_paths_controlled(
             .iter()
             .map(|byte| format!("{byte:02x}"))
             .collect::<String>();
+        if let Some(existing) = entries
+            .iter_mut()
+            .find(|entry| entry.content_hash.as_deref() == Some(hash.as_str()))
+        {
+            if !existing.sources.contains(&path) {
+                existing.sources.push(path);
+            }
+            summary.duplicates += 1;
+            continue;
+        }
         entries.push(LibraryEntry::from_path_with_hash(path, hash));
         summary.imported += 1;
     }
@@ -657,6 +667,29 @@ mod tests {
             entries[0].path,
             PathBuf::from(&valid.canonicalize().unwrap())
         );
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn identical_rom_content_uses_one_catalog_entry_and_preserves_both_sources() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-import-content-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let first = root.join("first.gba");
+        let second = root.join("backup-copy.gba");
+        fs::write(&first, valid_gba()).unwrap();
+        fs::copy(&first, &second).unwrap();
+        let mut entries = Vec::new();
+
+        let summary = import_paths(&mut entries, [first.clone(), second.clone()]);
+
+        assert_eq!(summary.imported, 1);
+        assert_eq!(summary.duplicates, 1);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].sources.len(), 2);
+        assert!(entries[0].sources.contains(&first.canonicalize().unwrap()));
+        assert!(entries[0].sources.contains(&second.canonicalize().unwrap()));
         let _ = fs::remove_dir_all(root);
     }
 

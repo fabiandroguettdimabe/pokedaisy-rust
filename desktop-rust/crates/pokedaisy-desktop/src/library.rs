@@ -17,6 +17,8 @@ pub struct LibraryEntry {
     /// Stable identifier derived from the ROM content hash.
     pub id: String,
     pub path: PathBuf,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sources: Vec<PathBuf>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content_hash: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -71,6 +73,7 @@ impl LibraryEntry {
             game_code: inspection.as_ref().and_then(|info| info.game_code.clone()),
             revision: inspection.as_ref().and_then(|info| info.revision),
             confidence: inspection.map(|info| info.confidence),
+            sources: vec![path.clone()],
             path,
             content_hash,
             last_seen_unix: None,
@@ -81,6 +84,9 @@ impl LibraryEntry {
     }
 
     pub fn refresh(&mut self) {
+        if !self.sources.contains(&self.path) {
+            self.sources.push(self.path.clone());
+        }
         self.content_hash = identity::sha256_file(&self.path).ok();
         if let Some(hash) = &self.content_hash {
             self.id = hash[..16].to_string();
@@ -152,6 +158,9 @@ pub fn relink_entry(
     entry.path = candidate
         .canonicalize()
         .map_err(|error| error.to_string())?;
+    if !entry.sources.contains(&entry.path) {
+        entry.sources.push(entry.path.clone());
+    }
     entry.refresh();
     Ok(())
 }
@@ -200,6 +209,9 @@ pub fn parse_value(value: Value) -> Result<Vec<LibraryEntry>, String> {
         if entry.id.is_empty() {
             entry.refresh();
         }
+        if entry.sources.is_empty() {
+            entry.sources.push(entry.path.clone());
+        }
         if entry.content_hash.is_none() && entry.path.is_file() {
             entry.refresh();
         }
@@ -241,6 +253,7 @@ mod tests {
         assert_eq!(entries[0].system.as_deref(), Some("GB"));
         assert_eq!(entries[1].system.as_deref(), Some("GBA"));
         assert!(!entries[0].id.is_empty());
+        assert_eq!(entries[0].sources, vec![PathBuf::from("C:/roms/a.gb")]);
     }
 
     #[test]
@@ -267,6 +280,7 @@ mod tests {
         let mut entries = vec![LibraryEntry {
             id: "game-a".into(),
             path: PathBuf::from("a.gba"),
+            sources: vec![PathBuf::from("a.gba")],
             content_hash: None,
             title: None,
             system: None,
@@ -347,6 +361,7 @@ mod tests {
         let entry = LibraryEntry {
             id: "abc123".into(),
             path: PathBuf::from("C:/roms/a.gb"),
+            sources: vec![PathBuf::from("C:/roms/a.gb")],
             content_hash: Some("abc123".into()),
             title: Some("A".into()),
             system: Some("GB".into()),
@@ -362,6 +377,7 @@ mod tests {
         let parsed = parse_value(value).unwrap();
         assert_eq!(parsed.len(), 1);
         assert_eq!(parsed[0].id, "abc123");
+        assert_eq!(parsed[0].sources, vec![PathBuf::from("C:/roms/a.gb")]);
     }
 
     #[test]
@@ -372,6 +388,7 @@ mod tests {
         let entries = vec![LibraryEntry {
             id: "id1".into(),
             path: PathBuf::from("C:/roms/a.gb"),
+            sources: vec![PathBuf::from("C:/roms/a.gb")],
             content_hash: None,
             title: Some("A".into()),
             system: Some("GB".into()),
