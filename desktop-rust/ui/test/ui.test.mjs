@@ -49,6 +49,8 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await expectCommand('game_volume',{storage_id:'gba-fixture',value:25});
   await page.getByLabel('Avance rápido para este juego').selectOption('3');
   await expectCommand('game_fast_forward',{storage_id:'gba-fixture',value:3});
+  await page.getByLabel('Autoguardado para este juego').selectOption('30');
+  await expectCommand('game_autosave',{storage_id:'gba-fixture',value:30});
   await page.getByLabel('Copia del juego').selectOption('2');
   await page.getByRole('button',{name:'Jugar',exact:true}).click();
   await expectCommand('play',{storage_id:'gba-fixture',source_index:2});
@@ -71,6 +73,8 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await expectCommand('system_volume',{system:'GBA',value:50});
   await page.getByLabel('Avance rápido para sistema').selectOption('4');
   await expectCommand('system_fast_forward',{system:'GBA',value:4});
+  await page.getByLabel('Autoguardado para sistema').selectOption('60');
+  await expectCommand('system_autosave',{system:'GBA',value:60});
   await page.getByRole('button',{name:'Biblioteca',exact:true}).click();
   await page.getByRole('textbox',{name:'Buscar juegos'}).fill('ABCD');
   assert.equal(await page.locator('.game-card').count(),1);

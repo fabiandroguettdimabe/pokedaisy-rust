@@ -445,6 +445,21 @@ pub fn run() -> Result<(), String> {
                             config.set_system_fast_forward(system, value)?;
                             if let Err(error) = config.save(&config_path) { config = previous; return Err(error); }
                         },
+                        "game_autosave" => {
+                            let id = action["storage_id"].as_str().ok_or("Juego inválido")?;
+                            if !games.iter().any(|game| game_storage_key(game) == id) { return Err("El juego ya no está en la biblioteca".into()); }
+                            let value = action["value"].as_u64();
+                            let previous = config.clone();
+                            config.set_game_autosave(id, value)?;
+                            if let Err(error) = config.save(&config_path) { config = previous; return Err(error); }
+                        },
+                        "system_autosave" => {
+                            let system = action["system"].as_str().ok_or("Sistema inválido")?;
+                            let value = action["value"].as_u64();
+                            let previous = config.clone();
+                            config.set_system_autosave(system, value)?;
+                            if let Err(error) = config.save(&config_path) { config = previous; return Err(error); }
+                        },
                         "library_view" => {
                             let view = action["value"].as_str().ok_or("Vista inválida")?;
                             if !matches!(view, "grid" | "list") { return Err("Vista inválida".into()); }

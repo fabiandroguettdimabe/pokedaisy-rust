@@ -8,6 +8,7 @@ pub struct GameSettingsOverride {
     pub smooth: Option<bool>,
     pub volume: Option<u8>,
     pub fast_forward: Option<u32>,
+    pub autosave: Option<u64>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -143,6 +144,20 @@ mod tests {
         settings.set_game_fast_forward("ds-game", None).unwrap();
         assert_eq!(settings.fast_forward_for_game("ds-game", "DS"), 4);
         assert!(settings.set_system_fast_forward("DS", Some(8)).is_err());
+    }
+
+    #[test]
+    fn autosave_interval_uses_game_system_then_global_and_rejects_unsupported_values() {
+        let mut settings = Settings::default();
+        settings.autosave = 20;
+        settings.set_system_autosave("GB", Some(60)).unwrap();
+        settings.set_game_autosave("gb-game", Some(10)).unwrap();
+        assert_eq!(settings.autosave_for_game("gb-game", "GB"), 10);
+        assert_eq!(settings.autosave_for_game("other", "GB"), 60);
+        assert_eq!(settings.autosave_for_game("other", "DS"), 20);
+        settings.set_game_autosave("gb-game", None).unwrap();
+        assert_eq!(settings.autosave_for_game("gb-game", "GB"), 60);
+        assert!(settings.set_system_autosave("GB", Some(15)).is_err());
     }
 
     #[test]
@@ -282,13 +297,15 @@ impl Settings {
                     .all(|byte| byte.is_ascii_alphanumeric() || b"-_".contains(&byte))
                 && (profile.smooth.is_some()
                     || profile.volume.is_some()
-                    || profile.fast_forward.is_some())
+                    || profile.fast_forward.is_some()
+                    || profile.autosave.is_some())
         });
         value.system_overrides.retain(|system, profile| {
             matches!(system.as_str(), "GB" | "GBC" | "GBA" | "DS")
                 && (profile.smooth.is_some()
                     || profile.volume.is_some()
-                    || profile.fast_forward.is_some())
+                    || profile.fast_forward.is_some()
+                    || profile.autosave.is_some())
         });
         for dir in [
             &mut value.library,
@@ -346,7 +363,11 @@ impl Settings {
         }
         let profile = self.system_overrides.entry(system.into()).or_default();
         profile.smooth = smooth;
-        if profile.smooth.is_none() && profile.volume.is_none() && profile.fast_forward.is_none() {
+        if profile.smooth.is_none()
+            && profile.volume.is_none()
+            && profile.fast_forward.is_none()
+            && profile.autosave.is_none()
+        {
             self.system_overrides.remove(system);
         }
         Ok(())
@@ -365,7 +386,10 @@ impl Settings {
         } else {
             if let Some(profile) = self.game_overrides.get_mut(storage_id) {
                 profile.smooth = None;
-                if profile.volume.is_none() && profile.fast_forward.is_none() {
+                if profile.volume.is_none()
+                    && profile.fast_forward.is_none()
+                    && profile.autosave.is_none()
+                {
                     self.game_overrides.remove(storage_id);
                 }
             }
@@ -399,7 +423,10 @@ impl Settings {
                 .volume = Some(value);
         } else if let Some(profile) = self.game_overrides.get_mut(storage_id) {
             profile.volume = None;
-            if profile.smooth.is_none() && profile.fast_forward.is_none() {
+            if profile.smooth.is_none()
+                && profile.fast_forward.is_none()
+                && profile.autosave.is_none()
+            {
                 self.game_overrides.remove(storage_id);
             }
         }
@@ -419,7 +446,10 @@ impl Settings {
                 .volume = Some(value);
         } else if let Some(profile) = self.system_overrides.get_mut(system) {
             profile.volume = None;
-            if profile.smooth.is_none() && profile.fast_forward.is_none() {
+            if profile.smooth.is_none()
+                && profile.fast_forward.is_none()
+                && profile.autosave.is_none()
+            {
                 self.system_overrides.remove(system);
             }
         }
@@ -467,7 +497,7 @@ impl Settings {
                 .fast_forward = Some(value);
         } else if let Some(profile) = self.game_overrides.get_mut(storage_id) {
             profile.fast_forward = None;
-            if profile.smooth.is_none() && profile.volume.is_none() {
+            if profile.smooth.is_none() && profile.volume.is_none() && profile.autosave.is_none() {
                 self.game_overrides.remove(storage_id);
             }
         }
@@ -491,7 +521,70 @@ impl Settings {
                 .fast_forward = Some(value);
         } else if let Some(profile) = self.system_overrides.get_mut(system) {
             profile.fast_forward = None;
-            if profile.smooth.is_none() && profile.volume.is_none() {
+            if profile.smooth.is_none() && profile.volume.is_none() && profile.autosave.is_none() {
+                self.system_overrides.remove(system);
+            }
+        }
+        Ok(())
+    }
+    pub fn autosave_for_game(&self, storage_id: &str, system: &str) -> u64 {
+        self.game_overrides
+            .get(storage_id)
+            .and_then(|profile| profile.autosave)
+            .or_else(|| {
+                self.system_overrides
+                    .get(system)
+                    .and_then(|profile| profile.autosave)
+            })
+            .unwrap_or(self.autosave)
+    }
+    pub fn set_game_autosave(
+        &mut self,
+        storage_id: &str,
+        value: Option<u64>,
+    ) -> Result<(), String> {
+        self.validate_game_profile_id(storage_id)?;
+        if value.is_some_and(|value| !matches!(value, 10 | 20 | 30 | 60 | 120)) {
+            return Err("Intervalo de autoguardado por juego inválido".into());
+        }
+        if let Some(value) = value {
+            if !self.game_overrides.contains_key(storage_id) && self.game_overrides.len() >= 10_000
+            {
+                return Err("Se alcanzó el límite de perfiles por juego".into());
+            }
+            self.game_overrides
+                .entry(storage_id.to_owned())
+                .or_default()
+                .autosave = Some(value);
+        } else if let Some(profile) = self.game_overrides.get_mut(storage_id) {
+            profile.autosave = None;
+            if profile.smooth.is_none()
+                && profile.volume.is_none()
+                && profile.fast_forward.is_none()
+            {
+                self.game_overrides.remove(storage_id);
+            }
+        }
+        Ok(())
+    }
+    pub fn set_system_autosave(&mut self, system: &str, value: Option<u64>) -> Result<(), String> {
+        if !matches!(system, "GB" | "GBC" | "GBA" | "DS") {
+            return Err("Sistema no válido para el perfil".into());
+        }
+        if value.is_some_and(|value| !matches!(value, 10 | 20 | 30 | 60 | 120)) {
+            return Err("Intervalo de autoguardado por sistema inválido".into());
+        }
+        if let Some(value) = value {
+            self.system_overrides
+                .entry(system.to_owned())
+                .or_default()
+                .autosave = Some(value);
+        } else if let Some(profile) = self.system_overrides.get_mut(system) {
+            profile.autosave = None;
+            if profile.smooth.is_none()
+                && profile.volume.is_none()
+                && profile.fast_forward.is_none()
+            {
                 self.system_overrides.remove(system);
             }
         }

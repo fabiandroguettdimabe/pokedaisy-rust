@@ -1297,7 +1297,13 @@ fn sdl_main() -> Result<(), String> {
                                 Color::RGB(196, 48, 48),
                             );
                         }
-                        if last_save.elapsed() > Duration::from_secs(config.autosave) {
+                        let autosave_interval = active_game
+                            .as_ref()
+                            .map(|game| {
+                                config.autosave_for_game(&game_storage_key(game), &game.system)
+                            })
+                            .unwrap_or(config.autosave);
+                        if last_save.elapsed() > Duration::from_secs(autosave_interval) {
                             if let (Some(g), Some(c)) =
                                 (session_save_owner(&active_game).cloned(), core.as_mut())
                             {
