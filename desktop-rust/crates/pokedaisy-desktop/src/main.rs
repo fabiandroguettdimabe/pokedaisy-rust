@@ -1209,31 +1209,33 @@ fn sdl_main() -> Result<(), String> {
                         c.set_fast_forward(fast_forward);
                         let mut input =
                             keyboard_joypad_state(&config, |key| keyboard_input.is_pressed(key));
-                        if let Some(pad) = game_controller.as_ref() {
-                            use sdl2::controller::{Axis, Button};
-                            for (button, retro) in [
-                                (Button::B, JoypadButton::B),
-                                (Button::A, JoypadButton::A),
-                                (Button::Y, JoypadButton::Y),
-                                (Button::X, JoypadButton::X),
-                                (Button::Start, JoypadButton::Start),
-                                (Button::Back, JoypadButton::Select),
-                                (Button::DPadUp, JoypadButton::Up),
-                                (Button::DPadDown, JoypadButton::Down),
-                                (Button::DPadLeft, JoypadButton::Left),
-                                (Button::DPadRight, JoypadButton::Right),
-                                (Button::LeftShoulder, JoypadButton::L),
-                                (Button::RightShoulder, JoypadButton::R),
-                            ] {
-                                if pad.button(button) {
-                                    input.set(retro, true);
+                        if keyboard_input.owns_game_input() {
+                            if let Some(pad) = game_controller.as_ref() {
+                                use sdl2::controller::{Axis, Button};
+                                for (button, retro) in [
+                                    (Button::B, JoypadButton::B),
+                                    (Button::A, JoypadButton::A),
+                                    (Button::Y, JoypadButton::Y),
+                                    (Button::X, JoypadButton::X),
+                                    (Button::Start, JoypadButton::Start),
+                                    (Button::Back, JoypadButton::Select),
+                                    (Button::DPadUp, JoypadButton::Up),
+                                    (Button::DPadDown, JoypadButton::Down),
+                                    (Button::DPadLeft, JoypadButton::Left),
+                                    (Button::DPadRight, JoypadButton::Right),
+                                    (Button::LeftShoulder, JoypadButton::L),
+                                    (Button::RightShoulder, JoypadButton::R),
+                                ] {
+                                    if pad.button(button) {
+                                        input.set(retro, true);
+                                    }
                                 }
-                            }
-                            if pad.axis(Axis::TriggerLeft) > 16_384 {
-                                input.set(JoypadButton::L2, true);
-                            }
-                            if pad.axis(Axis::TriggerRight) > 16_384 {
-                                input.set(JoypadButton::R2, true);
+                                if pad.axis(Axis::TriggerLeft) > 16_384 {
+                                    input.set(JoypadButton::L2, true);
+                                }
+                                if pad.axis(Axis::TriggerRight) > 16_384 {
+                                    input.set(JoypadButton::R2, true);
+                                }
                             }
                         }
                         match c.run_frame(input) {
@@ -1440,6 +1442,10 @@ impl KeyboardInputLease {
 
     fn key_up(&mut self, key: Keycode) {
         self.pressed.remove(&key);
+    }
+
+    fn owns_game_input(&self) -> bool {
+        self.focused
     }
 
     fn focus_lost(&mut self) {
@@ -3026,6 +3032,18 @@ mod tests {
         assert!(input.is_pressed(super::Keycode::Z));
         input.key_up(super::Keycode::Z);
         assert!(!input.is_pressed(super::Keycode::Z));
+    }
+
+    #[test]
+    fn controller_input_is_owned_only_while_player_window_has_focus() {
+        let mut input = super::KeyboardInputLease::new();
+        assert!(input.owns_game_input());
+
+        input.focus_lost();
+        assert!(!input.owns_game_input());
+
+        input.focus_gained();
+        assert!(input.owns_game_input());
     }
 
     #[test]
