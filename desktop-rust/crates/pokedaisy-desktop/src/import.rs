@@ -21,6 +21,7 @@ pub struct ImportSummary {
 pub struct ArchivePolicy {
     pub max_entry_bytes: u64,
     pub max_total_bytes: u64,
+    pub max_cache_bytes: u64,
     pub max_entries: usize,
 }
 
@@ -29,6 +30,7 @@ impl Default for ArchivePolicy {
         Self {
             max_entry_bytes: 512 * 1024 * 1024,
             max_total_bytes: MAX_ARCHIVE_TOTAL_BYTES,
+            max_cache_bytes: 4 * 1024 * 1024 * 1024,
             max_entries: MAX_ARCHIVE_ENTRIES,
         }
     }
@@ -165,6 +167,26 @@ fn import_archive_selected(
                 return summary;
             }
         }
+    }
+    let mut cached_bytes = 0u64;
+    if library_dir.exists() {
+        let Ok(cached_files) = fs::read_dir(library_dir) else {
+            summary.rejected = 1;
+            return summary;
+        };
+        for entry in cached_files.flatten() {
+            if entry.file_type().is_ok_and(|kind| kind.is_file()) {
+                cached_bytes = cached_bytes.saturating_add(
+                    entry
+                        .metadata()
+                        .map_or(policy.max_cache_bytes, |metadata| metadata.len()),
+                );
+            }
+        }
+    }
+    if cached_bytes.saturating_add(preflight_total) > policy.max_cache_bytes {
+        summary.rejected = 1;
+        return summary;
     }
     if fs::create_dir_all(library_dir).is_err() {
         summary.rejected = 1;
@@ -520,6 +542,35 @@ mod tests {
                 .unwrap_or(0),
             0
         );
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn archive_cache_quota_rejects_before_extracting() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-zip-cache-quota-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let archive_path = root.join("one.zip");
+        let file = fs::File::create(&archive_path).unwrap();
+        let mut writer = zip::ZipWriter::new(file);
+        writer
+            .start_file("game.gba", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(&valid_gba()).unwrap();
+        writer.finish().unwrap();
+        let cache = root.join("library");
+        fs::create_dir_all(&cache).unwrap();
+        fs::write(cache.join("existing.gba"), [0u8; 10]).unwrap();
+        let policy = ArchivePolicy {
+            max_cache_bytes: 200,
+            ..ArchivePolicy::default()
+        };
+
+        let summary = import_archive(&mut Vec::new(), &archive_path, &cache, policy);
+
+        assert_eq!(summary.rejected, 1);
+        assert_eq!(fs::read_dir(&cache).unwrap().count(), 1);
         let _ = fs::remove_dir_all(root);
     }
 
