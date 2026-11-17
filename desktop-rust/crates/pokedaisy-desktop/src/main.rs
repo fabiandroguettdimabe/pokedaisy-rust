@@ -198,6 +198,25 @@ mod migration_contract_tests {
     }
 
     #[test]
+    fn gba_checksum_is_reported_without_rejecting_homebrew_headers() {
+        let mut bytes = vec![0u8; 0xc0];
+        bytes[0xb2] = 0x96;
+        bytes[0xac..0xb0].copy_from_slice(b"HACK");
+        bytes[0xbc] = 1;
+        bytes[0xbd] = super::inspect::gba_header_checksum(&bytes);
+        assert_eq!(
+            super::inspect::inspect_bytes("homebrew.gba", &bytes)
+                .unwrap()
+                .header_checksum_valid,
+            Some(true)
+        );
+
+        bytes[0xbd] ^= 1;
+        let damaged = super::inspect::inspect_bytes("homebrew.gba", &bytes).unwrap();
+        assert_eq!(damaged.header_checksum_valid, Some(false));
+    }
+
+    #[test]
     fn changed_rom_is_rejected_against_the_catalog_content_identity() {
         let path =
             std::env::temp_dir().join(format!("vyntra-rom-change-{}.gba", std::process::id()));

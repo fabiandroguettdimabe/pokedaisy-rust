@@ -10,6 +10,7 @@ pub struct RomInspection {
     pub game_code: Option<String>,
     pub revision: Option<u8>,
     pub confidence: IdentityConfidence,
+    pub header_checksum_valid: Option<bool>,
 }
 
 pub fn inspect_bytes(file_name: &str, bytes: &[u8]) -> Option<RomInspection> {
@@ -49,7 +50,16 @@ fn inspect_gba(bytes: &[u8]) -> Option<RomInspection> {
         game_code: Some(code),
         revision: Some(bytes[0xbc]),
         confidence: IdentityConfidence::Partial,
+        header_checksum_valid: Some(bytes[0xbd] == gba_header_checksum(bytes)),
     })
+}
+
+pub fn gba_header_checksum(bytes: &[u8]) -> u8 {
+    bytes[0xa0..0xbd]
+        .iter()
+        .fold(0u8, |sum, byte| sum.wrapping_add(*byte))
+        .wrapping_add(0x19)
+        .wrapping_neg()
 }
 
 fn inspect_gb(bytes: &[u8], expect_color: bool) -> Option<RomInspection> {
@@ -72,7 +82,14 @@ fn inspect_gb(bytes: &[u8], expect_color: bool) -> Option<RomInspection> {
         game_code: None,
         revision: None,
         confidence: IdentityConfidence::Partial,
+        header_checksum_valid: Some(bytes[0x14d] == gb_header_checksum(bytes)),
     })
+}
+
+fn gb_header_checksum(bytes: &[u8]) -> u8 {
+    bytes[0x134..=0x14c]
+        .iter()
+        .fold(0u8, |sum, byte| sum.wrapping_sub(*byte).wrapping_sub(1))
 }
 
 fn inspect_ds(bytes: &[u8], file_size: u64) -> Option<RomInspection> {
@@ -96,6 +113,7 @@ fn inspect_ds(bytes: &[u8], file_size: u64) -> Option<RomInspection> {
         game_code,
         revision: None,
         confidence: IdentityConfidence::Partial,
+        header_checksum_valid: None,
     })
 }
 
@@ -116,5 +134,40 @@ trait NonEmpty {
 impl NonEmpty for String {
     fn into_option(self) -> Option<String> {
         (!self.is_empty()).then_some(self)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::inspect_bytes;
+
+    #[test]
+    fn gb_header_checksum_is_reported_but_does_not_gate_rom_inspection() {
+        const LOGO: [u8; 48] = [
+            0xce, 0xed, 0x66, 0x66, 0xcc, 0x0d, 0x00, 0x0b, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0c,
+            0x00, 0x0d, 0x00, 0x08, 0x11, 0x1f, 0x88, 0x89, 0x00, 0x0e, 0xdc, 0xcc, 0x6e, 0xe6,
+            0xdd, 0xdd, 0xd9, 0x99, 0xbb, 0xbb, 0x67, 0x63, 0x6e, 0x0e, 0xec, 0xcc, 0xdd, 0xdc,
+            0x99, 0x9f, 0xbb, 0xb9, 0x33, 0x3e,
+        ];
+        let mut bytes = vec![0u8; 0x150];
+        bytes[0x104..0x134].copy_from_slice(&LOGO);
+        bytes[0x134..0x138].copy_from_slice(b"HOME");
+        let checksum = bytes[0x134..=0x14c]
+            .iter()
+            .fold(0u8, |sum, byte| sum.wrapping_sub(*byte).wrapping_sub(1));
+        bytes[0x14d] = checksum;
+        assert_eq!(
+            inspect_bytes("homebrew.gb", &bytes)
+                .unwrap()
+                .header_checksum_valid,
+            Some(true)
+        );
+        bytes[0x14d] ^= 1;
+        assert_eq!(
+            inspect_bytes("homebrew.gb", &bytes)
+                .unwrap()
+                .header_checksum_valid,
+            Some(false)
+        );
     }
 }
