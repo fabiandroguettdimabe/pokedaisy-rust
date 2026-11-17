@@ -436,6 +436,7 @@ fn sdl_main() -> Result<(), String> {
     let mut last_auto = Instant::now();
     let mut last_save = Instant::now();
     let mut last_pipe_snapshot = Instant::now();
+    let mut companion_paused = false;
     if let Some(path) = rom_arg {
         if let Some(index) = games.iter().position(|g| g.path == path) {
             selected = index;
@@ -491,7 +492,16 @@ fn sdl_main() -> Result<(), String> {
                         }
                     }
                 }
-                Ok(Some(transport::PlayerCommand::Pause(_))) | Ok(None) => {}
+                Ok(Some(transport::PlayerCommand::Pause(paused))) => {
+                    companion_paused = paused;
+                    if paused {
+                        audio_device.pause();
+                    } else {
+                        audio_device.resume();
+                    }
+                    last_auto = Instant::now();
+                }
+                Ok(None) => {}
                 Err(_) => break 'app,
             }
         }
@@ -928,7 +938,7 @@ fn sdl_main() -> Result<(), String> {
                 } else {
                     frame_interval
                 };
-                if last_auto.elapsed() >= frame_interval {
+                if !companion_paused && last_auto.elapsed() >= frame_interval {
                     if let Some(c) = core.as_mut() {
                         c.set_fast_forward(fast_forward);
                         let keys = event_pump.keyboard_state();
@@ -1060,6 +1070,7 @@ fn sdl_main() -> Result<(), String> {
                     "title": active_game.as_ref().map(|game| game.title.as_str()),
                     "system": active_game.as_ref().map(|game| game.system),
                     "screen": if matches!(screen, Screen::Playing) { "playing" } else { "menu" },
+                    "paused": companion_paused,
                 });
                 let _ = pipe.send_snapshot(snapshot);
             }

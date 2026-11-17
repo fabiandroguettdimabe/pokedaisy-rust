@@ -483,6 +483,12 @@ pub fn run() -> Result<(), String> {
                                 .send(crate::transport::PlayerCommand::Stop)
                                 .map_err(|error| format!("No se pudo detener Player: {error:?}"))?;
                         },
+                        "pause_player" => {
+                            let paused = action["value"].as_bool().ok_or("Estado de pausa inválido")?;
+                            player_commands.as_ref().ok_or("No hay una partida conectada")?
+                                .send(crate::transport::PlayerCommand::Pause(paused))
+                                .map_err(|error| format!("No se pudo cambiar la pausa de Player: {error:?}"))?;
+                        },
                         "open_folder"=> {
                             let field=action["field"].as_str().unwrap_or("");
                             let path=match field {"saves"=>&config.saves,"states"=>&config.states,"library"=>&config.library,"system"=>&config.system,"config"=>&data,_=>return Err("Carpeta no válida".into())};

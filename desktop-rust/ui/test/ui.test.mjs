@@ -12,7 +12,7 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.addInitScript(()=>{window.commands=[];window.ipc={postMessage:body=>window.commands.push(JSON.parse(body))};});
   await page.goto(pathToFileURL(resolve('dist/index.html')).href);
   await page.waitForFunction(()=>typeof window.vyntraState==='function');
-  await page.evaluate(()=>window.vyntraState({
+  await page.evaluate(()=>window.vyntraState(window.testState={
    config:{library:'C:/fixtures/roms',saves:'C:/fixtures/saves',states:'C:/fixtures/states',system:'C:/fixtures/bios',cores:[null,null,null],volume:80,smooth:true,fullscreen:false,recursive:true,fast_forward:2,autosave:20,reduced_motion:false,keys:['Z','X','F','Tab','Return','Backspace','Up','Down','Left','Right','Q','E','1','2']},
    games:[{id:0,storage_id:'gb-fixture',title:'Synthetic GB fixture',system:'GB',path:'C:/fixtures/test.gb',missing:false,core:false,note:''},{id:1,storage_id:'gba-fixture',title:'Synthetic GBA fixture',system:'GBA',path:'C:/fixtures/test.gba',missing:false,core:false,note:''}],
    cores:[{id:0,system:'GBC',path:null,installed:false},{id:1,system:'GBA',path:'C:/cores/test.dll',installed:true},{id:2,system:'DS',path:null,installed:false}],saves:[],scanning:false,
@@ -71,6 +71,9 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.screenshot({path:resolve('../../.taste-skill/companion/companion-mobile.png'),fullPage:true});
   await page.setViewportSize({width:960,height:640});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
+  await page.evaluate(()=>{window.testState={...window.testState,session:{session_id:'test-session',epoch:2},command_revision:7};window.vyntraState(window.testState);window.vyntraPlayerSnapshot({title:'Synthetic GBA fixture',system:'GBA',screen:'playing',paused:false});});
+  await page.getByRole('button',{name:'Pausar',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'pause_player',value:true,session_id:'test-session',epoch:2,expected_revision:7});
   assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 });
