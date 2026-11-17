@@ -126,6 +126,7 @@ pub fn run() -> Result<(), String> {
                 let mut refresh = false;
                 let mut command_result: Option<serde_json::Value> = None;
                 let result = (|| -> Result<(), String> {
+                    validate_command_revision(cmd.expected_revision, command_revision)?;
                     validate_command_session(&session, session_epoch, &cmd)?;
                     match name {
                         "ready" | "scan" => refresh=true,
@@ -376,6 +377,13 @@ fn validate_command_session(
     Ok(())
 }
 
+fn validate_command_revision(expected: Option<u64>, current: u64) -> Result<(), String> {
+    if expected.is_some_and(|revision| revision != current) {
+        return Err("La biblioteca cambió desde tu última acción; vuelve a intentarlo".into());
+    }
+    Ok(())
+}
+
 fn save_files(config: &Settings) -> Vec<PathBuf> {
     let mut files = save_files_in(&[&config.saves, &config.states]);
     files.sort_by_key(|p| {
@@ -520,6 +528,13 @@ mod tests {
         c.epoch = Some(2);
         assert!(validate_command_session(&Some(session()), 3, &c).is_err());
         assert!(validate_command_session(&None, 3, &c).is_err());
+    }
+
+    #[test]
+    fn stale_command_revision_is_rejected_but_legacy_revision_is_allowed() {
+        assert!(validate_command_revision(Some(7), 7).is_ok());
+        assert!(validate_command_revision(Some(6), 7).is_err());
+        assert!(validate_command_revision(None, 7).is_ok());
     }
 
     #[test]
