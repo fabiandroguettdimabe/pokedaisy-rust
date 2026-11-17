@@ -1147,32 +1147,11 @@ fn sdl_main() -> Result<(), String> {
                 if !companion_paused && last_auto.elapsed() >= frame_interval {
                     if let Some(c) = core.as_mut() {
                         c.set_fast_forward(fast_forward);
-                        let keys = event_pump.keyboard_state();
-                        let mut input = JoypadState::default();
-                        for (binding, (k, b)) in [
-                            (Keycode::Z, JoypadButton::A),
-                            (Keycode::X, JoypadButton::B),
-                            (Keycode::F, JoypadButton::Y),
-                            (Keycode::Tab, JoypadButton::X),
-                            (Keycode::Return, JoypadButton::Start),
-                            (Keycode::Backspace, JoypadButton::Select),
-                            (Keycode::Up, JoypadButton::Up),
-                            (Keycode::Down, JoypadButton::Down),
-                            (Keycode::Left, JoypadButton::Left),
-                            (Keycode::Right, JoypadButton::Right),
-                            (Keycode::Q, JoypadButton::L),
-                            (Keycode::E, JoypadButton::R),
-                            (Keycode::Num1, JoypadButton::L2),
-                            (Keycode::Num2, JoypadButton::R2),
-                        ]
-                        .into_iter()
-                        .enumerate()
-                        {
-                            let k = Keycode::from_name(&config.keys[binding]).unwrap_or(k);
-                            if keys.is_scancode_pressed(pressed_key(k)) {
-                                input.set(b, true);
-                            }
-                        }
+                        let mut input = keyboard_joypad_state(&config, |key| {
+                            event_pump
+                                .keyboard_state()
+                                .is_scancode_pressed(pressed_key(key))
+                        });
                         if let Some(pad) = game_controller.as_ref() {
                             use sdl2::controller::{Axis, Button};
                             for (button, retro) in [
@@ -1301,6 +1280,42 @@ fn sdl_main() -> Result<(), String> {
 // KeyboardState uses the SDL scancode enum; keep the game mapping in one compact helper.
 fn pressed_key(key: Keycode) -> sdl2::keyboard::Scancode {
     sdl2::keyboard::Scancode::from_keycode(key).unwrap_or(sdl2::keyboard::Scancode::A)
+}
+
+fn keyboard_joypad_state(
+    config: &Settings,
+    mut is_pressed: impl FnMut(Keycode) -> bool,
+) -> JoypadState {
+    let mut input = JoypadState::default();
+    for (binding, (default_key, button)) in [
+        (Keycode::Z, JoypadButton::A),
+        (Keycode::X, JoypadButton::B),
+        (Keycode::F, JoypadButton::Y),
+        (Keycode::Tab, JoypadButton::X),
+        (Keycode::Return, JoypadButton::Start),
+        (Keycode::Backspace, JoypadButton::Select),
+        (Keycode::Up, JoypadButton::Up),
+        (Keycode::Down, JoypadButton::Down),
+        (Keycode::Left, JoypadButton::Left),
+        (Keycode::Right, JoypadButton::Right),
+        (Keycode::Q, JoypadButton::L),
+        (Keycode::E, JoypadButton::R),
+        (Keycode::Num1, JoypadButton::L2),
+        (Keycode::Num2, JoypadButton::R2),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let key = config
+            .keys
+            .get(binding)
+            .and_then(|name| Keycode::from_name(name))
+            .unwrap_or(default_key);
+        if is_pressed(key) {
+            input.set(button, true);
+        }
+    }
+    input
 }
 
 fn game_storage_key(game: &Game) -> String {
@@ -2799,6 +2814,15 @@ mod tests {
     use std::fs;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn configured_keyboard_bindings_map_to_libretro_buttons() {
+        let mut config = super::Settings::default();
+        config.keys[0] = "A".into();
+        let input = super::keyboard_joypad_state(&config, |key| key == super::Keycode::A);
+        assert!(input.contains(super::JoypadButton::A));
+        assert!(!input.contains(super::JoypadButton::B));
+    }
 
     #[test]
     fn explicit_game_source_selects_matching_duplicate_and_rejects_mismatch() {
