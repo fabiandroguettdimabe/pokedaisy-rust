@@ -3011,7 +3011,8 @@ mod tests {
             Some(1),
             Some(&"b".repeat(64)),
             "committed",
-        );
+        )
+        .unwrap();
         let mut config = Settings::default();
         config.states = state_root;
         config.saves = root.join("saves");
@@ -3059,7 +3060,8 @@ mod tests {
             Some(1),
             Some(&core_hash),
             "committed",
-        );
+        )
+        .unwrap();
         let payload = b"new portable state";
         let bundle = crate::vault::SaveBundleManifest {
             schema_version: 1,
@@ -3221,7 +3223,8 @@ mod tests {
             None,
             Some(&core_hash),
             "committed",
-        );
+        )
+        .unwrap();
         let battery_manifest = crate::vault::SaveBundleManifest {
             schema_version: 1,
             storage_id: game_storage_key(&game),
@@ -3291,7 +3294,8 @@ mod tests {
             Some(1),
             Some(&core_hash),
             "committed",
-        );
+        )
+        .unwrap();
         let manifest_path = state_path.parent().unwrap().join("state.manifest.json");
         let old_manifest = fs::read(&manifest_path).unwrap();
         let new_payload = b"new state from Vault";
@@ -3399,7 +3403,7 @@ mod tests {
             .expect("mGBA must expose battery RAM for Vault smoke");
         assert!(!original.is_empty());
         let core_hash = identity::sha256_file(&core_path).unwrap();
-        crate::save_battery(&mut core, &game, &saves, Some(&core_hash));
+        crate::save_battery(&mut core, &game, &saves, Some(&core_hash)).unwrap();
         drop(core);
 
         let mut restored = original;

@@ -1043,7 +1043,11 @@ fn sdl_main() -> Result<(), String> {
                             if let (Some(c), Some(g)) =
                                 (core.as_mut(), session_save_owner(&active_game))
                             {
-                                save_battery(c, g, &save_dir, active_core_hash.as_deref());
+                                if let Err(error) =
+                                    save_battery(c, g, &save_dir, active_core_hash.as_deref())
+                                {
+                                    eprintln!("{error}");
+                                }
                             }
                             core = None;
                             active_game = None;
@@ -1073,15 +1077,21 @@ fn sdl_main() -> Result<(), String> {
                                             continue 'app;
                                         }
                                         match atomic_write(&path, &bytes) {
-                                            Ok(()) => write_save_manifest(
-                                                g,
-                                                &state_dir,
-                                                domain::SaveKind::SaveState,
-                                                &bytes,
-                                                Some(1),
-                                                active_core_hash.as_deref(),
-                                                "committed",
-                                            ),
+                                            Ok(()) => {
+                                                if let Err(error) = write_save_manifest(
+                                                    g,
+                                                    &state_dir,
+                                                    domain::SaveKind::SaveState,
+                                                    &bytes,
+                                                    Some(1),
+                                                    active_core_hash.as_deref(),
+                                                    "committed",
+                                                ) {
+                                                    last_error = Some(format!(
+                                                        "No se pudo confirmar el manifiesto del estado: {error}"
+                                                    ));
+                                                }
+                                            }
                                             Err(e) => {
                                                 last_error =
                                                     Some(format!("No se pudo guardar estado: {e}"))
@@ -1355,7 +1365,11 @@ fn sdl_main() -> Result<(), String> {
                             if let (Some(g), Some(c)) =
                                 (session_save_owner(&active_game).cloned(), core.as_mut())
                             {
-                                save_battery(c, &g, &save_dir, active_core_hash.as_deref());
+                                if let Err(error) =
+                                    save_battery(c, &g, &save_dir, active_core_hash.as_deref())
+                                {
+                                    last_error = Some(error);
+                                }
                                 last_save = Instant::now();
                             }
                         }
@@ -1441,7 +1455,9 @@ fn sdl_main() -> Result<(), String> {
     }
     if let Some(c) = core.as_mut() {
         if let Some(g) = session_save_owner(&active_game) {
-            save_battery(c, g, &save_dir, active_core_hash.as_deref());
+            if let Err(error) = save_battery(c, g, &save_dir, active_core_hash.as_deref()) {
+                eprintln!("{error}");
+            }
         }
     }
     Ok(())
@@ -2039,11 +2055,8 @@ fn write_save_manifest(
     slot: Option<u32>,
     core_hash: Option<&str>,
     status: &str,
-) {
-    if let Err(error) = write_save_manifest_checked(game, dir, kind, bytes, slot, core_hash, status)
-    {
-        eprintln!("No se pudo escribir manifiesto de guardado: {error}");
-    }
+) -> Result<(), String> {
+    write_save_manifest_checked(game, dir, kind, bytes, slot, core_hash, status)
 }
 
 fn write_save_manifest_checked(
@@ -2084,45 +2097,45 @@ fn write_save_manifest_checked(
     atomic_write(&path, &json)
 }
 
-fn save_battery(core: &mut LibretroCore, game: &Game, dir: &Path, core_hash: Option<&str>) {
-    if let Err(error) = validate_game_identity(game) {
-        eprintln!("No se guardó SRAM porque cambió la ROM activa: {error}");
-        return;
-    }
-    match core.read_save_ram() {
-        Ok(data) => {
-            let path = preferred_battery_path(game, dir);
-            if let Err(error) = backup_verified_battery(game, dir, core_hash) {
-                eprintln!(
-                    "No se pudo respaldar SRAM anterior para {}: {error}",
-                    safe_log_file_name(&game.path)
-                );
-                return;
-            }
-            match atomic_write(&path, &data) {
-                Ok(()) => write_save_manifest(
-                    game,
-                    dir,
-                    domain::SaveKind::BatteryRam,
-                    &data,
-                    None,
-                    core_hash,
-                    "committed",
-                ),
-                Err(e) => eprintln!(
-                    "No se pudo guardar SRAM para {} en {}: {e}",
-                    safe_log_file_name(&game.path),
-                    safe_log_file_name(&path)
-                ),
-            }
-        }
-        Err(e) => {
-            eprintln!(
-                "No se pudo leer SRAM del núcleo para {}: {e:?}",
-                safe_log_file_name(&game.path)
-            );
-        }
-    }
+fn save_battery(
+    core: &mut LibretroCore,
+    game: &Game,
+    dir: &Path,
+    core_hash: Option<&str>,
+) -> Result<(), String> {
+    validate_game_identity(game)
+        .map_err(|error| format!("La ROM activa cambió; no se guardó la SRAM: {error}"))?;
+    let data = core
+        .read_save_ram()
+        .map_err(|error| format!("No se pudo leer SRAM del núcleo: {error:?}"))?;
+    let path = preferred_battery_path(game, dir);
+    backup_verified_battery(game, dir, core_hash).map_err(|error| {
+        format!(
+            "No se pudo respaldar SRAM anterior para {}: {error}",
+            safe_log_file_name(&game.path)
+        )
+    })?;
+    atomic_write(&path, &data).map_err(|error| {
+        format!(
+            "No se pudo guardar SRAM para {}: {error}",
+            safe_log_file_name(&game.path)
+        )
+    })?;
+    write_save_manifest(
+        game,
+        dir,
+        domain::SaveKind::BatteryRam,
+        &data,
+        None,
+        core_hash,
+        "committed",
+    )
+    .map_err(|error| {
+        format!(
+            "No se pudo confirmar manifiesto SRAM para {}: {error}",
+            safe_log_file_name(&game.path)
+        )
+    })
 }
 
 fn state_path(game: &Game, dir: &Path) -> PathBuf {
@@ -3292,6 +3305,39 @@ mod tests {
         assert!(!error.contains("cores"));
     }
 
+    #[test]
+    fn save_manifest_write_failure_is_returned_to_the_caller() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-manifest-error-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let rom_path = root.join("fixture.gb");
+        std::fs::write(&rom_path, b"fixture rom").unwrap();
+        let game = super::Game {
+            path: rom_path,
+            title: "Fixture".into(),
+            system: "GB",
+            storage_key: std::sync::OnceLock::new(),
+            rom_sha256: std::sync::OnceLock::new(),
+        };
+        let saves = root.join("saves");
+        std::fs::create_dir_all(&saves).unwrap();
+        std::fs::write(saves.join("by-id"), b"blocks manifest directory").unwrap();
+
+        let result = super::write_save_manifest(
+            &game,
+            &saves,
+            super::domain::SaveKind::BatteryRam,
+            b"battery",
+            None,
+            Some("core-hash"),
+            "committed",
+        );
+
+        assert!(result.is_err());
+        let _ = std::fs::remove_dir_all(root);
+    }
+
     fn exercise_real_core_frame_and_state(core: &mut super::LibretroCore) {
         let first = core.run_frame(super::JoypadState::default()).unwrap();
         assert!(first.video.as_ref().is_some_and(|frame| {
@@ -3347,7 +3393,7 @@ mod tests {
             .expect("mGBA must return save RAM after a write");
         assert_eq!(read_back, battery);
         let core_hash = super::identity::sha256_file(&config.cores[1].clone().unwrap()).unwrap();
-        super::save_battery(&mut core, &game, &saves, Some(&core_hash));
+        super::save_battery(&mut core, &game, &saves, Some(&core_hash)).unwrap();
         assert_eq!(
             super::load_compatible_battery(&game, &saves, config.cores[1].as_ref().unwrap())
                 .unwrap()
@@ -3617,7 +3663,8 @@ mod tests {
             None,
             Some(&core_hash),
             "committed",
-        );
+        )
+        .unwrap();
         let key = super::game_storage_key(&game);
         let manifest_path = dir.join("by-id").join(key).join("manifest.json");
         assert!(manifest_path.is_file());
@@ -3694,7 +3741,8 @@ mod tests {
             Some(1),
             Some("corehash"),
             "committed",
-        );
+        )
+        .unwrap();
         fs::write(super::state_path(&game, &dir), b"state").unwrap();
         let state_manifest_path = manifest_path.with_file_name("state.manifest.json");
         assert!(state_manifest_path.is_file());
