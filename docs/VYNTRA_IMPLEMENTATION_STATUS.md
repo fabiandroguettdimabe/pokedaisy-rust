@@ -94,4 +94,4 @@ Los DLL estándar de RetroArch no se renombran ni se anuncian como compatibles. 
 | `crates/pokedaisy-*` | Paquetes Cargo `vyntra-*` | Rutas conservadas | Evita movimientos de archivos innecesarios; los nombres de paquete son internos. |
 | `libpokedaisy` y módulos Kotlin `com.pokedaisy.app` | Pendiente de evaluar | Conservado internamente | Renombrar bibliotecas y paquetes puede romper JNI, migraciones o actualización de datos; la marca de interfaz ya puede cambiar por separado. |
 
-- Verificación Desktop/UI (2026-11-17): `cargo fmt --all --check`, `cargo test --workspace --target x86_64-pc-windows-gnu` OK (123 unitarias Desktop + 6 integración probe/AV + 4 libretro); `npm test` UI 1/1 y `npm run build` OK. T02 migró la UI y el shell a `UiCommandEnvelope` v1; el parser rechaza mensajes planos sin versión.
+- Verificación Desktop/UI (2026-11-17): `cargo fmt --all --check`, `cargo test --workspace --target x86_64-pc-windows-gnu` OK (124 unitarias Desktop + 6 integración probe/AV + 4 libretro); `npm test` UI 1/1 y `npm run build` OK. T02 migró la UI y el shell a `UiCommandEnvelope` v1; el parser rechaza mensajes planos sin versión.

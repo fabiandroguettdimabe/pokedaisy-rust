@@ -1405,6 +1405,50 @@ mod tests {
     }
 
     #[test]
+    fn migration_preview_keeps_homonymous_legacy_sram_as_conflict() {
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-legacy-homonym-preview-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        let first_path = root.join("roms/one/Same.gb");
+        let second_path = root.join("roms/two/Same.gb");
+        fs::create_dir_all(first_path.parent().unwrap()).unwrap();
+        fs::create_dir_all(second_path.parent().unwrap()).unwrap();
+        fs::write(&first_path, b"first ROM").unwrap();
+        fs::write(&second_path, b"second ROM").unwrap();
+        let legacy_save = root.join("data/saves/Same.gb.sav");
+        fs::create_dir_all(legacy_save.parent().unwrap()).unwrap();
+        fs::write(&legacy_save, b"legacy SRAM").unwrap();
+        let games = vec![game_from_path(first_path), game_from_path(second_path)];
+        let mut config = Settings::default();
+        config.saves = root.join("custom/saves");
+        config.states = root.join("custom/states");
+
+        let items = legacy_migration_items(&games, &config, &root);
+        let report = migration::preview(&items).unwrap();
+        let battery_items: Vec<_> = report
+            .items
+            .iter()
+            .filter(|item| item.item.kind == "battery")
+            .collect();
+
+        assert_eq!(battery_items.len(), 2);
+        assert!(
+            battery_items
+                .iter()
+                .all(|item| item.status == migration::MigrationStatus::Conflict)
+        );
+        assert!(legacy_save.is_file());
+        assert!(
+            battery_items
+                .iter()
+                .all(|item| !item.item.destination.exists())
+        );
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn save_listing_walks_by_id_directories_and_filters_extensions() {
         let root = std::env::temp_dir().join(format!("vyntra-saves-{}", std::process::id()));
         let nested = root.join("by-id").join("abc123");
