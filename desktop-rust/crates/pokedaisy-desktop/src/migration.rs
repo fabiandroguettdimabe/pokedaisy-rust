@@ -581,6 +581,84 @@ mod tests {
         let _ = fs::remove_dir_all(root);
     }
 
+    #[cfg(windows)]
+    #[test]
+    fn migration_acl_denial_preserves_previous_journal_and_source() {
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-migration-acl-denial-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("legacy.sav");
+        let destination = root.join("by-id/game/battery.sav");
+        let journal = root.join("migration.json");
+        let source_bytes = b"legacy battery remains untouched";
+        fs::write(&source, source_bytes).unwrap();
+        let previous = MigrationReport {
+            schema: 1,
+            items: Vec::new(),
+        };
+        persist(&journal, &previous).unwrap();
+        let report = preview(&[MigrationItem::new(
+            source.clone(),
+            destination.clone(),
+            "game".into(),
+            "battery".into(),
+        )])
+        .unwrap();
+
+        let identity = std::process::Command::new("whoami")
+            .args(["/user", "/fo", "csv", "/nh"])
+            .output()
+            .unwrap();
+        assert!(identity.status.success());
+        let identity = String::from_utf8(identity.stdout).unwrap();
+        let sid = identity
+            .lines()
+            .next()
+            .and_then(|line| line.split(',').nth(1))
+            .map(|value| value.trim().trim_matches('"'))
+            .filter(|value| value.starts_with("S-1-"))
+            .expect("whoami returns the current Windows SID");
+        let deny = format!("*{sid}:(WD)");
+        let denied_acl = std::process::Command::new("icacls")
+            .arg(&root)
+            .arg("/deny")
+            .arg(&deny)
+            .output()
+            .unwrap();
+        if !denied_acl.status.success() {
+            eprintln!(
+                "Skipping denied-folder assertion: icacls could not set the temporary ACL: {}",
+                String::from_utf8_lossy(&denied_acl.stderr)
+            );
+            let _ = fs::remove_dir_all(&root);
+            return;
+        }
+
+        let apply_result = apply(&journal, &report);
+        let restore_acl = std::process::Command::new("icacls")
+            .arg(&root)
+            .arg("/remove:d")
+            .arg(format!("*{sid}"))
+            .output()
+            .unwrap();
+        let journal_bytes = fs::read(&journal).unwrap();
+        let source_after = fs::read(&source).unwrap();
+        let destination_exists = destination.exists();
+        let _ = fs::remove_dir_all(&root);
+
+        assert!(
+            restore_acl.status.success(),
+            "temporary ACL must be restored"
+        );
+        assert!(apply_result.is_err());
+        assert_eq!(journal_bytes, serde_json::to_vec_pretty(&previous).unwrap());
+        assert_eq!(source_after, source_bytes);
+        assert!(!destination_exists);
+    }
+
     #[test]
     fn journal_persistence_preserves_an_unowned_tmp_neighbor() {
         let root = std::env::temp_dir().join(format!(
