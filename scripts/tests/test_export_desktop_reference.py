@@ -40,15 +40,18 @@ class ExportDesktopReferenceTests(unittest.TestCase):
         self.assertEqual(types, [{"id": 0, "name": "NORMAL"}, {"id": 8, "name": "GHOST"}])
         self.assertEqual(matchups, [{"attack": 0, "defense": 8, "percent": 0}])
 
-    def test_exports_yellow_and_crystal_charts_with_distinct_generation_rules(self):
-        data = json.loads(MODULE.render_earlier_generation_datasets())
-        yellow, crystal = data["datasets"]
+    def test_exports_versioned_yellow_crystal_and_glazed_charts(self):
+        data = json.loads(MODULE.render_additional_datasets())
+        yellow, crystal, glazed = data["datasets"]
         self.assertEqual((yellow["generation"], yellow["reference_game"]), (1, "Pokémon Yellow"))
         self.assertEqual((crystal["generation"], crystal["reference_game"]), (2, "Pokémon Crystal"))
         self.assertEqual(yellow["license"], "GPL-3.0-only")
         self.assertIn({"attack": 8, "defense": 24, "percent": 0}, yellow["matchups"])
         self.assertIn({"attack": 27, "defense": 24, "percent": 200}, crystal["matchups"])
         self.assertIn({"id": 9, "name": "STEEL"}, crystal["types"])
+        self.assertEqual((glazed["generation"], glazed["reference_game"]), (6, "Pokémon Glazed 9.2.0"))
+        self.assertIn({"id": 9, "name": "Fairy"}, glazed["types"])
+        self.assertIn({"attack": 9, "defense": 16, "percent": 200}, glazed["matchups"])
 
 
 if __name__ == "__main__":

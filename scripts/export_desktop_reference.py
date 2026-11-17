@@ -11,9 +11,10 @@ ROOT = Path(__file__).resolve().parents[1]
 NAMES_PATH = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartUtil.kt"
 CHART_PATH = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChart.kt"
 OUTPUT = ROOT / "desktop-rust/assets/reference/type-chart-gen3.json"
-UI_DATASET_OUTPUT = ROOT / "desktop-rust/ui/src/data/type-charts-gen1-2.json"
+UI_DATASET_OUTPUT = ROOT / "desktop-rust/ui/src/data/type-charts-reference.json"
 GEN1_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartYellow.kt"
 GEN2_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartCrystal.kt"
+GEN6_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartGlazed.kt"
 
 
 def kotlin_map(source: str, variable: str) -> str:
@@ -72,10 +73,11 @@ def render_dataset() -> str:
     return json.dumps(dataset, ensure_ascii=False, indent=2) + "\n"
 
 
-def render_earlier_generation_datasets() -> str:
+def render_additional_datasets() -> str:
     definitions = [
         (1, "yellow", GEN1_NAMES, "typeNamesYellow", "typeEffectivenessYellow"),
         (2, "crystal", GEN2_NAMES, "typeNamesCrystal", "typeEffectivenessCrystal"),
+        (6, "glazed", GEN6_NAMES, "typeNamesGlazed", "typeEffectivenessGlazed"),
     ]
     datasets = []
     for generation, game, source_path, names_var, chart_var in definitions:
@@ -84,7 +86,7 @@ def render_earlier_generation_datasets() -> str:
         datasets.append({
             "dataset_id": f"pokemon-gen{generation}-{game}-type-chart",
             "generation": generation,
-            "reference_game": "Pokémon Yellow" if generation == 1 else "Pokémon Crystal",
+            "reference_game": {1: "Pokémon Yellow", 2: "Pokémon Crystal", 6: "Pokémon Glazed 9.2.0"}[generation],
             "source_files": [source_path.relative_to(ROOT).as_posix()],
             "source_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
             "license": "GPL-3.0-only",
@@ -100,21 +102,21 @@ def main():
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     generated = render_dataset()
-    earlier = render_earlier_generation_datasets()
+    additional = render_additional_datasets()
     if args.check:
         actual = OUTPUT.read_text(encoding="utf-8") if OUTPUT.exists() else ""
         if actual != generated:
             raise SystemExit("Desktop type-chart dataset is stale; run python scripts/export_desktop_reference.py")
         ui_actual = UI_DATASET_OUTPUT.read_text(encoding="utf-8") if UI_DATASET_OUTPUT.exists() else ""
-        if ui_actual != earlier:
-            raise SystemExit("Desktop Gen I/II type charts are stale; run python scripts/export_desktop_reference.py")
+        if ui_actual != additional:
+            raise SystemExit("Desktop additional type charts are stale; run python scripts/export_desktop_reference.py")
         print("desktop reference: type charts match Kotlin sources")
         return
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(generated, encoding="utf-8", newline="\n")
     UI_DATASET_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    UI_DATASET_OUTPUT.write_text(earlier, encoding="utf-8", newline="\n")
-    print(f"desktop reference: wrote Gen I–III charts, including {UI_DATASET_OUTPUT.relative_to(ROOT)}")
+    UI_DATASET_OUTPUT.write_text(additional, encoding="utf-8", newline="\n")
+    print(f"desktop reference: wrote additional versioned charts, including {UI_DATASET_OUTPUT.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":
