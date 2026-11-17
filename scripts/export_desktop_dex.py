@@ -2,6 +2,7 @@
 """Export the existing National Dex names as an attributed offline Desktop dataset."""
 
 import csv
+import argparse
 import hashlib
 import io
 import json
@@ -288,11 +289,31 @@ def parse_item_names(source: str) -> dict[str, str]:
     return entries
 
 
+def write_dataset(dataset: dict, output: pathlib.Path = OUTPUT, check: bool = False) -> None:
+    rendered = json.dumps(dataset, ensure_ascii=False, indent=2) + "\n"
+    if check:
+        try:
+            existing = output.read_text(encoding="utf-8")
+        except OSError as error:
+            raise ValueError(f"{output} is missing or unreadable; generated data is out of date") from error
+        if existing != rendered:
+            raise ValueError(f"{output} is out of date; run scripts/export_desktop_dex.py to regenerate it")
+        return
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(rendered, encoding="utf-8")
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true", help="fail if the generated Dex artifact is stale")
+    args = parser.parse_args()
     dataset = build_dataset(SOURCE.read_bytes())
-    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(json.dumps(dataset, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"wrote {OUTPUT.relative_to(ROOT)}: {dataset['species_count']} species, {dataset['license']}")
+    try:
+        write_dataset(dataset, check=args.check)
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
+    verb = "verified" if args.check else "wrote"
+    print(f"{verb} {OUTPUT.relative_to(ROOT)}: {dataset['species_count']} species, {dataset['license']}")
 
 
 if __name__ == "__main__":

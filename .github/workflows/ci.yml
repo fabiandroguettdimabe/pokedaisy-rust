@@ -71,7 +71,12 @@ jobs:
 
       # The per-game code generated from gamedata/ must match it (gamedata/README.md).
       - name: Game data
-        run: python3 scripts/gen_gamedata.py --check && python3 scripts/gen_nds_ports.py --check && python3 scripts/export_desktop_reference.py --check && python3 -m unittest scripts.tests.test_export_desktop_reference
+        run: |
+          python3 scripts/gen_gamedata.py --check
+          python3 scripts/gen_nds_ports.py --check
+          python3 scripts/export_desktop_reference.py --check
+          python3 scripts/export_desktop_dex.py --check
+          python3 -m unittest scripts.tests.test_export_desktop_reference scripts.tests.test_export_desktop_dex
 
       # ROM-backed tests skip here (no ROMs in CI - they run on the release runner);
       # fixtures, guards, Paparazzi renders and everything else run.

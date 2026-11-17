@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import tempfile
 import unittest
 
 ROOT = __import__("pathlib").Path(__file__).resolve().parents[2]
@@ -10,6 +11,18 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 class ExportDesktopDexTests(unittest.TestCase):
+    def test_exporter_check_detects_outdated_or_missing_artifact(self):
+        dataset = {"regional_dexes": []}
+        with tempfile.TemporaryDirectory() as directory:
+            output = __import__("pathlib").Path(directory) / "dex.json"
+            with self.assertRaisesRegex(ValueError, "out of date"):
+                MODULE.write_dataset(dataset, output, check=True)
+            MODULE.write_dataset(dataset, output)
+            MODULE.write_dataset(dataset, output, check=True)
+            output.write_text("{}\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "out of date"):
+                MODULE.write_dataset(dataset, output, check=True)
+
     def test_regional_dex_pins_explicit_version_group_overrides(self):
         dexes = "id,region_id,identifier,is_main_series\n8,2,updated-johto,1\n"
         dex_numbers = "species_id,pokedex_id,pokedex_number\n25,8,1\n"
