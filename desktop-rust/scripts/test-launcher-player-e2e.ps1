@@ -44,6 +44,10 @@ import { chromium } from '$moduleUrl';
 const browser = await chromium.connectOverCDP(process.env.VYNTRA_E2E_CDP_URL);
 const launcher = browser.contexts().flatMap(context => context.pages())[0];
 if (!launcher) throw new Error('Launcher WebView2 page is missing');
+await launcher.getByRole('navigation', { name: 'Navegación principal' }).getByRole('button', { name: 'Biblioteca' }).click();
+await launcher.getByRole('button', { name: 'Jugar', exact: true }).click();
+await launcher.getByRole('alert').filter({ hasText: 'Ya hay una partida abierta' }).waitFor({ timeout: 5000 });
+console.log('second-play-rejected-while-player-active');
 await launcher.getByRole('navigation', { name: 'Navegación principal' }).getByRole('button', { name: 'Acompañante' }).click();
 await launcher.getByRole('heading', { name: 'Vyntra Companion' }).waitFor({ timeout: 10000 });
 const session = launcher.locator('.companion-session');
@@ -141,6 +145,11 @@ try {
   [void][VyntraLauncherPlayerSmoke]::SendMessage($playerProcess.MainWindowHandle, 0x0101, [IntPtr]0x5A, [IntPtr]0xC02C0001)
   Start-Sleep -Milliseconds 400
   Invoke-CompanionCommands
+  $activePlayers = @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $($launcherProcess.Id)" |
+    Where-Object { $_.Name -eq "vyntra-desktop.exe" -and $_.CommandLine -like "*--emulator*" })
+  if ($activePlayers.Count -ne 1 -or $activePlayers[0].ProcessId -ne $playerProcess.Id) {
+    throw "A second Play created another Player or replaced the active process"
+  }
   if (-not $playerProcess.WaitForExit(15000)) { throw "Companion Stop did not close Player" }
   $playerProcess.Dispose()
   $playerProcess = $null
@@ -187,7 +196,7 @@ try {
 
   [PSCustomObject]@{
     result = "PASS"
-    flow = "Launcher UI → Companion pause/save/load/stop → committed SRAM+state → second Play"
+    flow = "Launcher UI → reject concurrent Play → Companion pause/save/load/stop → committed SRAM+state → Play after Stop"
     session_arguments = "pipe, nonce, session id, epoch"
     input = "Z → libretro A"
     sram_marker = "0xA5"
