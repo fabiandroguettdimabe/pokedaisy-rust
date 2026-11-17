@@ -640,6 +640,42 @@ mod tests {
     }
 
     #[test]
+    fn every_supported_action_accepts_its_declared_versioned_payload() {
+        for action in SUPPORTED_ACTIONS {
+            let payload = match *action {
+                "reset_settings_section" => serde_json::json!({"section":"general"}),
+                "favorite" => serde_json::json!({"storage_id":"g1","value":true}),
+                "game_note" => serde_json::json!({"storage_id":"g1","value":"note"}),
+                "library_view" => serde_json::json!({"value":"grid"}),
+                "library_filter" => serde_json::json!({"value":"Todos"}),
+                "library_selection" => serde_json::json!({"value":"g1"}),
+                "relink" | "play" => serde_json::json!({"storage_id":"g1"}),
+                "type_matchup" => serde_json::json!({"attack":10,"defenses":[12,8]}),
+                "choose" => serde_json::json!({"field":"library"}),
+                "set" => serde_json::json!({"field":"volume","value":80}),
+                "pause_player" => serde_json::json!({"value":false}),
+                "export_vault_bundle" | "export_save" => {
+                    serde_json::json!({"file":"C:/saves/game.sav"})
+                }
+                "probe_core" => serde_json::json!({"index":0}),
+                "open_folder" => serde_json::json!({"field":"config"}),
+                _ => serde_json::json!({}),
+            };
+            let body = serde_json::json!({
+                "protocol_version": CONTRACT_VERSION,
+                "command_id": format!("schema-{action}"),
+                "action": action,
+                "payload": payload,
+            })
+            .to_string();
+            assert!(
+                parse_ui_command(&body).is_ok(),
+                "supported action `{action}` rejected its declared payload"
+            );
+        }
+    }
+
+    #[test]
     fn oversized_payload_rejected() {
         let big = format!(r#"{{"action":"x","d":"{}"}}"#, "a".repeat(40_000));
         let err = parse_legacy_action(&big).unwrap_err();
