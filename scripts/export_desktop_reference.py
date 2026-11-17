@@ -210,6 +210,42 @@ def render_additional_datasets() -> str:
             "species_source_sha256": hashlib.sha256((names_source + "\0" + species_types_source).encode("utf-8")).hexdigest(),
         }
         datasets.append(dataset)
+
+    classic_names_source = NAMES_PATH.read_text(encoding="utf-8")
+    classic_chart_source = CHART_PATH.read_text(encoding="utf-8")
+    classic_types, classic_matchups = parse_type_chart(classic_names_source, classic_chart_source)
+    classic_hash = hashlib.sha256((classic_names_source + "\0" + classic_chart_source).encode("utf-8")).hexdigest()
+    for generation in (4, 5):
+        datasets.append({
+            "dataset_id": f"pokemon-gen{generation}-standard-type-chart",
+            "generation": generation,
+            "reference_game": f"Estándar retail · Generación {generation}",
+            "source_files": [NAMES_PATH.relative_to(ROOT).as_posix(), CHART_PATH.relative_to(ROOT).as_posix()],
+            "source_sha256": classic_hash,
+            "license": "GPL-3.0-only",
+            "default_percent": 100,
+            "types": classic_types,
+            "matchups": classic_matchups,
+        })
+
+    modern_source = GEN6_NAMES.read_text(encoding="utf-8")
+    modern_types, modern_matchups = parse_type_chart(
+        modern_source, modern_source, "typeNamesGlazed", "typeEffectivenessGlazed"
+    )
+    modern_hash = hashlib.sha256(modern_source.encode("utf-8")).hexdigest()
+    for generation in (6, 7, 8, 9):
+        datasets.append({
+            "dataset_id": f"pokemon-gen{generation}-standard-type-chart",
+            "generation": generation,
+            "reference_game": f"Estándar retail · Generación {generation} (Fairy)",
+            "source_files": [GEN6_NAMES.relative_to(ROOT).as_posix()],
+            "source_sha256": modern_hash,
+            "verification_source_url": "https://sg.portal-pokemon.com/game/type-chart/",
+            "license": "GPL-3.0-only",
+            "default_percent": 100,
+            "types": modern_types,
+            "matchups": modern_matchups,
+        })
     return json.dumps({"schema_version": 1, "datasets": datasets}, ensure_ascii=False, indent=2) + "\n"
 
 

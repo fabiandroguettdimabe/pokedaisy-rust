@@ -9,9 +9,26 @@ SPEC = importlib.util.spec_from_file_location(
 )
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
+VERIFY_SPEC = importlib.util.spec_from_file_location(
+    "verify_desktop_standard_type_chart", ROOT / "scripts" / "verify_desktop_standard_type_chart.py"
+)
+VERIFY_MODULE = importlib.util.module_from_spec(VERIFY_SPEC)
+VERIFY_SPEC.loader.exec_module(VERIFY_MODULE)
 
 
 class ExportDesktopReferenceTests(unittest.TestCase):
+    def test_parses_official_standard_chart_symbols(self):
+        html = '''<table class="pIXJrq_typeChartTable"><thead><tr>
+          <th></th><th><img alt="NORMAL"/></th><th><img alt="GHOST"/></tr></thead><tbody>
+          <tr class="pIXJrq_dataLine"><th><img alt="NORMAL"/></th><td class="pIXJrq_dataCell"></td><td class="pIXJrq_dataCell"></td></tr>
+          <tr class="pIXJrq_dataLine"><th><img alt="GHOST"/></th>
+          <td class="pIXJrq_dataCell"><img alt="×"/></td><td class="pIXJrq_dataCell"><img alt="●"/></td></tr>
+          </tbody></table>'''
+        self.assertEqual(
+            VERIFY_MODULE.parse_official_chart(html, {"NORMAL": 0, "GHOST": 7}),
+            {(0, 0): 100, (0, 7): 100, (7, 0): 0, (7, 7): 200},
+        )
+
     def test_parses_type_ids_and_sparse_effectiveness_pairs(self):
         types, matchups = MODULE.parse_type_chart(
             'val typeNames = mapOf(0 to "Normal", 1 to "Fire")',
@@ -63,7 +80,31 @@ class ExportDesktopReferenceTests(unittest.TestCase):
         self.assertEqual(pikachu, {"number": 25, "name": "Pikachu", "types": [13]})
         self.assertEqual(rowe["species_count"], len(rowe["species"]))
         self.assertEqual(len(rowe["species_source_sha256"]), 64)
-        self.assertEqual(len(by_id), 13)
+        self.assertEqual(len(by_id), 19)
+        classic_gen4 = by_id["pokemon-gen4-standard-type-chart"]
+        classic_gen5 = by_id["pokemon-gen5-standard-type-chart"]
+        modern_gen6 = by_id["pokemon-gen6-standard-type-chart"]
+        modern_gen7 = by_id["pokemon-gen7-standard-type-chart"]
+        modern_gen8 = by_id["pokemon-gen8-standard-type-chart"]
+        modern_gen9 = by_id["pokemon-gen9-standard-type-chart"]
+        self.assertEqual(classic_gen4["generation"], 4)
+        self.assertEqual(classic_gen5["generation"], 5)
+        self.assertEqual(classic_gen4["types"], classic_gen5["types"])
+        self.assertEqual(classic_gen4["matchups"], classic_gen5["matchups"])
+        classic_base = json.loads(MODULE.render_dataset())
+        self.assertEqual(classic_gen4["types"], classic_base["types"])
+        self.assertEqual(classic_gen4["matchups"], classic_base["matchups"])
+        self.assertIn({"attack": 7, "defense": 8, "percent": 50}, classic_gen4["matchups"])
+        self.assertEqual([chart["generation"] for chart in (modern_gen6, modern_gen7, modern_gen8, modern_gen9)], [6, 7, 8, 9])
+        for chart in (modern_gen6, modern_gen7, modern_gen8, modern_gen9):
+            self.assertIn({"id": 9, "name": "Fairy"}, chart["types"])
+            self.assertEqual(chart["default_percent"], 100)
+            self.assertEqual(len(chart["source_sha256"]), 64)
+            self.assertEqual(chart["verification_source_url"], "https://sg.portal-pokemon.com/game/type-chart/")
+            self.assertEqual(chart["matchups"], modern_gen6["matchups"])
+        modern = modern_gen9
+        self.assertIn({"attack": 9, "defense": 16, "percent": 200}, modern["matchups"])
+        self.assertEqual(next((pair["percent"] for pair in modern["matchups"] if pair["attack"] == 7 and pair["defense"] == 8), 100), 100)
         profiles = [(1, "yellow-legacy"), (6, "wishes"), (6, "team-rocket"), (6, "soul-gold"),
                     (6, "rogue"), (6, "quetzal"), (6, "lazarus"), (6, "imperium"), (6, "hns")]
         for generation, slug in profiles:
