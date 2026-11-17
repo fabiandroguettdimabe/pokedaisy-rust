@@ -10,6 +10,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#ifdef _WIN32
+#include <direct.h>
+#define pd_mkdir(path, mode) _mkdir(path)
+#else
+#define pd_mkdir(path, mode) mkdir(path, mode)
+#endif
 
 bool pd_lr_read_memory(void *ctx, uint32_t a, void *out, size_t n);
 
@@ -307,7 +313,7 @@ static void write_file(void) {
     return;
   char folder[1100], tmp[1210];
   snprintf(folder, sizeof folder, "%s/flight-area", dirPath);
-  if (mkdir(folder, 0755) != 0 && errno != EEXIST)
+  if (pd_mkdir(folder, 0755) != 0 && errno != EEXIST)
     return;
   snprintf(tmp, sizeof tmp, "%s.tmp", filePath);
   FILE *f = fopen(tmp, "w");

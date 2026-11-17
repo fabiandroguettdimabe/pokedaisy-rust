@@ -1298,9 +1298,9 @@ static uint32_t gbGlowAt(const uint32_t* frame, int X, int Y, const int reach[4]
     int at = across ? gbClamp(Y, 0, GBH - 1) : gbClamp(X, 0, GBW - 1);
     int32_t (*pre)[3] = across ? gbPreH[side] : gbPreV[side];
     uint32_t exact = across ? frame[at * GBW + (side ? GBW - 1 : 0)] : frame[(side ? GBH - 1 : 0) * GBW + at];
-    int far = reach[across ? side : 2 + side];
+    int fadeReach = reach[across ? side : 2 + side];
     int r = 2 + d * 3 / 4;                                            // the glow spreads as it goes out
-    int bright = 256 - 136 * (d - 1) / (far > 1 ? far - 1 : 1);       // 1.0 at the game's edge -> ~0.47 at the window's
+    int bright = 256 - 136 * (d - 1) / (fadeReach > 1 ? fadeReach - 1 : 1); // 1.0 at the game's edge -> ~0.47 at the window's
     if (bright < 120) bright = 120;
     int seam = d >= 4 ? 256 : d * 64;                                 // the first pixels lean on the edge itself
     int lo = at - r < 0 ? 0 : at - r, hi = at + r >= len ? len - 1 : at + r;

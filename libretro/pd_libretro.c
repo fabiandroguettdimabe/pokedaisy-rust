@@ -38,6 +38,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#ifdef _WIN32
+#include <direct.h>
+#define pd_mkdir(path, mode) _mkdir(path)
+#else
+#define pd_mkdir(path, mode) mkdir(path, mode)
+#endif
 
 bool pd_lr_read_memory(void *ctx, uint32_t a, void *out, size_t n);
 
@@ -1017,6 +1023,19 @@ static void canvas_update(bool notify) {
 }
 
 /* ---- entry points ---- */
+RETRO_API unsigned retro_api_version(void) { return mgba_retro_api_version(); }
+RETRO_API void retro_init(void) { mgba_retro_init(); }
+RETRO_API void retro_deinit(void) { mgba_retro_deinit(); }
+RETRO_API void retro_set_audio_sample(retro_audio_sample_t audio) { mgba_retro_set_audio_sample(audio); }
+RETRO_API void retro_set_audio_sample_batch(retro_audio_sample_batch_t audio) { mgba_retro_set_audio_sample_batch(audio); }
+RETRO_API void retro_set_input_poll(retro_input_poll_t poll) { mgba_retro_set_input_poll(poll); }
+RETRO_API size_t retro_serialize_size(void) { return mgba_retro_serialize_size(); }
+RETRO_API bool retro_serialize(void *data, size_t size) { return mgba_retro_serialize(data, size); }
+RETRO_API void *retro_get_memory_data(unsigned id) { return mgba_retro_get_memory_data(id); }
+RETRO_API size_t retro_get_memory_size(unsigned id) { return mgba_retro_get_memory_size(id); }
+RETRO_API void retro_set_controller_port_device(unsigned port, unsigned device) {
+  mgba_retro_set_controller_port_device(port, device);
+}
 RETRO_API void retro_set_environment(retro_environment_t e) {
   realEnv = e;
   mgba_retro_set_environment(env_wrap);
@@ -1094,7 +1113,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   const char *dir = NULL;
   if (realEnv(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, &dir) && dir && *dir) {
     snprintf(pdDir, sizeof pdDir, "%s/pokedaisy", dir);
-    mkdir(pdDir, 0755);
+    pd_mkdir(pdDir, 0755);
     snprintf(settingsPath, sizeof settingsPath, "%s/settings.ini", pdDir);
   } else {
     *pdDir = 0;

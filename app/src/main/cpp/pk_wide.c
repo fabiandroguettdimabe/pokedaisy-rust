@@ -27,6 +27,7 @@
 
 #include "pk_wide.h"
 #include "pk_cheats.h"
+#include "pd_fault_guard.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -295,9 +296,9 @@ static void rememberObjects(const struct Snap* s) {
     for (int i = 0; i < MAX_SEEN; i++) {
         struct Seen* e = &seenObjects[i];
         if (!e->used || (e->group == s->group && e->num == s->num)) continue;
-        bool near = false;
-        for (int c = 0; c < s->nconn && !near; c++) near = s->conn[c].group == e->group && s->conn[c].num == e->num;
-        if (!near) e->used = false;
+        bool connected = false;
+        for (int c = 0; c < s->nconn && !connected; c++) connected = s->conn[c].group == e->group && s->conn[c].num == e->num;
+        if (!connected) e->used = false;
     }
     for (int k = 0; k < 16; k++) {
         const uint8_t* oe = s->objects + 0x24 * k;
@@ -2564,9 +2565,9 @@ static uint32_t glowAt(const uint32_t* frame, int X, int Y, const int reach[4], 
     int at = across ? clampi(Y, 0, PK_WIDE_H - 1) : clampi(X, 0, PK_WIDE_W - 1);
     int32_t (*pre)[3] = across ? preH[side] : preV[side];
     uint32_t exact = across ? frame[at * PK_WIDE_W + (side ? PK_WIDE_W - 1 : 0)] : frame[(side ? PK_WIDE_H - 1 : 0) * PK_WIDE_W + at];
-    int far = reach[across ? side : 2 + side];
+    int fadeReach = reach[across ? side : 2 + side];
     int r = 2 + d * 3 / 4;                                            // the glow spreads as it goes out
-    int bright = 256 - 136 * (d - 1) / (far > 1 ? far - 1 : 1);       // 1.0 at the game's edge -> ~0.47 at the window's
+    int bright = 256 - 136 * (d - 1) / (fadeReach > 1 ? fadeReach - 1 : 1); // 1.0 at the game's edge -> ~0.47 at the window's
     if (bright < 120) bright = 120;
     int seam = d >= 4 ? 256 : d * 64;                                 // the first pixels lean on the edge itself
     int lo = at - r < 0 ? 0 : at - r, hi = at + r >= len ? len - 1 : at + r;
@@ -3850,78 +3851,50 @@ int pk_wide_frame(struct mCore* core, const uint32_t* frame, uint32_t* out, int 
 // on to the handler that was there before (the system's crash reporting), as if this one weren't installed.
 
 #ifndef PK_WIDE_NO_GUARD   // mgba_dump's AddressSanitizer build reports faults itself
-#include <setjmp.h>
-#include <signal.h>
+static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, struct PkWideView v, uint32_t* centre);
 
-static __thread sigjmp_buf* guardJmp;   // set only while this thread is inside pk_wide_view
-static const int GUARDED[4] = { SIGSEGV, SIGBUS, SIGFPE, SIGILL };
-static struct sigaction guardOld[4];
-static bool guardInstalled;
+struct PkWideCall {
+    struct mCore* core;
+    const uint32_t* frame;
+    uint32_t* out;
+    struct PkWideView view;
+    uint32_t* centre;
+};
 
-static void onFault(int sig, siginfo_t* info, void* ctx) {
-    sigjmp_buf* j = guardJmp;
-    if (j) {
-        guardJmp = NULL;
-        siglongjmp(*j, sig);
-    }
-    for (int i = 0; i < 4; i++) {
-        if (GUARDED[i] != sig) continue;
-        const struct sigaction* old = &guardOld[i];
-        if ((old->sa_flags & SA_SIGINFO) && old->sa_sigaction) {
-            old->sa_sigaction(sig, info, ctx);
-        } else if (old->sa_handler != SIG_DFL && old->sa_handler != SIG_IGN && old->sa_handler) {
-            old->sa_handler(sig);
-        } else {
-            sigaction(sig, old, NULL);   // the default action: put it back; the faulting instruction runs into it again
-        }
-        return;
-    }
+static int callViewInner(void* context) {
+    struct PkWideCall* call = context;
+    return viewInner(call->core, call->frame, call->out, call->view, call->centre);
 }
 
-static void installGuard(void) {
-    if (guardInstalled) return;
-    guardInstalled = true;
-    struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_sigaction = onFault;
-    sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
-    sigemptyset(&sa.sa_mask);
-    for (int i = 0; i < 4; i++) sigaction(GUARDED[i], &sa, &guardOld[i]);
+static int copyFrameView(const uint32_t* frame, uint32_t* out, struct PkWideView view) {
+    int fw = pk_wide_frame_w(), fh = pk_wide_frame_h();
+    if (view.w > PK_WIDE_MAX_VIEW_W) view.w = PK_WIDE_MAX_VIEW_W;
+    if (view.h > PK_WIDE_MAX_VIEW_H) view.h = PK_WIDE_MAX_VIEW_H;
+    for (int y = 0; out && y < view.h; y++)
+        for (int x = 0; x < view.w; x++) {
+            int X = view.x + x, Y = view.y + y;
+            out[y * view.w + x] = frame && X >= 0 && X < fw && Y >= 0 && Y < fh ? frame[Y * fw + X] : 0xFF000000u;
+        }
+    return 0;
 }
 #endif
 
 int pk_wide_fault(void) { return lastFault; }
 
-static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, struct PkWideView v, uint32_t* centre);
-
-
 int pk_wide_view(struct mCore* core, const uint32_t* frame, uint32_t* out, struct PkWideView v, uint32_t* centre) {
 #ifndef PK_WIDE_NO_GUARD
-    installGuard();
-    sigjmp_buf j;
-    int sig = sigsetjmp(j, 1);
-    if (sig) {
-        guardJmp = NULL;
+    struct PkWideCall call = {core, frame, out, v, centre};
+    int result = 0, sig = 0;
+    if (!pd_fault_guard_run(callViewInner, &call, &result, &sig)) {
         lastFault = sig;
-        int fw = pk_wide_frame_w(), fh = pk_wide_frame_h();
         configured = false;   // off for this game until it's configured again: never the same fault twice
         gbGame = false;
         lastMode = PK_WIDE_MODE_NONE;
         lastBattleWays = 0;
         lastClose = 1;
-        if (v.w > PK_WIDE_MAX_VIEW_W) v.w = PK_WIDE_MAX_VIEW_W;
-        if (v.h > PK_WIDE_MAX_VIEW_H) v.h = PK_WIDE_MAX_VIEW_H;
-        for (int y = 0; out && y < v.h; y++)
-            for (int x = 0; x < v.w; x++) {
-                int X = v.x + x, Y = v.y + y;
-                out[y * v.w + x] = X >= 0 && X < fw && Y >= 0 && Y < fh ? frame[Y * fw + X] : 0xFF000000u;
-            }
-        return 0;
+        return copyFrameView(frame, out, v);
     }
-    guardJmp = &j;
-    int r = viewInner(core, frame, out, v, centre);
-    guardJmp = NULL;
-    return r;
+    return result;
 #else
     return viewInner(core, frame, out, v, centre);
 #endif

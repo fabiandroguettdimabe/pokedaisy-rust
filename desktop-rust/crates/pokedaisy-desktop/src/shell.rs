@@ -2606,6 +2606,15 @@ mod tests {
         fs::create_dir_all(&other_saves).unwrap();
         fs::create_dir_all(&other_states).unwrap();
         let lock = PlayerSaveLock::acquire(&saves, &states, "same-game").unwrap();
+        let wait_for_result = |path: &Path, expected: &[u8]| {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            while !fs::read(path).is_ok_and(|contents| contents == expected)
+                && std::time::Instant::now() < deadline
+            {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            assert_eq!(fs::read(path).unwrap(), expected);
+        };
         assert!(
             PlayerSaveLock::check_player_writer_available(&saves, &states, "same-game").is_ok()
         );
@@ -2633,15 +2642,7 @@ mod tests {
                 .stderr(std::process::Stdio::null())
                 .spawn()
                 .unwrap();
-            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-            while !result.exists() && std::time::Instant::now() < deadline {
-                std::thread::sleep(std::time::Duration::from_millis(10));
-            }
-            assert!(
-                result.exists(),
-                "child process did not report its lock result"
-            );
-            assert_eq!(fs::read(&result).unwrap(), b"busy");
+            wait_for_result(&result, b"busy");
             assert!(child.wait().unwrap().success());
         }
 
@@ -2657,15 +2658,7 @@ mod tests {
             .stderr(std::process::Stdio::null())
             .spawn()
             .unwrap();
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-        while !writer_result.exists() && std::time::Instant::now() < deadline {
-            std::thread::sleep(std::time::Duration::from_millis(10));
-        }
-        assert!(
-            writer_result.exists(),
-            "writer child did not report its lock result"
-        );
-        assert_eq!(fs::read(&writer_result).unwrap(), b"acquired");
+        wait_for_result(&writer_result, b"acquired");
         assert!(
             PlayerSaveLock::check_player_writer_available(&saves, &states, "same-game").is_err()
         );

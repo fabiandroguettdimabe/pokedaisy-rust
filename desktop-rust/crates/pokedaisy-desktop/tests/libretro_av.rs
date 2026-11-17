@@ -116,3 +116,66 @@ fn synthetic_core_runs_video_audio_and_runtime_av_through_libretro_api() {
     drop(core);
     fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+#[ignore = "local core smoke: set VYNTRA_CORE_SMOKE_PATH and VYNTRA_CORE_SMOKE_ROM"]
+fn configured_local_gbc_core_runs_generated_diagnostic_rom() {
+    let core_path = std::env::var_os("VYNTRA_CORE_SMOKE_PATH").expect("VYNTRA_CORE_SMOKE_PATH");
+    let rom_path = std::env::var_os("VYNTRA_CORE_SMOKE_ROM").expect("VYNTRA_CORE_SMOKE_ROM");
+    let core_path = Path::new(&core_path);
+    let rom_path = Path::new(&rom_path);
+    let root = std::env::temp_dir().join(format!("vyntra-gbc-smoke-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    let save_dir = root.join("saves");
+    let system_dir = root.join("system");
+    fs::create_dir_all(&save_dir).unwrap();
+    fs::create_dir_all(&system_dir).unwrap();
+    println!(
+        "fixture_core_hash={:x}",
+        sha2::Sha256::digest(fs::read(core_path).unwrap())
+    );
+    println!(
+        "fixture_rom_hash={:x}",
+        sha2::Sha256::digest(fs::read(rom_path).unwrap())
+    );
+
+    let mut core = LibretroCore::load(
+        core_path,
+        CorePaths {
+            save_dir,
+            system_dir,
+            panel_width: 640,
+            panel_height: 480,
+        },
+    )
+    .unwrap();
+    let av = core
+        .load_game(rom_path)
+        .expect("generated diagnostic ROM loads");
+    assert_eq!(
+        core.system_info().library_name.as_deref(),
+        Some("PokeDaisy")
+    );
+    assert!(av.geometry.base_width >= 160);
+    assert!(av.geometry.base_height >= 144);
+    let mut saw_video = false;
+    let mut saw_audio = false;
+    for _ in 0..120 {
+        let frame = core.run_frame(Default::default()).unwrap();
+        saw_video |= frame.video.is_some();
+        saw_audio |= !frame.audio.is_empty();
+    }
+    assert!(saw_video, "core did not emit a video frame");
+    assert!(saw_audio, "diagnostic ROM did not produce audio samples");
+    assert_eq!(
+        core.read_save_ram().unwrap()[0],
+        0x5a,
+        "diagnostic save marker"
+    );
+    let state = core.serialize().expect("core serializes state");
+    assert!(!state.is_empty());
+    core.unserialize(&state)
+        .expect("core restores serialized state");
+    drop(core);
+    fs::remove_dir_all(root).unwrap();
+}

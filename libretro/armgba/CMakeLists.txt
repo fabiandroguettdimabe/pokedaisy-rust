@@ -55,7 +55,7 @@ set(PD ${CMAKE_CURRENT_SOURCE_DIR}/..)
 set(APP ${PD}/../app/src/main/cpp)
 file(GLOB PD_CORE CONFIGURE_DEPENDS ${PD}/../3ds/core/*.c)
 add_library(pokedaisy_gba_libretro SHARED ${AG_GLUE}
-  ${PD}/pd_libretro.c ${PD}/pd_flight_area.c ${PD}/pd_lr_mem_agba.c ${PD}/pd_agba_view.c ${PD}/pd_agba_call.c ${APP}/pk_wide.c ${APP}/pk_flight.c ${PD}/../linux/fly.c ${PD}/../linux/flight.c ${PD}/../linux/flash.c ${PD}/../linux/field_items.c ${PD}/pd_agba_gb_stub.c ${PD}/pd_agba_stubs.c ${PD_CORE}
+  ${PD}/pd_libretro.c ${PD}/pd_flight_area.c ${PD}/pd_fault_guard.c ${PD}/pd_lr_mem_agba.c ${PD}/pd_agba_view.c ${PD}/pd_agba_call.c ${APP}/pk_wide.c ${APP}/pk_flight.c ${PD}/../linux/fly.c ${PD}/../linux/flight.c ${PD}/../linux/flash.c ${PD}/../linux/field_items.c ${PD}/pd_agba_gb_stub.c ${PD}/pd_agba_stubs.c ${PD_CORE}
   ${PD}/../linux/hud.c ${PD}/../linux/quick_menu.c ${PD}/../linux/wild.c)
 set_source_files_properties(${PD}/pd_libretro.c PROPERTIES COMPILE_OPTIONS "-Wno-unused-function")
 # pk_wide.c is the app's own file, written against mGBA's headers: shim/ gives it the view's types under mGBA's names.
@@ -68,9 +68,16 @@ target_include_directories(pokedaisy_gba_libretro PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/shim ${ARMGBA}/libretro ${ARMGBA}/src ${ARMGBA}/libretro/deps/libretro-common/include
   ${PD} ${PD}/../3ds/core ${PD}/../linux ${APP})
 find_package(Threads REQUIRED)
-target_link_libraries(pokedaisy_gba_libretro PRIVATE armgba retro-archive Threads::Threads ${PD_ZLIB} m)
-# Only retro_* leaves the object, as in the mGBA core (a second core may be resident beside this one).
-target_link_options(pokedaisy_gba_libretro PRIVATE -Wl,--no-undefined -Wl,--exclude-libs,ALL -Wl,--version-script=${PD}/retro.map)
+target_link_libraries(pokedaisy_gba_libretro PRIVATE armgba retro-archive Threads::Threads ${PD_ZLIB})
+if(NOT WIN32)
+  target_link_libraries(pokedaisy_gba_libretro PRIVATE m)
+endif()
+# PE linkers do not accept ELF version scripts. RETRO_API marks the public API on Windows; ELF keeps its narrow export map.
+if(MINGW)
+  target_link_options(pokedaisy_gba_libretro PRIVATE -Wl,--no-undefined -Wl,--exclude-all-symbols -Wl,--exclude-libs,ALL)
+elseif(UNIX)
+  target_link_options(pokedaisy_gba_libretro PRIVATE -Wl,--no-undefined -Wl,--exclude-libs,ALL -Wl,--version-script=${PD}/retro.map)
+endif()
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND PD_GLIBC)
   target_sources(pokedaisy_gba_libretro PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/glibc_compat.c)
   target_link_options(pokedaisy_gba_libretro PRIVATE -Wl,--wrap=stat -Wl,--wrap=fstat -Wl,--wrap=pthread_create -Wl,--wrap=pthread_join)

@@ -26,7 +26,7 @@ get_target_property(MGBA_INC mgba_libretro INCLUDE_DIRECTORIES)
 list(FILTER MGBA_SRC EXCLUDE REGEX "platform/libretro/libretro\\.c$") # pd_libretro.c includes it, renamed
 set(APP ${CMAKE_CURRENT_SOURCE_DIR}/../app/src/main/cpp)
 file(GLOB PD_CORE CONFIGURE_DEPENDS ../3ds/core/*.c)
-add_library(pokedaisy_gbc_libretro SHARED ${MGBA_SRC} pd_libretro.c pd_lr_mem.c ${PD_CORE}
+add_library(pokedaisy_gbc_libretro SHARED ${MGBA_SRC} pd_libretro.c pd_lr_mem.c pd_fault_guard.c ${PD_CORE}
   ../linux/hud.c ../linux/quick_menu.c ../linux/fly.c ../linux/flight.c ../linux/flash.c ../linux/field_items.c ../linux/wild.c ../linux/gb_field.c
   ../linux/polished_field.c
   pd_flight_area.c ${APP}/pk_call.c ${APP}/pk_flight.c ${APP}/pk_wide.c ${APP}/pk_wide_gb.c ${APP}/pk_gb_field.c)
@@ -34,12 +34,21 @@ set_source_files_properties(${APP}/pk_wide.c ${APP}/pk_wide_gb.c PROPERTIES COMP
 # The launcher core draws a Game Boy game's margins off the field as a glow; the app keeps plain bars (pk_wide_gb.c).
 set_source_files_properties(${APP}/pk_wide_gb.c PROPERTIES COMPILE_DEFINITIONS PK_WIDE_GB_GLOW=1)
 set_target_properties(pokedaisy_gbc_libretro PROPERTIES PREFIX "" COMPILE_DEFINITIONS "${MGBA_DEFS};${MGBA_DIR_DEFS};_GNU_SOURCE")
-target_include_directories(pokedaisy_gbc_libretro PRIVATE ${MGBA_INC} ${MGBA}/include ${CMAKE_CURRENT_BINARY_DIR}/mgba/include ${MGBA}/src/platform/libretro ${MGBA}/src ../3ds/core ../linux ${APP})
-target_link_libraries(pokedaisy_gbc_libretro PRIVATE m)
-# Only retro_* leaves the object: a second mGBA is resident beside the stock core (ADR-0006).
-target_link_options(pokedaisy_gbc_libretro PRIVATE -Wl,--exclude-libs,ALL -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/retro.map)
+target_include_directories(pokedaisy_gbc_libretro PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${MGBA_INC} ${MGBA}/include ${CMAKE_CURRENT_BINARY_DIR}/mgba/include ${MGBA}/src/platform/libretro ${MGBA}/src ../3ds/core ../linux ${APP})
+if(NOT WIN32)
+  target_link_libraries(pokedaisy_gbc_libretro PRIVATE m)
+endif()
+# PE linkers do not accept ELF version scripts. RETRO_API marks the libretro entry points for export on Windows;
+# ELF keeps the existing narrow export map so a second mGBA can coexist with the stock core (ADR-0006).
+if(MINGW)
+  target_link_options(pokedaisy_gbc_libretro PRIVATE -Wl,--exclude-all-symbols -Wl,--exclude-libs,ALL)
+elseif(UNIX)
+  target_link_options(pokedaisy_gbc_libretro PRIVATE -Wl,--exclude-libs,ALL -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/retro.map)
+endif()
 
 # gb_field_find over real carts (each matches only its own config, like the app's GbFieldTest): gb_field_test ROM NAME ...
 add_executable(gb_field_test EXCLUDE_FROM_ALL test/gb_field_test.c)
 set_target_properties(gb_field_test PROPERTIES COMPILE_DEFINITIONS "${MGBA_DEFS};${MGBA_DIR_DEFS};_GNU_SOURCE")
 target_include_directories(gb_field_test PRIVATE ${MGBA_INC} ${MGBA}/include ${CMAKE_CURRENT_BINARY_DIR}/mgba/include ${MGBA}/src ../3ds/core ../linux ${APP})
+
+add_executable(pd_fault_guard_test EXCLUDE_FROM_ALL test/pd_fault_guard_test.c pd_fault_guard.c)
