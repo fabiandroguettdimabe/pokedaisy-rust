@@ -14,6 +14,7 @@ Actualizado: 2026-11-17. Este documento registra el comportamiento comprobado de
 
 - **T02 parcial:** el shell mantiene una caché acotada de 128 ACK para comandos revisionados. Si se reenvía el mismo comando (revisión, request, sesión/época, acción y payload), devuelve el ACK guardado antes de ejecutar el handler, evitando repetir efectos después de perderse la respuesta. El test cubre replay, otra revisión, comandos legacy y capacidad; falta migrar todas las acciones al contrato y sanear logs.
 - **T03 parcial:** `inspect.rs` ahora tiene fixtures negativos para headers GBA truncados/firma inválida, GB/GBC truncados y segmentos ARM9 DS que exceden el archivo; también verifica código de juego DS. Los checksums siguen siendo diagnósticos que no bloquean inspección.
+- **T04 parcial:** se inyecta un fallo al instalar el nuevo journal tras completar el staging y el backup. La prueba confirma que el journal anterior se restaura y el temporal se elimina; siguen pendientes los cortes abruptos entre fases.
 
 - Desktop se muestra como **Vyntra Desktop** y usa la paleta Dark Crimson + Black en su interfaz SDL. El símbolo V se dibuja como vector en SDL; las variantes SVG original, reducida y monocromática están en `desktop-rust/assets/`.
 - Android muestra **Vyntra Pocket** como nombre de aplicación. Se conservan `applicationId` y `namespace` `com.pokedaisy.app` para no romper actualización in-place ni acceso a los datos existentes.

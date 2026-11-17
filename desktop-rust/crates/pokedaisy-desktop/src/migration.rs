@@ -199,7 +199,7 @@ pub fn apply(journal_path: &Path, report: &MigrationReport) -> Result<(), String
 
 #[cfg(test)]
 mod tests {
-    use super::{MigrationReport, persist, persist_with};
+    use super::{MigrationReport, persist, persist_with, persist_with_install};
     use std::fs;
     use std::io::Write;
 
@@ -224,6 +224,39 @@ mod tests {
             file.write_all(&bytes[..bytes.len().min(4)])?;
             Err(std::io::Error::from(std::io::ErrorKind::StorageFull))
         });
+
+        assert!(error.is_err());
+        assert_eq!(
+            fs::read(&path).unwrap(),
+            serde_json::to_vec_pretty(&previous).unwrap()
+        );
+        assert!(!path.with_extension("tmp").exists());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn failed_journal_install_restores_previous_journal() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-migration-rename-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join("migration.json");
+        let previous = MigrationReport {
+            schema: 1,
+            items: Vec::new(),
+        };
+        let next = MigrationReport {
+            schema: 2,
+            items: Vec::new(),
+        };
+        persist(&path, &previous).unwrap();
+
+        let error = persist_with_install(
+            &path,
+            &next,
+            |file, bytes| file.write_all(bytes),
+            |_, _| Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied)),
+        );
 
         assert!(error.is_err());
         assert_eq!(
@@ -263,6 +296,15 @@ fn persist_with(
     report: &MigrationReport,
     stage: impl FnOnce(&mut fs::File, &[u8]) -> std::io::Result<()>,
 ) -> Result<(), String> {
+    persist_with_install(path, report, stage, |from, to| fs::rename(from, to))
+}
+
+fn persist_with_install(
+    path: &Path,
+    report: &MigrationReport,
+    stage: impl FnOnce(&mut fs::File, &[u8]) -> std::io::Result<()>,
+    install: impl FnOnce(&Path, &Path) -> std::io::Result<()>,
+) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
@@ -290,7 +332,7 @@ fn persist_with(
             return Err(error.to_string());
         }
     }
-    if let Err(error) = fs::rename(&tmp, path) {
+    if let Err(error) = install(&tmp, path) {
         let _ = fs::remove_file(&tmp);
         if had_previous && !path.exists() {
             if let Err(restore_error) = fs::copy(&backup, path) {
