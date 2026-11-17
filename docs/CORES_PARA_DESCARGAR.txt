@@ -1,0 +1,27 @@
+VYNTRA DESKTOP — CORES LIBRETRO PARA WINDOWS x64
+Fecha de consulta: 2026-11-17
+
+Game Boy / Game Boy Color / Game Boy Advance — mGBA
+Descarga oficial directa (nightly Windows x86_64):
+https://buildbot.libretro.com/nightly/windows/x86_64/latest/mgba_libretro.dll.zip
+
+El ZIP trae mgba_libretro.dll. Extraelo y seleccionalo desde Vyntra > Configuración > Núcleos para GB/GBC y GBA. El enlace latest puede cambiar cuando se publique un nuevo nightly.
+Hash SHA-256 del DLL mGBA verificado en este checkout:
+D775ECEF6DA1DA5489FF2E0A37C13826B510C73711F89E78CB8D757C6F8C1426
+
+Nintendo DS — melonDS DS
+Página oficial de releases:
+https://github.com/JesseTG/melonds-ds/releases/latest
+
+Selecciona el ZIP Windows x86_64 Release y extrae melondsds_libretro.dll. Luego selecciónalo desde Vyntra > Configuración > Núcleos > Nintendo DS. El core local del checkout tiene procedencia no verificada; usa una copia descargada del release oficial.
+Release v1.4.0 verificado en la auditoría del proyecto:
+DLL SHA-256: C7E6B58C667075A2A9868F2C3BA7A98E24200410A6DA3051A7C555F1F0EEF8EF
+ZIP SHA-256: F03AF0318FEE91A83880F438B369A1368FEA6B5C1524A09DDE849CA8FA68603F
+
+Fuentes y procedencia:
+https://buildbot.libretro.com/nightly/windows/x86_64/latest/
+https://github.com/JesseTG/melonds-ds/releases
+https://github.com/mgba-emu/mgba/blob/master/LICENSE
+https://github.com/JesseTG/melonds-ds/blob/master/LICENSE
+
+No incluye ROMs, BIOS ni firmware.
