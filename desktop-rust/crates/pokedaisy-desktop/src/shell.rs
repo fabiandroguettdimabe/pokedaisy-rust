@@ -3027,7 +3027,7 @@ mod tests {
     }
 
     #[test]
-    fn vault_restore_validates_identity_and_recovers_backup_after_rollback_failure() {
+    fn vault_restore_recovers_state_and_battery_backups_after_rollback_failures() {
         let root =
             std::env::temp_dir().join(format!("vyntra-vault-restore-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
@@ -3194,7 +3194,7 @@ mod tests {
             storage_id: game_storage_key(&game),
             kind: domain::SaveKind::SaveState,
             rom_sha256: identity::sha256_file(&game.path).unwrap(),
-            core_hash,
+            core_hash: core_hash.clone(),
             state_format: Some("libretro-serialize-v1".into()),
             bytes: unverified_payload.len() as u64,
             sha256: identity::sha256_bytes(unverified_payload),
@@ -3208,6 +3208,53 @@ mod tests {
         .unwrap();
         assert!(commit_bundle_restore(prepared, &config).is_err());
         assert_eq!(fs::read(&state_path).unwrap(), payload);
+
+        let old_battery = b"previous verified battery";
+        let new_battery = b"replacement battery";
+        let battery_path = preferred_battery_path(&game, &config.saves);
+        atomic_write(&battery_path, old_battery).unwrap();
+        super::super::write_save_manifest(
+            &game,
+            &config.saves,
+            domain::SaveKind::BatteryRam,
+            old_battery,
+            None,
+            Some(&core_hash),
+            "committed",
+        );
+        let battery_manifest = crate::vault::SaveBundleManifest {
+            schema_version: 1,
+            storage_id: game_storage_key(&game),
+            kind: domain::SaveKind::BatteryRam,
+            rom_sha256: identity::sha256_file(&game.path).unwrap(),
+            core_hash: core_hash.clone(),
+            state_format: None,
+            bytes: new_battery.len() as u64,
+            sha256: identity::sha256_bytes(new_battery),
+        };
+        let prepared_battery = prepare_bundle_restore(
+            battery_manifest,
+            new_battery.to_vec(),
+            std::slice::from_ref(&game),
+            &config,
+        )
+        .unwrap();
+        let mut writes = 0;
+        assert!(
+            commit_bundle_restore_with(prepared_battery, &config, |path, bytes| {
+                writes += 1;
+                if writes == 2 || writes == 3 {
+                    return Err("fallo de escritura durante commit/rollback de SRAM".into());
+                }
+                atomic_write(path, bytes)
+            })
+            .is_err()
+        );
+        assert_eq!(fs::read(&battery_path).unwrap(), new_battery);
+        assert_eq!(
+            super::load_compatible_battery(&game, &config.saves, &core_path).unwrap(),
+            Some(old_battery.to_vec())
+        );
         let _ = fs::remove_dir_all(root);
     }
 
