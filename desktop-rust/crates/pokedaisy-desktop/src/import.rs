@@ -8,6 +8,7 @@ use zip::ZipArchive;
 const MAX_ARCHIVE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 const MAX_ARCHIVE_ENTRIES: usize = 4096;
 const MAX_ARCHIVE_TOTAL_BYTES: u64 = 1024 * 1024 * 1024;
+const MAX_LOOSE_ROM_BYTES: u64 = 1024 * 1024 * 1024;
 
 #[derive(Debug, Default)]
 pub struct ImportSummary {
@@ -233,9 +234,20 @@ pub fn import_paths(
     entries: &mut Vec<LibraryEntry>,
     paths: impl IntoIterator<Item = PathBuf>,
 ) -> ImportSummary {
+    import_paths_with_limit(entries, paths, MAX_LOOSE_ROM_BYTES)
+}
+
+fn import_paths_with_limit(
+    entries: &mut Vec<LibraryEntry>,
+    paths: impl IntoIterator<Item = PathBuf>,
+    max_bytes: u64,
+) -> ImportSummary {
     let mut summary = ImportSummary::default();
     for path in paths {
-        if !path.is_file() || inspect::inspect_file(&path).is_none() {
+        if !path.is_file()
+            || fs::metadata(&path).map_or(true, |metadata| metadata.len() > max_bytes)
+            || inspect::inspect_file(&path).is_none()
+        {
             summary.rejected += 1;
             continue;
         }
@@ -262,7 +274,7 @@ pub fn import_paths(
 
 #[cfg(test)]
 mod tests {
-    use super::{ArchivePolicy, import_archive, import_paths};
+    use super::{ArchivePolicy, import_archive, import_paths, import_paths_with_limit};
     use crate::library::LibraryEntry;
     use std::fs;
     use std::io::Write;
@@ -307,6 +319,25 @@ mod tests {
         let summary = import_paths(&mut entries, [PathBuf::from("missing.gba")]);
         assert_eq!(summary.imported, 0);
         assert_eq!(summary.rejected, 1);
+    }
+
+    #[test]
+    fn loose_rom_over_quota_is_rejected_before_hashing() {
+        let root = std::env::temp_dir().join(format!("vyntra-loose-quota-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join("oversized.gba");
+        fs::write(&path, valid_gba()).unwrap();
+        fs::OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .unwrap()
+            .set_len(1024)
+            .unwrap();
+        let summary = import_paths_with_limit(&mut Vec::new(), [path], 512);
+        assert_eq!(summary.rejected, 1);
+        assert_eq!(summary.imported, 0);
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
