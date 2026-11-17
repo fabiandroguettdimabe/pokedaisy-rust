@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {calculateTypeEffectiveness,filterDexEntries,inferTypeChartFromIdentity,loadSavedTypeChart,saveTypeChart} from '../src/dex.js';
+import {calculateTypeEffectiveness,filterDexEntries,inferTypeChartFromIdentity,loadSavedTypeChart,saveTypeChart,suggestTypeChartFromGameCode} from '../src/dex.js';
 
 const entries=[
  {number:1,name:'Bulbasaur',generation:1},
@@ -55,4 +55,11 @@ test('automatic type chart inference requires strict identity and a known retail
  assert.equal(inferTypeChartFromIdentity({system:'DS',game_code:'ADAE',confidence:'partial'}),null);
  assert.equal(inferTypeChartFromIdentity({system:'GBA',game_code:'HACK',confidence:'strict'}),null);
  assert.equal(inferTypeChartFromIdentity({system:'DS',game_code:'',confidence:'strict'}),null);
+});
+
+test('partial known game codes produce a suggestion without becoming an inferred identity',()=>{
+ assert.equal(suggestTypeChartFromGameCode('DS','CPUE'),'pokemon-gen4-standard-type-chart');
+ assert.equal(suggestTypeChartFromGameCode('GBA','BPEE'),'pokemon-gen3-type-chart');
+ assert.equal(inferTypeChartFromIdentity({system:'DS',game_code:'CPUE',confidence:'partial'}),null);
+ assert.equal(suggestTypeChartFromGameCode('DS','HACK'),null);
 });

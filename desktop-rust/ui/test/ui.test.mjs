@@ -319,6 +319,11 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   assert.equal(await page.getByLabel('Generación de la tabla').inputValue(),'pokemon-gen4-standard-type-chart');
   assert.equal(await page.getByText('Synthetic DS strict fixture',{exact:true}).isVisible(),true);
   assert.equal(await page.getByRole('button',{name:'Abrir guardado',exact:true}).isDisabled(),true);
+  await page.evaluate(()=>window.vyntraState({config:{library_selection:'nds-partial-fixture'},games:[{id:0,storage_id:'nds-partial-fixture',title:'Synthetic DS partial fixture',system:'DS',path:'C:/fixtures/partial.nds',missing:false,core:false,identity:{game_code:'CPUE',revision:0,confidence:'partial'}}],cores:[],saves:[],scanning:false,reference_type_chart:window.testState.reference_type_chart}));
+  await page.waitForFunction(()=>document.querySelector('[aria-label="Generación de la tabla"]')?.value==='pokemon-gen3-type-chart',null,{timeout:5000});
+  assert.equal(await page.getByText(/El código CPUE sugiere Estándar retail · Generación 4/).isVisible(),true);
+  await page.getByRole('button',{name:'Usar sugerencia'}).click();
+  assert.equal(await page.getByLabel('Generación de la tabla').inputValue(),'pokemon-gen4-standard-type-chart');
   await page.evaluate(()=>window.vyntraState({command_revision:9,config:{library_view:'grid',library_filter:'Todos',library_selection:'different-game'},games:[]}));
   assert.equal(await page.getByText('Sin guardado verificado. El planificador manual permanece separado.',{exact:true}).isVisible(),true);
   assert.deepEqual(errors,[]);
