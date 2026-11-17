@@ -287,6 +287,10 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   assert.equal(await page.getByText('Número regional de Kanto',{exact:true}).isVisible(),true);
   assert.equal(await page.getByText('Tipos no disponibles',{exact:true}).isVisible(),true);
   assert.equal(await page.getByText(/PokeAPI contributors/).count(),1);
+  await page.getByLabel('Buscar Pokémon').fill('#037');
+  await page.getByText('Formas alternativas (1)',{exact:true}).click();
+  assert.equal(await page.getByText('Alola · Gen VII',{exact:true}).isVisible(),true);
+  assert.equal(await page.getByRole('link',{name:/PokeAPI · hash/}).isVisible(),true);
   await page.evaluate(()=>window.vyntraImportProgress({phase:'scan',member:'Revisando carpetas',completed_bytes:256,total_bytes:100000}));
   assert.equal(await page.locator('.toast strong').getByText('Revisando carpetas',{exact:true}).isVisible(),true);
   await page.evaluate(()=>window.vyntraImportProgress({phase:'import',member:'Pokemon.gba',completed_bytes:512,total_bytes:1024,batch_item:2,batch_total:5}));

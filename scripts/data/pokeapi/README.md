@@ -8,6 +8,9 @@ It joins those records to the project's National Dex name table by species ID.
 The regional Dex exporter also uses `pokedexes.csv`, `pokemon_dex_numbers.csv`,
 `version_group_regions.csv`, `version_groups.csv`, and `regions.csv` to publish
 the main-series regional lists with regional and National Dex numbers.
+The form index joins `pokemon.csv` and `pokemon_forms.csv` to include alternate
+form names, introduction generations, and battle-only/Mega flags. These records
+do not assert that a form appears in every title or hack containing that species.
 Each list generation follows its version group where a later regional update
 shares an earlier region (for example, Updated Hoenn uses Omega Ruby/Alpha
 Sapphire and Let's Go Kanto uses Let's Go Pikachu/Eevee).

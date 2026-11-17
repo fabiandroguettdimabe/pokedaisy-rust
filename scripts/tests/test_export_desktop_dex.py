@@ -51,6 +51,24 @@ class ExportDesktopDexTests(unittest.TestCase):
                 dexes, "species_id,pokedex_id,pokedex_number\n9999,2,1\n",
                 version_regions, version_groups, regions, species,
             )
+
+    def test_alternate_form_export_joins_species_and_records_introduction_generation(self):
+        pokemon = "id,identifier,species_id,is_default\n37,vulpix,37,1\n10103,vulpix-alola,37,0\n10104,vulpix-totem,37,0\n"
+        forms = (
+            "id,identifier,form_identifier,pokemon_id,introduced_in_version_group_id,is_default,is_battle_only,is_mega,form_order,order\n"
+            "37,vulpix,,37,1,1,0,0,1,37\n"
+            "10103,vulpix-alola,alola,10103,17,1,0,0,2,1000\n"
+            "10104,vulpix-totem,totem,10104,17,0,1,0,3,1001\n"
+        )
+        groups = "id,identifier,generation_id,order\n1,red-blue,1,1\n17,sun-moon,7,17\n"
+        result = MODULE.parse_alternate_forms(
+            pokemon, forms, groups,
+            [{"number": 37, "name": "Vulpix", "generation": 1}],
+        )
+        self.assertEqual(result, {37: [
+            {"identifier": "vulpix-alola", "name": "Alola", "generation": 7, "battle_only": False, "mega": False},
+            {"identifier": "vulpix-totem", "name": "Totem", "generation": 7, "battle_only": True, "mega": False},
+        ]})
     def test_exports_contiguous_species_and_generation_from_national_numbers(self):
         source = '''val speciesNamesNationalDex: Map<Int, String> = mapOf(
             1 to "Bulbasaur", 2 to "Ivysaur", 3 to "Venusaur", 4 to "Charmander")'''
@@ -122,6 +140,13 @@ class ExportDesktopDexTests(unittest.TestCase):
         self.assertEqual(dataset["regional_dex_source_commit"], "7764ee08de86ac11031ae2b883b598599af2b960")
         self.assertEqual(kanto["species_license"], "BSD-3-Clause")
         self.assertIn("no garantiza disponibilidad exacta", kanto["species_scope"])
+        vulpix = dataset["species"][36]
+        self.assertEqual(vulpix["name"], "Vulpix")
+        self.assertEqual(vulpix["forms"][0], {
+            "identifier": "vulpix-alola", "name": "Alola", "battle_only": False, "mega": False, "generation": 7,
+        })
+        self.assertEqual(len(dataset["alternate_forms_source_sha256"]), 64)
+        self.assertEqual(dataset["alternate_forms_source_commit"], "7764ee08de86ac11031ae2b883b598599af2b960")
 
 
 if __name__ == "__main__":

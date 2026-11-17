@@ -67,7 +67,23 @@
     {
       "number": 3,
       "name": "Venusaur",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "venusaur-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        },
+        {
+          "identifier": "venusaur-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 4,
@@ -82,7 +98,30 @@
     {
       "number": 6,
       "name": "Charizard",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "charizard-mega-x",
+          "name": "Mega X",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        },
+        {
+          "identifier": "charizard-mega-y",
+          "name": "Mega Y",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        },
+        {
+          "identifier": "charizard-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 7,
@@ -97,7 +136,23 @@
     {
       "number": 9,
       "name": "Blastoise",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "blastoise-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        },
+        {
+          "identifier": "blastoise-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 10,
@@ -112,7 +167,16 @@
     {
       "number": 12,
       "name": "Butterfree",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "butterfree-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 13,
@@ -127,7 +191,16 @@
     {
       "number": 15,
       "name": "Beedrill",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "beedrill-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 16,
@@ -142,17 +215,51 @@
     {
       "number": 18,
       "name": "Pidgeot",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "pidgeot-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 19,
       "name": "Rattata",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "rattata-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 20,
       "name": "Raticate",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "raticate-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "raticate-totem-alola",
+          "name": "Totem Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 21,
@@ -177,22 +284,177 @@
     {
       "number": 25,
       "name": "Pikachu",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "pikachu-belle",
+          "name": "Belle",
+          "battle_only": false,
+          "mega": false,
+          "generation": 6
+        },
+        {
+          "identifier": "pikachu-cosplay",
+          "name": "Cosplay",
+          "battle_only": false,
+          "mega": false,
+          "generation": 6
+        },
+        {
+          "identifier": "pikachu-libre",
+          "name": "Libre",
+          "battle_only": false,
+          "mega": false,
+          "generation": 6
+        },
+        {
+          "identifier": "pikachu-phd",
+          "name": "Phd",
+          "battle_only": false,
+          "mega": false,
+          "generation": 6
+        },
+        {
+          "identifier": "pikachu-pop-star",
+          "name": "Pop Star",
+          "battle_only": false,
+          "mega": false,
+          "generation": 6
+        },
+        {
+          "identifier": "pikachu-rock-star",
+          "name": "Rock Star",
+          "battle_only": false,
+          "mega": false,
+          "generation": 6
+        },
+        {
+          "identifier": "pikachu-alola-cap",
+          "name": "Alola Cap",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "pikachu-hoenn-cap",
+          "name": "Hoenn Cap",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "pikachu-kalos-cap",
+          "name": "Kalos Cap",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "pikachu-original-cap",
+          "name": "Original Cap",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "pikachu-partner-cap",
+          "name": "Partner Cap",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "pikachu-sinnoh-cap",
+          "name": "Sinnoh Cap",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "pikachu-starter",
+          "name": "Starter",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "pikachu-unova-cap",
+          "name": "Unova Cap",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "pikachu-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        },
+        {
+          "identifier": "pikachu-world-cap",
+          "name": "World Cap",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 26,
       "name": "Raichu",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "raichu-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "raichu-mega-x",
+          "name": "Mega X",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        },
+        {
+          "identifier": "raichu-mega-y",
+          "name": "Mega Y",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 27,
       "name": "Sandshrew",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "sandshrew-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 28,
       "name": "Sandslash",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "sandslash-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 29,
@@ -232,17 +494,44 @@
     {
       "number": 36,
       "name": "Clefable",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "clefable-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 37,
       "name": "Vulpix",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "vulpix-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 38,
       "name": "Ninetales",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "ninetales-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 39,
@@ -302,22 +591,72 @@
     {
       "number": 50,
       "name": "Diglett",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "diglett-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 51,
       "name": "Dugtrio",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "dugtrio-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 52,
       "name": "Meowth",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "meowth-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "meowth-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        },
+        {
+          "identifier": "meowth-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 53,
       "name": "Persian",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "persian-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 54,
@@ -342,12 +681,30 @@
     {
       "number": 58,
       "name": "Growlithe",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "growlithe-hisui",
+          "name": "Hisui",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 59,
       "name": "Arcanine",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "arcanine-hisui",
+          "name": "Hisui",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 60,
@@ -377,7 +734,16 @@
     {
       "number": 65,
       "name": "Alakazam",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "alakazam-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 66,
@@ -392,7 +758,16 @@
     {
       "number": 68,
       "name": "Machamp",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "machamp-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 69,
@@ -407,7 +782,16 @@
     {
       "number": 71,
       "name": "Victreebel",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "victreebel-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 72,
@@ -422,37 +806,107 @@
     {
       "number": 74,
       "name": "Geodude",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "geodude-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 75,
       "name": "Graveler",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "graveler-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 76,
       "name": "Golem",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "golem-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 77,
       "name": "Ponyta",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "ponyta-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 78,
       "name": "Rapidash",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "rapidash-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 79,
       "name": "Slowpoke",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "slowpoke-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 80,
       "name": "Slowbro",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "slowbro-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        },
+        {
+          "identifier": "slowbro-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 81,
@@ -467,7 +921,16 @@
     {
       "number": 83,
       "name": "Farfetch’d",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "farfetchd-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 84,
@@ -492,12 +955,30 @@
     {
       "number": 88,
       "name": "Grimer",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "grimer-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 89,
       "name": "Muk",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "muk-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 90,
@@ -522,7 +1003,23 @@
     {
       "number": 94,
       "name": "Gengar",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "gengar-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        },
+        {
+          "identifier": "gengar-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 95,
@@ -547,17 +1044,44 @@
     {
       "number": 99,
       "name": "Kingler",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "kingler-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 100,
       "name": "Voltorb",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "voltorb-hisui",
+          "name": "Hisui",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 101,
       "name": "Electrode",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "electrode-hisui",
+          "name": "Hisui",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 102,
@@ -567,7 +1091,16 @@
     {
       "number": 103,
       "name": "Exeggutor",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "exeggutor-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 104,
@@ -577,7 +1110,23 @@
     {
       "number": 105,
       "name": "Marowak",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "marowak-alola",
+          "name": "Alola",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "marowak-totem",
+          "name": "Totem",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 106,
@@ -602,7 +1151,16 @@
     {
       "number": 110,
       "name": "Weezing",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "weezing-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 111,
@@ -627,7 +1185,16 @@
     {
       "number": 115,
       "name": "Kangaskhan",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "kangaskhan-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 116,
@@ -657,12 +1224,30 @@
     {
       "number": 121,
       "name": "Starmie",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "starmie-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 122,
       "name": "Mr. Mime",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "mr-mime-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 123,
@@ -687,12 +1272,44 @@
     {
       "number": 127,
       "name": "Pinsir",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "pinsir-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 128,
       "name": "Tauros",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "tauros-paldea-aqua-breed",
+          "name": "Paldea Aqua Breed",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        },
+        {
+          "identifier": "tauros-paldea-blaze-breed",
+          "name": "Paldea Blaze Breed",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        },
+        {
+          "identifier": "tauros-paldea-combat-breed",
+          "name": "Paldea Combat Breed",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 129,
@@ -702,12 +1319,30 @@
     {
       "number": 130,
       "name": "Gyarados",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "gyarados-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 131,
       "name": "Lapras",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "lapras-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 132,
@@ -717,7 +1352,23 @@
     {
       "number": 133,
       "name": "Eevee",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "eevee-starter",
+          "name": "Starter",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "eevee-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 134,
@@ -762,27 +1413,72 @@
     {
       "number": 142,
       "name": "Aerodactyl",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "aerodactyl-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 143,
       "name": "Snorlax",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "snorlax-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 144,
       "name": "Articuno",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "articuno-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 145,
       "name": "Zapdos",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "zapdos-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 146,
       "name": "Moltres",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "moltres-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 147,
@@ -797,12 +1493,37 @@
     {
       "number": 149,
       "name": "Dragonite",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "dragonite-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 150,
       "name": "Mewtwo",
-      "generation": 1
+      "generation": 1,
+      "forms": [
+        {
+          "identifier": "mewtwo-mega-x",
+          "name": "Mega X",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        },
+        {
+          "identifier": "mewtwo-mega-y",
+          "name": "Mega Y",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 151,
@@ -822,7 +1543,16 @@
     {
       "number": 154,
       "name": "Meganium",
-      "generation": 2
+      "generation": 2,
+      "forms": [
+        {
+          "identifier": "meganium-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 155,
@@ -837,7 +1567,16 @@
     {
       "number": 157,
       "name": "Typhlosion",
-      "generation": 2
+      "generation": 2,
+      "forms": [
+        {
+          "identifier": "typhlosion-hisui",
+          "name": "Hisui",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 158,
@@ -852,7 +1591,16 @@
     {
       "number": 160,
       "name": "Feraligatr",
-      "generation": 2
+      "generation": 2,
+      "forms": [
+        {
+          "identifier": "feraligatr-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 161,
@@ -957,7 +1705,16 @@
     {
       "number": 181,
       "name": "Ampharos",
-      "generation": 2
+      "generation": 2,
+      "forms": [
+        {
+          "identifier": "ampharos-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 182,
@@ -1022,7 +1779,16 @@
     {
       "number": 194,
       "name": "Wooper",
-      "generation": 2
+      "generation": 2,
+      "forms": [
+        {
+          "identifier": "wooper-paldea",
+          "name": "Paldea",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 195,
@@ -1047,7 +1813,16 @@
     {
       "number": 199,
       "name": "Slowking",
-      "generation": 2
+      "generation": 2,
+      "forms": [
+        {
+          "identifier": "slowking-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 200,
@@ -1092,7 +1867,16 @@
     {
       "number": 208,
       "name": "Steelix",
-      "generation": 2
+      "generation": 2,
+      "forms": [
+        {
+          "identifier": "steelix-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 209,
@@ -1107,12 +1891,30 @@
     {
       "number": 211,
       "name": "Qwilfish",
-      "generation": 2
+      "generation": 2,
+      "forms": [
+        {
+          "identifier": "qwilfish-hisui",
+          "name": "Hisui",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 212,
       "name": "Scizor",
-      "generation": 2
+      "generation": 2,
+      "forms": [
+        {
+          "identifier": "scizor-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 213,
@@ -1122,12 +1924,30 @@
     {
       "number": 214,
       "name": "Heracross",
-      "generation": 2
+      "generation": 2,
+      "forms": [
+        {
+          "identifier": "heracross-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 215,
       "name": "Sneasel",
-      "generation": 2
+      "generation": 2,
+      "forms": [
+        {
+          "identifier": "sneasel-hisui",
+          "name": "Hisui",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 216,
@@ -1162,7 +1982,16 @@
     {
       "number": 222,
       "name": "Corsola",
-      "generation": 2
+      "generation": 2,
+      "forms": [
+        {
+          "identifier": "corsola-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 223,
@@ -1187,7 +2016,16 @@
     {
       "number": 227,
       "name": "Skarmory",
-      "generation": 2
+      "generation": 2,
+      "forms": [
+        {
+          "identifier": "skarmory-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 228,
@@ -1197,7 +2035,16 @@
     {
       "number": 229,
       "name": "Houndoom",
-      "generation": 2
+      "generation": 2,
+      "forms": [
+        {
+          "identifier": "houndoom-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 230,
@@ -1292,7 +2139,16 @@
     {
       "number": 248,
       "name": "Tyranitar",
-      "generation": 2
+      "generation": 2,
+      "forms": [
+        {
+          "identifier": "tyranitar-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 249,
@@ -1322,7 +2178,16 @@
     {
       "number": 254,
       "name": "Sceptile",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "sceptile-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 255,
@@ -1337,7 +2202,16 @@
     {
       "number": 257,
       "name": "Blaziken",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "blaziken-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 258,
@@ -1352,7 +2226,16 @@
     {
       "number": 260,
       "name": "Swampert",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "swampert-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 261,
@@ -1367,12 +2250,30 @@
     {
       "number": 263,
       "name": "Zigzagoon",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "zigzagoon-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 264,
       "name": "Linoone",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "linoone-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 265,
@@ -1462,7 +2363,16 @@
     {
       "number": 282,
       "name": "Gardevoir",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "gardevoir-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 283,
@@ -1562,12 +2472,30 @@
     {
       "number": 302,
       "name": "Sableye",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "sableye-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 303,
       "name": "Mawile",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "mawile-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 304,
@@ -1582,7 +2510,16 @@
     {
       "number": 306,
       "name": "Aggron",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "aggron-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 307,
@@ -1592,7 +2529,16 @@
     {
       "number": 308,
       "name": "Medicham",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "medicham-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 309,
@@ -1602,7 +2548,16 @@
     {
       "number": 310,
       "name": "Manectric",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "manectric-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 311,
@@ -1647,7 +2602,16 @@
     {
       "number": 319,
       "name": "Sharpedo",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "sharpedo-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 320,
@@ -1667,7 +2631,16 @@
     {
       "number": 323,
       "name": "Camerupt",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "camerupt-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 324,
@@ -1722,7 +2695,16 @@
     {
       "number": 334,
       "name": "Altaria",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "altaria-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 335,
@@ -1807,7 +2789,30 @@
     {
       "number": 351,
       "name": "Castform",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "castform-rainy",
+          "name": "Rainy",
+          "battle_only": true,
+          "mega": false,
+          "generation": 3
+        },
+        {
+          "identifier": "castform-snowy",
+          "name": "Snowy",
+          "battle_only": true,
+          "mega": false,
+          "generation": 3
+        },
+        {
+          "identifier": "castform-sunny",
+          "name": "Sunny",
+          "battle_only": true,
+          "mega": false,
+          "generation": 3
+        }
+      ]
     },
     {
       "number": 352,
@@ -1822,7 +2827,16 @@
     {
       "number": 354,
       "name": "Banette",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "banette-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 355,
@@ -1842,12 +2856,37 @@
     {
       "number": 358,
       "name": "Chimecho",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "chimecho-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 359,
       "name": "Absol",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "absol-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        },
+        {
+          "identifier": "absol-mega-z",
+          "name": "Mega Z",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 360,
@@ -1862,7 +2901,16 @@
     {
       "number": 362,
       "name": "Glalie",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "glalie-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 363,
@@ -1917,7 +2965,16 @@
     {
       "number": 373,
       "name": "Salamence",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "salamence-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 374,
@@ -1932,7 +2989,16 @@
     {
       "number": 376,
       "name": "Metagross",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "metagross-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 377,
@@ -1952,27 +3018,72 @@
     {
       "number": 380,
       "name": "Latias",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "latias-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 381,
       "name": "Latios",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "latios-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 382,
       "name": "Kyogre",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "kyogre-primal",
+          "name": "Primal",
+          "battle_only": true,
+          "mega": false,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 383,
       "name": "Groudon",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "groudon-primal",
+          "name": "Primal",
+          "battle_only": true,
+          "mega": false,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 384,
       "name": "Rayquaza",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "rayquaza-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 385,
@@ -1982,7 +3093,30 @@
     {
       "number": 386,
       "name": "Deoxys",
-      "generation": 3
+      "generation": 3,
+      "forms": [
+        {
+          "identifier": "deoxys-attack",
+          "name": "Attack",
+          "battle_only": false,
+          "mega": false,
+          "generation": 3
+        },
+        {
+          "identifier": "deoxys-defense",
+          "name": "Defense",
+          "battle_only": false,
+          "mega": false,
+          "generation": 3
+        },
+        {
+          "identifier": "deoxys-speed",
+          "name": "Speed",
+          "battle_only": false,
+          "mega": false,
+          "generation": 3
+        }
+      ]
     },
     {
       "number": 387,
@@ -2042,7 +3176,16 @@
     {
       "number": 398,
       "name": "Staraptor",
-      "generation": 4
+      "generation": 4,
+      "forms": [
+        {
+          "identifier": "staraptor-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 399,
@@ -2117,7 +3260,23 @@
     {
       "number": 413,
       "name": "Wormadam",
-      "generation": 4
+      "generation": 4,
+      "forms": [
+        {
+          "identifier": "wormadam-sandy",
+          "name": "Sandy",
+          "battle_only": false,
+          "mega": false,
+          "generation": 4
+        },
+        {
+          "identifier": "wormadam-trash",
+          "name": "Trash",
+          "battle_only": false,
+          "mega": false,
+          "generation": 4
+        }
+      ]
     },
     {
       "number": 414,
@@ -2192,7 +3351,16 @@
     {
       "number": 428,
       "name": "Lopunny",
-      "generation": 4
+      "generation": 4,
+      "forms": [
+        {
+          "identifier": "lopunny-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 429,
@@ -2277,7 +3445,23 @@
     {
       "number": 445,
       "name": "Garchomp",
-      "generation": 4
+      "generation": 4,
+      "forms": [
+        {
+          "identifier": "garchomp-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        },
+        {
+          "identifier": "garchomp-mega-z",
+          "name": "Mega Z",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 446,
@@ -2292,7 +3476,23 @@
     {
       "number": 448,
       "name": "Lucario",
-      "generation": 4
+      "generation": 4,
+      "forms": [
+        {
+          "identifier": "lucario-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        },
+        {
+          "identifier": "lucario-mega-z",
+          "name": "Mega Z",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 449,
@@ -2352,7 +3552,16 @@
     {
       "number": 460,
       "name": "Abomasnow",
-      "generation": 4
+      "generation": 4,
+      "forms": [
+        {
+          "identifier": "abomasnow-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 461,
@@ -2427,7 +3636,16 @@
     {
       "number": 475,
       "name": "Gallade",
-      "generation": 4
+      "generation": 4,
+      "forms": [
+        {
+          "identifier": "gallade-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 476,
@@ -2442,12 +3660,58 @@
     {
       "number": 478,
       "name": "Froslass",
-      "generation": 4
+      "generation": 4,
+      "forms": [
+        {
+          "identifier": "froslass-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 479,
       "name": "Rotom",
-      "generation": 4
+      "generation": 4,
+      "forms": [
+        {
+          "identifier": "rotom-fan",
+          "name": "Fan",
+          "battle_only": false,
+          "mega": false,
+          "generation": 4
+        },
+        {
+          "identifier": "rotom-frost",
+          "name": "Frost",
+          "battle_only": false,
+          "mega": false,
+          "generation": 4
+        },
+        {
+          "identifier": "rotom-heat",
+          "name": "Heat",
+          "battle_only": false,
+          "mega": false,
+          "generation": 4
+        },
+        {
+          "identifier": "rotom-mow",
+          "name": "Mow",
+          "battle_only": false,
+          "mega": false,
+          "generation": 4
+        },
+        {
+          "identifier": "rotom-wash",
+          "name": "Wash",
+          "battle_only": false,
+          "mega": false,
+          "generation": 4
+        }
+      ]
     },
     {
       "number": 480,
@@ -2467,17 +3731,44 @@
     {
       "number": 483,
       "name": "Dialga",
-      "generation": 4
+      "generation": 4,
+      "forms": [
+        {
+          "identifier": "dialga-origin",
+          "name": "Origin",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 484,
       "name": "Palkia",
-      "generation": 4
+      "generation": 4,
+      "forms": [
+        {
+          "identifier": "palkia-origin",
+          "name": "Origin",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 485,
       "name": "Heatran",
-      "generation": 4
+      "generation": 4,
+      "forms": [
+        {
+          "identifier": "heatran-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 486,
@@ -2487,7 +3778,16 @@
     {
       "number": 487,
       "name": "Giratina",
-      "generation": 4
+      "generation": 4,
+      "forms": [
+        {
+          "identifier": "giratina-origin",
+          "name": "Origin",
+          "battle_only": false,
+          "mega": false,
+          "generation": 4
+        }
+      ]
     },
     {
       "number": 488,
@@ -2507,12 +3807,30 @@
     {
       "number": 491,
       "name": "Darkrai",
-      "generation": 4
+      "generation": 4,
+      "forms": [
+        {
+          "identifier": "darkrai-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 492,
       "name": "Shaymin",
-      "generation": 4
+      "generation": 4,
+      "forms": [
+        {
+          "identifier": "shaymin-sky",
+          "name": "Sky",
+          "battle_only": false,
+          "mega": false,
+          "generation": 4
+        }
+      ]
     },
     {
       "number": 493,
@@ -2552,7 +3870,16 @@
     {
       "number": 500,
       "name": "Emboar",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "emboar-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 501,
@@ -2567,7 +3894,16 @@
     {
       "number": 503,
       "name": "Samurott",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "samurott-hisui",
+          "name": "Hisui",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 504,
@@ -2702,12 +4038,30 @@
     {
       "number": 530,
       "name": "Excadrill",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "excadrill-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 531,
       "name": "Audino",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "audino-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 532,
@@ -2777,7 +4131,16 @@
     {
       "number": 545,
       "name": "Scolipede",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "scolipede-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 546,
@@ -2797,12 +4160,37 @@
     {
       "number": 549,
       "name": "Lilligant",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "lilligant-hisui",
+          "name": "Hisui",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 550,
       "name": "Basculin",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "basculin-blue-striped",
+          "name": "Blue Striped",
+          "battle_only": false,
+          "mega": false,
+          "generation": 5
+        },
+        {
+          "identifier": "basculin-white-striped",
+          "name": "White Striped",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 551,
@@ -2822,12 +4210,44 @@
     {
       "number": 554,
       "name": "Darumaka",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "darumaka-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 555,
       "name": "Darmanitan",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "darmanitan-zen",
+          "name": "Zen",
+          "battle_only": true,
+          "mega": false,
+          "generation": 5
+        },
+        {
+          "identifier": "darmanitan-galar-standard",
+          "name": "Galar Standard",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        },
+        {
+          "identifier": "darmanitan-galar-zen",
+          "name": "Galar Zen",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 556,
@@ -2852,7 +4272,16 @@
     {
       "number": 560,
       "name": "Scrafty",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "scrafty-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 561,
@@ -2862,7 +4291,16 @@
     {
       "number": 562,
       "name": "Yamask",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "yamask-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 563,
@@ -2897,17 +4335,44 @@
     {
       "number": 569,
       "name": "Garbodor",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "garbodor-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 570,
       "name": "Zorua",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "zorua-hisui",
+          "name": "Hisui",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 571,
       "name": "Zoroark",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "zoroark-hisui",
+          "name": "Hisui",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 572,
@@ -3072,7 +4537,16 @@
     {
       "number": 604,
       "name": "Eelektross",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "eelektross-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 605,
@@ -3097,7 +4571,16 @@
     {
       "number": 609,
       "name": "Chandelure",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "chandelure-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 610,
@@ -3142,7 +4625,16 @@
     {
       "number": 618,
       "name": "Stunfisk",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "stunfisk-galar",
+          "name": "Galar",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 619,
@@ -3167,7 +4659,16 @@
     {
       "number": 623,
       "name": "Golurk",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "golurk-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 624,
@@ -3192,7 +4693,16 @@
     {
       "number": 628,
       "name": "Braviary",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "braviary-hisui",
+          "name": "Hisui",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 629,
@@ -3257,12 +4767,30 @@
     {
       "number": 641,
       "name": "Tornadus",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "tornadus-therian",
+          "name": "Therian",
+          "battle_only": false,
+          "mega": false,
+          "generation": 5
+        }
+      ]
     },
     {
       "number": 642,
       "name": "Thundurus",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "thundurus-therian",
+          "name": "Therian",
+          "battle_only": false,
+          "mega": false,
+          "generation": 5
+        }
+      ]
     },
     {
       "number": 643,
@@ -3277,22 +4805,65 @@
     {
       "number": 645,
       "name": "Landorus",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "landorus-therian",
+          "name": "Therian",
+          "battle_only": false,
+          "mega": false,
+          "generation": 5
+        }
+      ]
     },
     {
       "number": 646,
       "name": "Kyurem",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "kyurem-black",
+          "name": "Black",
+          "battle_only": false,
+          "mega": false,
+          "generation": 5
+        },
+        {
+          "identifier": "kyurem-white",
+          "name": "White",
+          "battle_only": false,
+          "mega": false,
+          "generation": 5
+        }
+      ]
     },
     {
       "number": 647,
       "name": "Keldeo",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "keldeo-resolute",
+          "name": "Resolute",
+          "battle_only": false,
+          "mega": false,
+          "generation": 5
+        }
+      ]
     },
     {
       "number": 648,
       "name": "Meloetta",
-      "generation": 5
+      "generation": 5,
+      "forms": [
+        {
+          "identifier": "meloetta-pirouette",
+          "name": "Pirouette",
+          "battle_only": true,
+          "mega": false,
+          "generation": 5
+        }
+      ]
     },
     {
       "number": 649,
@@ -3312,7 +4883,16 @@
     {
       "number": 652,
       "name": "Chesnaught",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "chesnaught-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 653,
@@ -3327,7 +4907,16 @@
     {
       "number": 655,
       "name": "Delphox",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "delphox-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 656,
@@ -3342,7 +4931,30 @@
     {
       "number": 658,
       "name": "Greninja",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "greninja-ash",
+          "name": "Ash",
+          "battle_only": true,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "greninja-battle-bond",
+          "name": "Battle Bond",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "greninja-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 659,
@@ -3392,7 +5004,16 @@
     {
       "number": 668,
       "name": "Pyroar",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "pyroar-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 669,
@@ -3402,7 +5023,23 @@
     {
       "number": 670,
       "name": "Floette",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "floette-eternal",
+          "name": "Eternal",
+          "battle_only": false,
+          "mega": false,
+          "generation": 6
+        },
+        {
+          "identifier": "floette-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 671,
@@ -3442,7 +5079,30 @@
     {
       "number": 678,
       "name": "Meowstic",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "meowstic-female",
+          "name": "Female",
+          "battle_only": false,
+          "mega": false,
+          "generation": 6
+        },
+        {
+          "identifier": "meowstic-female-mega",
+          "name": "Mega Female",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        },
+        {
+          "identifier": "meowstic-male-mega",
+          "name": "Mega Male",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 679,
@@ -3457,7 +5117,16 @@
     {
       "number": 681,
       "name": "Aegislash",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "aegislash-blade",
+          "name": "Blade",
+          "battle_only": true,
+          "mega": false,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 682,
@@ -3487,7 +5156,16 @@
     {
       "number": 687,
       "name": "Malamar",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "malamar-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 688,
@@ -3497,7 +5175,16 @@
     {
       "number": 689,
       "name": "Barbaracle",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "barbaracle-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 690,
@@ -3507,7 +5194,16 @@
     {
       "number": 691,
       "name": "Dragalge",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "dragalge-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 692,
@@ -3557,7 +5253,16 @@
     {
       "number": 701,
       "name": "Hawlucha",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "hawlucha-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 702,
@@ -3577,12 +5282,30 @@
     {
       "number": 705,
       "name": "Sliggoo",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "sliggoo-hisui",
+          "name": "Hisui",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 706,
       "name": "Goodra",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "goodra-hisui",
+          "name": "Hisui",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 707,
@@ -3602,12 +5325,58 @@
     {
       "number": 710,
       "name": "Pumpkaboo",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "pumpkaboo-large",
+          "name": "Large",
+          "battle_only": false,
+          "mega": false,
+          "generation": 6
+        },
+        {
+          "identifier": "pumpkaboo-small",
+          "name": "Small",
+          "battle_only": false,
+          "mega": false,
+          "generation": 6
+        },
+        {
+          "identifier": "pumpkaboo-super",
+          "name": "Super",
+          "battle_only": false,
+          "mega": false,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 711,
       "name": "Gourgeist",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "gourgeist-large",
+          "name": "Large",
+          "battle_only": false,
+          "mega": false,
+          "generation": 6
+        },
+        {
+          "identifier": "gourgeist-small",
+          "name": "Small",
+          "battle_only": false,
+          "mega": false,
+          "generation": 6
+        },
+        {
+          "identifier": "gourgeist-super",
+          "name": "Super",
+          "battle_only": false,
+          "mega": false,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 712,
@@ -3617,7 +5386,16 @@
     {
       "number": 713,
       "name": "Avalugg",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "avalugg-hisui",
+          "name": "Hisui",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 714,
@@ -3642,17 +5420,72 @@
     {
       "number": 718,
       "name": "Zygarde",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "zygarde-10",
+          "name": "10",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "zygarde-10-power-construct",
+          "name": "10 Power Construct",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "zygarde-50-power-construct",
+          "name": "50 Power Construct",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "zygarde-complete",
+          "name": "Complete",
+          "battle_only": true,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "zygarde-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 719,
       "name": "Diancie",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "diancie-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 720,
       "name": "Hoopa",
-      "generation": 6
+      "generation": 6,
+      "forms": [
+        {
+          "identifier": "hoopa-unbound",
+          "name": "Unbound",
+          "battle_only": false,
+          "mega": false,
+          "generation": 6
+        }
+      ]
     },
     {
       "number": 721,
@@ -3672,7 +5505,16 @@
     {
       "number": 724,
       "name": "Decidueye",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "decidueye-hisui",
+          "name": "Hisui",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 725,
@@ -3727,7 +5569,16 @@
     {
       "number": 735,
       "name": "Gumshoos",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "gumshoos-totem",
+          "name": "Totem",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 736,
@@ -3742,7 +5593,16 @@
     {
       "number": 738,
       "name": "Vikavolt",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "vikavolt-totem",
+          "name": "Totem",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 739,
@@ -3752,12 +5612,44 @@
     {
       "number": 740,
       "name": "Crabominable",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "crabominable-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 741,
       "name": "Oricorio",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "oricorio-pau",
+          "name": "Pau",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "oricorio-pom-pom",
+          "name": "Pom Pom",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "oricorio-sensu",
+          "name": "Sensu",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 742,
@@ -3767,22 +5659,65 @@
     {
       "number": 743,
       "name": "Ribombee",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "ribombee-totem",
+          "name": "Totem",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 744,
       "name": "Rockruff",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "rockruff-own-tempo",
+          "name": "Own Tempo",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 745,
       "name": "Lycanroc",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "lycanroc-dusk",
+          "name": "Dusk",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "lycanroc-midnight",
+          "name": "Midnight",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 746,
       "name": "Wishiwashi",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "wishiwashi-school",
+          "name": "School",
+          "battle_only": true,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 747,
@@ -3812,7 +5747,16 @@
     {
       "number": 752,
       "name": "Araquanid",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "araquanid-totem",
+          "name": "Totem",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 753,
@@ -3822,7 +5766,16 @@
     {
       "number": 754,
       "name": "Lurantis",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "lurantis-totem",
+          "name": "Totem",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 755,
@@ -3842,7 +5795,16 @@
     {
       "number": 758,
       "name": "Salazzle",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "salazzle-totem",
+          "name": "Totem",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 759,
@@ -3892,7 +5854,16 @@
     {
       "number": 768,
       "name": "Golisopod",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "golisopod-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 769,
@@ -3922,7 +5893,100 @@
     {
       "number": 774,
       "name": "Minior",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "minior-blue",
+          "name": "Blue",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "minior-blue-meteor",
+          "name": "Blue Meteor",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "minior-green",
+          "name": "Green",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "minior-green-meteor",
+          "name": "Green Meteor",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "minior-indigo",
+          "name": "Indigo",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "minior-indigo-meteor",
+          "name": "Indigo Meteor",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "minior-orange",
+          "name": "Orange",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "minior-orange-meteor",
+          "name": "Orange Meteor",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "minior-red",
+          "name": "Red",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "minior-violet",
+          "name": "Violet",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "minior-violet-meteor",
+          "name": "Violet Meteor",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "minior-yellow",
+          "name": "Yellow",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "minior-yellow-meteor",
+          "name": "Yellow Meteor",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 775,
@@ -3937,12 +6001,44 @@
     {
       "number": 777,
       "name": "Togedemaru",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "togedemaru-totem",
+          "name": "Totem",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 778,
       "name": "Mimikyu",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "mimikyu-busted",
+          "name": "Busted",
+          "battle_only": true,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "mimikyu-totem-busted",
+          "name": "Totem Busted",
+          "battle_only": true,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "mimikyu-totem-disguised",
+          "name": "Totem Disguised",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 779,
@@ -3952,7 +6048,16 @@
     {
       "number": 780,
       "name": "Drampa",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "drampa-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 781,
@@ -3972,7 +6077,16 @@
     {
       "number": 784,
       "name": "Kommo-o",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "kommo-o-totem",
+          "name": "Totem",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 785,
@@ -4052,12 +6166,58 @@
     {
       "number": 800,
       "name": "Necrozma",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "necrozma-dawn",
+          "name": "Dawn",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "necrozma-dusk",
+          "name": "Dusk",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "necrozma-ultra",
+          "name": "Ultra",
+          "battle_only": true,
+          "mega": false,
+          "generation": 7
+        }
+      ]
     },
     {
       "number": 801,
       "name": "Magearna",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "magearna-original",
+          "name": "Original",
+          "battle_only": false,
+          "mega": false,
+          "generation": 7
+        },
+        {
+          "identifier": "magearna-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        },
+        {
+          "identifier": "magearna-original-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 802,
@@ -4087,7 +6247,16 @@
     {
       "number": 807,
       "name": "Zeraora",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "zeraora-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 808,
@@ -4097,7 +6266,16 @@
     {
       "number": 809,
       "name": "Melmetal",
-      "generation": 7
+      "generation": 7,
+      "forms": [
+        {
+          "identifier": "melmetal-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 810,
@@ -4112,7 +6290,16 @@
     {
       "number": 812,
       "name": "Rillaboom",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "rillaboom-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 813,
@@ -4127,7 +6314,16 @@
     {
       "number": 815,
       "name": "Cinderace",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "cinderace-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 816,
@@ -4142,7 +6338,16 @@
     {
       "number": 818,
       "name": "Inteleon",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "inteleon-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 819,
@@ -4167,7 +6372,16 @@
     {
       "number": 823,
       "name": "Corviknight",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "corviknight-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 824,
@@ -4182,7 +6396,16 @@
     {
       "number": 826,
       "name": "Orbeetle",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "orbeetle-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 827,
@@ -4222,7 +6445,16 @@
     {
       "number": 834,
       "name": "Drednaw",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "drednaw-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 835,
@@ -4247,7 +6479,16 @@
     {
       "number": 839,
       "name": "Coalossal",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "coalossal-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 840,
@@ -4257,12 +6498,30 @@
     {
       "number": 841,
       "name": "Flapple",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "flapple-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 842,
       "name": "Appletun",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "appletun-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 843,
@@ -4272,12 +6531,37 @@
     {
       "number": 844,
       "name": "Sandaconda",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "sandaconda-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 845,
       "name": "Cramorant",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "cramorant-gorging",
+          "name": "Gorging",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        },
+        {
+          "identifier": "cramorant-gulping",
+          "name": "Gulping",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 846,
@@ -4297,7 +6581,30 @@
     {
       "number": 849,
       "name": "Toxtricity",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "toxtricity-amped-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        },
+        {
+          "identifier": "toxtricity-low-key-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        },
+        {
+          "identifier": "toxtricity-low-key",
+          "name": "Low Key",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 850,
@@ -4307,7 +6614,16 @@
     {
       "number": 851,
       "name": "Centiskorch",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "centiskorch-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 852,
@@ -4342,7 +6658,16 @@
     {
       "number": 858,
       "name": "Hatterene",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "hatterene-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 859,
@@ -4357,7 +6682,16 @@
     {
       "number": 861,
       "name": "Grimmsnarl",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "grimmsnarl-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 862,
@@ -4397,12 +6731,30 @@
     {
       "number": 869,
       "name": "Alcremie",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "alcremie-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 870,
       "name": "Falinks",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "falinks-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 871,
@@ -4427,17 +6779,44 @@
     {
       "number": 875,
       "name": "Eiscue",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "eiscue-noice",
+          "name": "Noice",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 876,
       "name": "Indeedee",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "indeedee-female",
+          "name": "Female",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 877,
       "name": "Morpeko",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "morpeko-hangry",
+          "name": "Hangry",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 878,
@@ -4447,7 +6826,16 @@
     {
       "number": 879,
       "name": "Copperajah",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "copperajah-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 880,
@@ -4472,7 +6860,16 @@
     {
       "number": 884,
       "name": "Duraludon",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "duraludon-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 885,
@@ -4492,17 +6889,44 @@
     {
       "number": 888,
       "name": "Zacian",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "zacian-crowned",
+          "name": "Crowned",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 889,
       "name": "Zamazenta",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "zamazenta-crowned",
+          "name": "Crowned",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 890,
       "name": "Eternatus",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "eternatus-eternamax",
+          "name": "Eternamax",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 891,
@@ -4512,12 +6936,44 @@
     {
       "number": 892,
       "name": "Urshifu",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "urshifu-rapid-strike-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        },
+        {
+          "identifier": "urshifu-single-strike-gmax",
+          "name": "Gmax",
+          "battle_only": true,
+          "mega": false,
+          "generation": 8
+        },
+        {
+          "identifier": "urshifu-rapid-strike",
+          "name": "Rapid Strike",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 893,
       "name": "Zarude",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "zarude-dada",
+          "name": "Dada",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 894,
@@ -4542,7 +6998,23 @@
     {
       "number": 898,
       "name": "Calyrex",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "calyrex-ice",
+          "name": "Ice",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        },
+        {
+          "identifier": "calyrex-shadow",
+          "name": "Shadow",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 899,
@@ -4557,12 +7029,30 @@
     {
       "number": 901,
       "name": "Ursaluna",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "ursaluna-bloodmoon",
+          "name": "Bloodmoon",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 902,
       "name": "Basculegion",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "basculegion-female",
+          "name": "Female",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 903,
@@ -4577,7 +7067,16 @@
     {
       "number": 905,
       "name": "Enamorus",
-      "generation": 8
+      "generation": 8,
+      "forms": [
+        {
+          "identifier": "enamorus-therian",
+          "name": "Therian",
+          "battle_only": false,
+          "mega": false,
+          "generation": 8
+        }
+      ]
     },
     {
       "number": 906,
@@ -4632,7 +7131,16 @@
     {
       "number": 916,
       "name": "Oinkologne",
-      "generation": 9
+      "generation": 9,
+      "forms": [
+        {
+          "identifier": "oinkologne-female",
+          "name": "Female",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 917,
@@ -4677,7 +7185,16 @@
     {
       "number": 925,
       "name": "Maushold",
-      "generation": 9
+      "generation": 9,
+      "forms": [
+        {
+          "identifier": "maushold-family-of-three",
+          "name": "Family of Three",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 926,
@@ -4707,7 +7224,30 @@
     {
       "number": 931,
       "name": "Squawkabilly",
-      "generation": 9
+      "generation": 9,
+      "forms": [
+        {
+          "identifier": "squawkabilly-blue-plumage",
+          "name": "Blue Plumage",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        },
+        {
+          "identifier": "squawkabilly-white-plumage",
+          "name": "White Plumage",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        },
+        {
+          "identifier": "squawkabilly-yellow-plumage",
+          "name": "Yellow Plumage",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 932,
@@ -4812,7 +7352,16 @@
     {
       "number": 952,
       "name": "Scovillain",
-      "generation": 9
+      "generation": 9,
+      "forms": [
+        {
+          "identifier": "scovillain-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 953,
@@ -4872,7 +7421,16 @@
     {
       "number": 964,
       "name": "Palafin",
-      "generation": 9
+      "generation": 9,
+      "forms": [
+        {
+          "identifier": "palafin-hero",
+          "name": "Hero",
+          "battle_only": true,
+          "mega": false,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 965,
@@ -4902,7 +7460,16 @@
     {
       "number": 970,
       "name": "Glimmora",
-      "generation": 9
+      "generation": 9,
+      "forms": [
+        {
+          "identifier": "glimmora-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 971,
@@ -4942,7 +7509,44 @@
     {
       "number": 978,
       "name": "Tatsugiri",
-      "generation": 9
+      "generation": 9,
+      "forms": [
+        {
+          "identifier": "tatsugiri-droopy",
+          "name": "Droopy",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        },
+        {
+          "identifier": "tatsugiri-curly-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        },
+        {
+          "identifier": "tatsugiri-droopy-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        },
+        {
+          "identifier": "tatsugiri-stretchy-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        },
+        {
+          "identifier": "tatsugiri-stretchy",
+          "name": "Stretchy",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 979,
@@ -4962,7 +7566,16 @@
     {
       "number": 982,
       "name": "Dudunsparce",
-      "generation": 9
+      "generation": 9,
+      "forms": [
+        {
+          "identifier": "dudunsparce-three-segment",
+          "name": "Three Segment",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 983,
@@ -5042,12 +7655,30 @@
     {
       "number": 998,
       "name": "Baxcalibur",
-      "generation": 9
+      "generation": 9,
+      "forms": [
+        {
+          "identifier": "baxcalibur-mega",
+          "name": "Mega",
+          "battle_only": true,
+          "mega": true,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 999,
       "name": "Gimmighoul",
-      "generation": 9
+      "generation": 9,
+      "forms": [
+        {
+          "identifier": "gimmighoul-roaming",
+          "name": "Roaming",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 1000,
@@ -5087,12 +7718,72 @@
     {
       "number": 1007,
       "name": "Koraidon",
-      "generation": 9
+      "generation": 9,
+      "forms": [
+        {
+          "identifier": "koraidon-gliding-build",
+          "name": "Gliding Build",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        },
+        {
+          "identifier": "koraidon-limited-build",
+          "name": "Limited Build",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        },
+        {
+          "identifier": "koraidon-sprinting-build",
+          "name": "Sprinting Build",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        },
+        {
+          "identifier": "koraidon-swimming-build",
+          "name": "Swimming Build",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 1008,
       "name": "Miraidon",
-      "generation": 9
+      "generation": 9,
+      "forms": [
+        {
+          "identifier": "miraidon-aquatic-mode",
+          "name": "Aquatic Mode",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        },
+        {
+          "identifier": "miraidon-drive-mode",
+          "name": "Drive Mode",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        },
+        {
+          "identifier": "miraidon-glide-mode",
+          "name": "Glide Mode",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        },
+        {
+          "identifier": "miraidon-low-power-mode",
+          "name": "Low Power Mode",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 1009,
@@ -5137,7 +7828,30 @@
     {
       "number": 1017,
       "name": "Ogerpon",
-      "generation": 9
+      "generation": 9,
+      "forms": [
+        {
+          "identifier": "ogerpon-cornerstone-mask",
+          "name": "Cornerstone Mask",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        },
+        {
+          "identifier": "ogerpon-hearthflame-mask",
+          "name": "Hearthflame Mask",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        },
+        {
+          "identifier": "ogerpon-wellspring-mask",
+          "name": "Wellspring Mask",
+          "battle_only": false,
+          "mega": false,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 1018,
@@ -5172,7 +7886,23 @@
     {
       "number": 1024,
       "name": "Terapagos",
-      "generation": 9
+      "generation": 9,
+      "forms": [
+        {
+          "identifier": "terapagos-stellar",
+          "name": "Stellar",
+          "battle_only": true,
+          "mega": false,
+          "generation": 9
+        },
+        {
+          "identifier": "terapagos-terastal",
+          "name": "Terastal",
+          "battle_only": true,
+          "mega": false,
+          "generation": 9
+        }
+      ]
     },
     {
       "number": 1025,
@@ -5180,6 +7910,16 @@
       "generation": 9
     }
   ],
+  "alternate_forms_source_sha256": "13bedf80df8b88603b9d5baba0ada8a751a00b964030ac5d6e5a5668efdc0d8a",
+  "alternate_forms_source_files": [
+    "scripts/data/pokeapi/pokemon.csv",
+    "scripts/data/pokeapi/pokemon_forms.csv",
+    "scripts/data/pokeapi/version_groups.csv"
+  ],
+  "alternate_forms_source_commit": "7764ee08de86ac11031ae2b883b598599af2b960",
+  "alternate_forms_source_url": "https://github.com/PokeAPI/pokeapi/tree/7764ee08de86ac11031ae2b883b598599af2b960/data/v2/csv",
+  "alternate_forms_license": "BSD-3-Clause",
+  "alternate_forms_attribution": "PokeAPI contributors",
   "regional_dexes": [
     {
       "dataset_id": "pokeapi-pokedex-2",

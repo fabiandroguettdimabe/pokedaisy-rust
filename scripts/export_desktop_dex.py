@@ -29,10 +29,55 @@ REGIONAL_DEX_VERSION_GROUPS = {
     "lumiose-city": "legends-za",
     "hyperspace": "mega-dimension",
 }
+ALTERNATE_FORM_FILES = ("pokemon.csv", "pokemon_forms.csv", "version_groups.csv")
 
 
 def csv_rows(text: str) -> list[dict[str, str]]:
     return list(csv.DictReader(io.StringIO(text)))
+
+
+def parse_alternate_forms(
+    pokemon_csv: str,
+    pokemon_forms_csv: str,
+    version_groups_csv: str,
+    national_species: list[dict],
+) -> dict[int, list[dict]]:
+    pokemon = {int(row["id"]): row for row in csv_rows(pokemon_csv)}
+    generation_by_group = {int(row["id"]): int(row["generation_id"]) for row in csv_rows(version_groups_csv)}
+    national_numbers = {item["number"] for item in national_species}
+    result: dict[int, list[dict]] = {}
+    for row in csv_rows(pokemon_forms_csv):
+        pokemon_id = int(row["pokemon_id"])
+        form_pokemon = pokemon.get(pokemon_id)
+        if form_pokemon is None:
+            raise ValueError(f"alternate form {row['identifier']} references unknown Pokémon {pokemon_id}")
+        if form_pokemon["is_default"] == "1":
+            continue
+        species_id = int(form_pokemon["species_id"])
+        if species_id not in national_numbers:
+            continue
+        base_identifier = next(
+            item["identifier"] for item in pokemon.values()
+            if int(item["species_id"]) == species_id and item["is_default"] == "1"
+        )
+        identifier = row["identifier"]
+        form_name = row["form_identifier"] or identifier.removeprefix(base_identifier + "-")
+        if not form_name or form_name == identifier:
+            form_name = identifier
+        name = " ".join(word.capitalize() if word not in {"of", "the"} else word for word in form_name.split("-"))
+        item = {
+            "identifier": identifier,
+            "name": name,
+            "battle_only": row["is_battle_only"] == "1",
+            "mega": row["is_mega"] == "1",
+        }
+        version_group = row["introduced_in_version_group_id"]
+        if version_group and int(version_group) in generation_by_group:
+            item["generation"] = generation_by_group[int(version_group)]
+        result.setdefault(species_id, []).append(item)
+    for forms in result.values():
+        forms.sort(key=lambda item: (item.get("generation", 99), item["name"], item["identifier"]))
+    return result
 
 
 def parse_regional_dexes(
@@ -153,6 +198,16 @@ def build_dataset(source_bytes: bytes) -> dict:
     gen3_map = parse_gen3_species_dex(gen3_map_bytes.decode("utf-8"))
     gen3_item_bytes = GEN3_ITEM_SOURCE.read_bytes()
     gen3_items = parse_item_names(gen3_item_bytes.decode("utf-8"))
+    form_sources = {name: (POKEAPI_DATA / name).read_bytes() for name in ALTERNATE_FORM_FILES}
+    alternate_forms = parse_alternate_forms(
+        *(form_sources[name].decode("utf-8") for name in ALTERNATE_FORM_FILES), species
+    )
+    for item in species:
+        if forms := alternate_forms.get(item["number"]):
+            item["forms"] = forms
+    forms_digest = hashlib.sha256()
+    for name in ALTERNATE_FORM_FILES:
+        forms_digest.update(name.encode("utf-8") + b"\0" + form_sources[name])
     regional_sources = {name: (POKEAPI_DATA / name).read_bytes() for name in REGIONAL_DEX_FILES}
     regional_dexes = parse_regional_dexes(
         *(regional_sources[name].decode("utf-8") for name in REGIONAL_DEX_FILES), species
@@ -181,6 +236,12 @@ def build_dataset(source_bytes: bytes) -> dict:
         "license": "BSD-3-Clause",
         "attribution": "PokeAPI contributors",
         "species": species,
+        "alternate_forms_source_sha256": forms_digest.hexdigest(),
+        "alternate_forms_source_files": [f"scripts/data/pokeapi/{name}" for name in ALTERNATE_FORM_FILES],
+        "alternate_forms_source_commit": source_commit,
+        "alternate_forms_source_url": f"https://github.com/PokeAPI/pokeapi/tree/{source_commit}/data/v2/csv",
+        "alternate_forms_license": "BSD-3-Clause",
+        "alternate_forms_attribution": "PokeAPI contributors",
         "regional_dexes": regional_dexes,
         "regional_dex_source_files": [f"scripts/data/pokeapi/{name}" for name in REGIONAL_DEX_FILES],
         "regional_dex_source_sha256": regional_hash,
