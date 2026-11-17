@@ -2885,7 +2885,13 @@ mod tests {
         let mut core =
             super::open_game(&game, std::slice::from_ref(&game), &saves, &system, &config)
                 .expect("mGBA must load the homebrew ROM through the production open_game path");
-        assert_eq!(core.system_info().library_name.as_deref(), Some("mGBA"));
+        let info = core.system_info();
+        assert_eq!(info.library_name.as_deref(), Some("mGBA"));
+        assert_eq!(
+            info.library_version.as_deref(),
+            Some("0.11-212-7a12d6d"),
+            "the tested mGBA build must report its pinned upstream revision"
+        );
         exercise_real_core_frame_and_state(&mut core);
         let mut battery = core.read_save_ram().expect("mGBA must expose save RAM");
         assert!(!battery.is_empty(), "mGBA must expose writable save RAM");
@@ -2952,6 +2958,12 @@ mod tests {
                 "melonDS must load the homebrew NDS ROM through the production open_game path",
             );
         let info = core.system_info();
+        assert_eq!(info.library_name.as_deref(), Some("melonDS DS"));
+        assert_eq!(
+            info.library_version.as_deref(),
+            Some("1.4.0"),
+            "the tested melonDS DS build must report the audited release"
+        );
         assert!(info.valid_extensions.unwrap_or_default().contains("nds"));
         exercise_real_core_frame_and_state(&mut core);
         drop(core);
