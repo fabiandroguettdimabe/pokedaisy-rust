@@ -4,11 +4,103 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::io::{Read, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError, TrySendError};
 use std::sync::{Arc, Mutex};
 
 pub const MAX_SNAPSHOT_BYTES: usize = 256 * 1024;
+pub const MAX_FRAME_BYTES: usize = 256 * 1024;
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TransportFrame {
+    pub protocol_version: u32,
+    pub session_id: String,
+    pub epoch: u64,
+    pub nonce: String,
+    pub sequence: u64,
+    pub payload: Value,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FrameError {
+    Io,
+    Empty,
+    TooLarge,
+    InvalidJson,
+    WrongVersion,
+    WrongSession,
+    StaleEpoch,
+    InvalidNonce,
+    Replay,
+}
+
+/// Read one little-endian length-prefixed JSON frame before allocating its body.
+pub fn read_frame(reader: &mut impl Read) -> Result<TransportFrame, FrameError> {
+    let mut prefix = [0u8; 4];
+    reader.read_exact(&mut prefix).map_err(|_| FrameError::Io)?;
+    let size = u32::from_le_bytes(prefix) as usize;
+    if size == 0 {
+        return Err(FrameError::Empty);
+    }
+    if size > MAX_FRAME_BYTES {
+        return Err(FrameError::TooLarge);
+    }
+    let mut bytes = vec![0; size];
+    reader.read_exact(&mut bytes).map_err(|_| FrameError::Io)?;
+    serde_json::from_slice(&bytes).map_err(|_| FrameError::InvalidJson)
+}
+
+pub fn write_frame(writer: &mut impl Write, frame: &TransportFrame) -> Result<(), FrameError> {
+    let bytes = serde_json::to_vec(frame).map_err(|_| FrameError::InvalidJson)?;
+    if bytes.is_empty() {
+        return Err(FrameError::Empty);
+    }
+    if bytes.len() > MAX_FRAME_BYTES || bytes.len() > u32::MAX as usize {
+        return Err(FrameError::TooLarge);
+    }
+    writer
+        .write_all(&(bytes.len() as u32).to_le_bytes())
+        .and_then(|_| writer.write_all(&bytes))
+        .map_err(|_| FrameError::Io)
+}
+
+/// Check a peer frame and advance the accepted monotonic sequence only on success.
+pub fn validate_frame(
+    frame: &TransportFrame,
+    session_id: &str,
+    epoch: u64,
+    nonce: &str,
+    last_sequence: &mut u64,
+) -> Result<(), FrameError> {
+    if frame.protocol_version != crate::domain::CONTRACT_VERSION {
+        return Err(FrameError::WrongVersion);
+    }
+    if frame.session_id != session_id {
+        return Err(FrameError::WrongSession);
+    }
+    if frame.epoch != epoch {
+        return Err(FrameError::StaleEpoch);
+    }
+    if !constant_time_eq(frame.nonce.as_bytes(), nonce.as_bytes()) {
+        return Err(FrameError::InvalidNonce);
+    }
+    if frame.sequence <= *last_sequence {
+        return Err(FrameError::Replay);
+    }
+    *last_sequence = frame.sequence;
+    Ok(())
+}
+
+fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+    left.iter()
+        .zip(right)
+        .fold(0u8, |difference, (a, b)| difference | (a ^ b))
+        == 0
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SessionSnapshot {
@@ -164,8 +256,8 @@ impl PlayerCommandSender {
 #[cfg(test)]
 mod tests {
     use super::{
-        LatestSnapshot, PlayerCommand, PlayerCommandQueue, QueueError, SessionSnapshot,
-        SnapshotError,
+        FrameError, LatestSnapshot, PlayerCommand, PlayerCommandQueue, QueueError, SessionSnapshot,
+        SnapshotError, TransportFrame, read_frame, validate_frame, write_frame,
     };
     use serde_json::json;
 
@@ -230,5 +322,49 @@ mod tests {
         assert_eq!(queue.try_next().unwrap(), Some(PlayerCommand::Stop));
         assert_eq!(queue.try_next().unwrap(), Some(PlayerCommand::SaveState));
         assert_eq!(queue.try_next().unwrap(), None);
+    }
+
+    #[test]
+    fn frames_roundtrip_and_validate_session_nonce_epoch_and_replay() {
+        let frame = TransportFrame {
+            protocol_version: crate::domain::CONTRACT_VERSION,
+            session_id: "session-a".into(),
+            epoch: 9,
+            nonce: "a1b2c3".into(),
+            sequence: 1,
+            payload: json!({"command": "ping"}),
+        };
+        let mut bytes = Vec::new();
+        write_frame(&mut bytes, &frame).unwrap();
+        let mut stream = std::io::Cursor::new(bytes);
+        let decoded = read_frame(&mut stream).unwrap();
+        assert_eq!(decoded, frame);
+        let mut last_sequence = 0;
+        validate_frame(&decoded, "session-a", 9, "a1b2c3", &mut last_sequence).unwrap();
+        assert_eq!(last_sequence, 1);
+        assert_eq!(
+            validate_frame(&decoded, "session-a", 9, "wrong", &mut last_sequence),
+            Err(FrameError::InvalidNonce)
+        );
+        let mut replay_sequence = 1;
+        assert_eq!(
+            validate_frame(&decoded, "session-a", 9, "a1b2c3", &mut replay_sequence),
+            Err(FrameError::Replay)
+        );
+        assert_eq!(
+            validate_frame(&decoded, "other", 9, "a1b2c3", &mut 0),
+            Err(FrameError::WrongSession)
+        );
+        assert_eq!(
+            validate_frame(&decoded, "session-a", 8, "a1b2c3", &mut 0),
+            Err(FrameError::StaleEpoch)
+        );
+    }
+
+    #[test]
+    fn frame_reader_rejects_oversized_length_before_reading_body() {
+        let bytes = ((super::MAX_FRAME_BYTES as u32) + 1).to_le_bytes();
+        let mut stream = std::io::Cursor::new(bytes);
+        assert_eq!(read_frame(&mut stream), Err(FrameError::TooLarge));
     }
 }
