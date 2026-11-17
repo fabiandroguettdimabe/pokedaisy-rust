@@ -3261,6 +3261,39 @@ mod tests {
         let _ = fs::remove_dir_all(root);
     }
 
+    #[test]
+    fn malformed_vault_bundle_file_generates_correlated_terminal_failure_ack() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-vault-file-error-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let bundle_path = root.join("invalid-vault.zip");
+        fs::write(&bundle_path, b"not a ZIP bundle").unwrap();
+
+        let result = crate::vault::read_bundle_file(&bundle_path)
+            .map(|_| None)
+            .map_err(|error| protocol::AppError::new("command_failed", error));
+        let ack = protocol::UiAck::terminal(
+            "vault-import-command",
+            Some("vault-import-request".into()),
+            result,
+        );
+
+        assert!(!ack.ok);
+        assert_eq!(ack.command_id, "vault-import-command");
+        assert_eq!(ack.request_id.as_deref(), Some("vault-import-request"));
+        assert_eq!(
+            ack.error.as_ref().map(|error| error.code.as_str()),
+            Some("command_failed")
+        );
+        assert!(
+            ack.error
+                .as_ref()
+                .is_some_and(|error| !error.reason.is_empty())
+        );
+        let _ = fs::remove_dir_all(root);
+    }
+
     #[cfg(windows)]
     #[test]
     fn vault_restore_acl_denial_keeps_the_committed_state_untouched() {
