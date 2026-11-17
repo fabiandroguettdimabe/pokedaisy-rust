@@ -280,6 +280,63 @@ mod tests {
     }
 
     #[test]
+    fn journal_recovers_previous_version_after_process_exit_during_staging() {
+        const JOURNAL_ENV: &str = "VYNTRA_MIGRATION_STAGE_CRASH_PATH";
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-migration-stage-crash-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join("migration.json");
+        let previous = MigrationReport {
+            schema: 1,
+            items: Vec::new(),
+        };
+        let next = MigrationReport {
+            schema: 2,
+            items: Vec::new(),
+        };
+        persist(&path, &previous).unwrap();
+
+        let child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "migration::tests::terminate_during_journal_staging",
+            ])
+            .env(JOURNAL_ENV, &path)
+            .status()
+            .unwrap();
+        assert_eq!(child.code(), Some(78));
+        assert_eq!(load_journal(&path).unwrap(), Some(previous));
+        assert!(path.with_extension("tmp").exists());
+
+        persist(&path, &next).unwrap();
+        assert_eq!(load_journal(&path).unwrap(), Some(next));
+        assert!(!path.with_extension("tmp").exists());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn terminate_during_journal_staging() {
+        const JOURNAL_ENV: &str = "VYNTRA_MIGRATION_STAGE_CRASH_PATH";
+        let Some(path) = std::env::var_os(JOURNAL_ENV) else {
+            return;
+        };
+        let path = std::path::PathBuf::from(path);
+        let next = MigrationReport {
+            schema: 2,
+            items: Vec::new(),
+        };
+        let _ = persist_with(&path, &next, |file, bytes| {
+            file.write_all(&bytes[..bytes.len().min(4)])?;
+            file.sync_all()?;
+            std::process::exit(78)
+        });
+        unreachable!("the subprocess exits during journal staging");
+    }
+
+    #[test]
     fn failed_journal_install_restores_previous_journal() {
         let root =
             std::env::temp_dir().join(format!("vyntra-migration-rename-{}", std::process::id()));
