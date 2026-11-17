@@ -284,7 +284,7 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   assert.equal(await page.getByText('151 especies · BSD-3-Clause',{exact:true}).isVisible(),true);
   await page.getByLabel('Buscar Pokémon').fill('#025');
   assert.equal(await page.getByRole('heading',{name:'Pikachu',exact:true}).isVisible(),true);
-  assert.equal(await page.getByText('ID interno de Kanto',{exact:true}).isVisible(),true);
+  assert.equal(await page.getByText('Número regional de Kanto',{exact:true}).isVisible(),true);
   assert.equal(await page.getByText('Tipos no disponibles',{exact:true}).isVisible(),true);
   assert.equal(await page.getByText(/PokeAPI contributors/).count(),1);
   await page.evaluate(()=>window.vyntraImportProgress({phase:'scan',member:'Revisando carpetas',completed_bytes:256,total_bytes:100000}));
