@@ -1,7 +1,11 @@
 /* Minimal frontend contract test; no firmware, BIOS or commercial ROM bundled. */
 #include "libretro.h"
 #include <assert.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <dlfcn.h>
+#endif
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,10 +43,18 @@ static void ppm(const char* root,const char* name){
   fputc(r,f);fputc(g,f);fputc(b,f);
  }fclose(f);
 }
+#ifdef _WIN32
+#define LOAD(n) __typeof__(&n) n##_fn=(__typeof__(&n))GetProcAddress((HMODULE)so,#n);assert(n##_fn)
+#else
 #define LOAD(n) __typeof__(&n) n##_fn=dlsym(so,#n);assert(n##_fn)
+#endif
 int main(int argc,char** argv){
  assert(argc>=4);directory=argv[3];
+#ifdef _WIN32
+ void* so=(void*)LoadLibraryA(argv[1]);if(!so){fprintf(stderr,"LoadLibrary failed: %lu\n",(unsigned long)GetLastError());return 1;}
+#else
  void* so=dlopen(argv[1],RTLD_NOW|RTLD_LOCAL);if(!so){puts(dlerror());return 1;}
+#endif
  LOAD(retro_set_environment);LOAD(retro_set_video_refresh);LOAD(retro_set_audio_sample_batch);
  LOAD(retro_set_input_poll);LOAD(retro_set_input_state);LOAD(retro_init);LOAD(retro_load_game);
  LOAD(retro_run);LOAD(retro_get_memory_data);LOAD(retro_get_memory_size);
@@ -110,6 +122,11 @@ int main(int argc,char** argv){
   mask=1u<<RETRO_DEVICE_ID_JOYPAD_R2;retro_run_fn();mask=0;retro_run_fn();assert(w==512&&h==384);ppm(directory,"bottom");
  }
  assert(!retro_unserialize_fn(state,3));
- free(before);free(state);retro_unload_game_fn();retro_deinit_fn();dlclose(so);
+ free(before);free(state);retro_unload_game_fn();retro_deinit_fn();
+#ifdef _WIN32
+ FreeLibrary((HMODULE)so);
+#else
+ dlclose(so);
+#endif
  printf("PASS frames=%u format=%u save_bytes=%zu state_bytes=%zu\n",frames,fmt,saves,n);
 }

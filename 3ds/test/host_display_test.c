@@ -5,6 +5,7 @@
 #include "../core/pd_ui_internal.h"
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 static uint32_t pixels[512*384];
 static bool has(const struct pd_ui* ui,int id) {
@@ -190,7 +191,10 @@ int main(void) {
     wide.expandGame=false;pd_ui_draw(&ui,&c,&game,&snap,&wide);
     assert(!has(&ui,HIT_SETTING+SETTING_ASPECT) && !has(&ui,HIT_SETTING+SETTING_AUTO_ZOOM));
     // Saved and read back; a file from before (no aspect / autozoom keys) keeps the defaults.
-    const char* path="/tmp/pd-host-display-settings.ini";
+    char path[1024];
+    const char* temp=getenv("TEMP");
+    if(!temp) temp="/tmp";
+    snprintf(path,sizeof path,"%s/pd-host-display-settings.ini",temp);
     assert(pd_settings_save(&settings,path));
     struct pd_settings back;assert(pd_settings_load(&back,path));
     assert(back.aspect==PD_ASPECT_ZOOM_OUT && !back.autoZoom && back.ffSpeed==settings.ffSpeed);

@@ -7,20 +7,24 @@ extern "C" {
 }
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <iterator>
 #include <filesystem>
-#include <unistd.h>
+#include <cstdlib>
 static void press(DsCompanionUi& ui,unsigned id){assert(!ui.control(1u<<id));}
 static void ppm(const char* path,const std::vector<uint32_t>& px,int w=341,int h=256){
   FILE* f=fopen(path,"wb");assert(f);fprintf(f,"P6\n%d %d\n255\n",w,h);
   for(auto p:px){fputc(p>>16&255,f);fputc(p>>8&255,f);fputc(p&255,f);}fclose(f);
 }
 int main(int argc,char** argv){
-  assert(argc==3);char path[]="/tmp/pdds-settings-XXXXXX";assert(mkdtemp(path));
-  DsCompanionUi ui;ui.init(path);assert(!ui.settings.hud && ui.companion_id()==RETRO_DEVICE_ID_JOYPAD_L2);
+  assert(argc==3);
+  auto nonce=std::chrono::steady_clock::now().time_since_epoch().count();
+  auto path=(std::filesystem::temp_directory_path()/std::filesystem::path("pdds-settings-"+std::to_string(nonce))).string();
+  assert(std::filesystem::create_directory(path));
+  DsCompanionUi ui;ui.init(path.c_str());assert(!ui.settings.hud && ui.companion_id()==RETRO_DEVICE_ID_JOYPAD_L2);
   std::ifstream f(argv[1],std::ios::binary);std::vector<uint8_t> ram{std::istreambuf_iterator<char>(f),{}};
   auto s=ds_read_companion(ram.data(),ram.size());assert(s.valid);
   std::vector<uint32_t> px(341*256);pd_canvas c;pd_canvas_init(&c,341,256,px.data());

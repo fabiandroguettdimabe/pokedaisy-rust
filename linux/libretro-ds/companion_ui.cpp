@@ -17,6 +17,7 @@
 #ifdef _WIN32
 #include <direct.h>
 #include <io.h>
+#include <windows.h>
 #else
 #include <sys/stat.h>
 #include <unistd.h>
@@ -49,6 +50,13 @@ bool flush_settings(FILE* file){
   return _commit(_fileno(file))==0;
 #else
   return fsync(fileno(file))==0;
+#endif
+}
+bool replace_settings(const char* source,const char* destination){
+#ifdef _WIN32
+  return MoveFileExA(source,destination,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)!=0;
+#else
+  return std::rename(source,destination)==0;
 #endif
 }
 const char* const layoutNames[]={"ONE SCREEN","TOP","BOTTOM","SIDE BY SIDE","STACKED","LARGE + SMALL","PICTURE IN PICTURE"};
@@ -130,7 +138,7 @@ bool DsCompanionUi::save(){
     if(!flush_settings(f))ok=false;
     if(std::fclose(f))ok=false;
   }
-  if(ok && std::rename(temp.c_str(),path.c_str())==0){error.clear();return true;}
+  if(ok && replace_settings(temp.c_str(),path.c_str())){error.clear();return true;}
   std::remove(temp.c_str());error="Could not save settings";return false;
 }
 void DsCompanionUi::set_game(DsGame value,bool soulSilverVersion){
