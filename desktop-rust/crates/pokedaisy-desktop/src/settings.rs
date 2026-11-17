@@ -18,6 +18,17 @@ pub struct GameSettingsOverride {
     pub volume: Option<u8>,
     pub fast_forward: Option<u32>,
     pub autosave: Option<u64>,
+    pub fullscreen: Option<bool>,
+}
+
+impl GameSettingsOverride {
+    fn is_empty(&self) -> bool {
+        self.smooth.is_none()
+            && self.volume.is_none()
+            && self.fast_forward.is_none()
+            && self.autosave.is_none()
+            && self.fullscreen.is_none()
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -128,12 +139,16 @@ mod tests {
         settings
             .set_game_smooth("a1b2c3d4e5f60718", Some(false))
             .unwrap();
+        settings
+            .set_game_fullscreen("a1b2c3d4e5f60718", Some(true))
+            .unwrap();
         assert!(!settings.smooth_for_game("a1b2c3d4e5f60718", "GBA"));
         assert!(settings.smooth_for_game("another-game", "GBA"));
         settings.save(&path).unwrap();
 
         let mut loaded = Settings::load(&path, &dir).unwrap();
         assert!(!loaded.smooth_for_game("a1b2c3d4e5f60718", "GBA"));
+        assert!(loaded.fullscreen_for_game("a1b2c3d4e5f60718", "GBA"));
         assert!(loaded.smooth_for_game("another-game", "GBA"));
         loaded.set_game_smooth("a1b2c3d4e5f60718", None).unwrap();
         assert!(loaded.smooth_for_game("a1b2c3d4e5f60718", "GBA"));
@@ -156,6 +171,30 @@ mod tests {
             serde_json::from_slice(&serde_json::to_vec(&settings).unwrap()).unwrap();
         assert!(!restored.smooth_for_game("unscoped-game", "GBA"));
         assert!(settings.set_system_smooth("unknown", Some(false)).is_err());
+    }
+
+    #[test]
+    fn fullscreen_profile_uses_game_system_then_global_and_can_inherit() {
+        let mut settings = Settings::default();
+        settings.fullscreen = false;
+        settings.set_system_fullscreen("GBA", Some(true)).unwrap();
+        assert!(settings.fullscreen_for_game("gba-one", "GBA"));
+        assert!(!settings.fullscreen_for_game("other", "DS"));
+        settings
+            .set_game_fullscreen("gba-one", Some(false))
+            .unwrap();
+        assert!(!settings.fullscreen_for_game("gba-one", "GBA"));
+        let restored: Settings =
+            serde_json::from_slice(&serde_json::to_vec(&settings).unwrap()).unwrap();
+        assert!(!restored.fullscreen_for_game("gba-one", "GBA"));
+        assert!(restored.fullscreen_for_game("another-game", "GBA"));
+        settings.set_game_fullscreen("gba-one", None).unwrap();
+        assert!(settings.fullscreen_for_game("gba-one", "GBA"));
+        settings.set_system_fullscreen("GBA", None).unwrap();
+        assert!(!settings.fullscreen_for_game("gba-one", "GBA"));
+        assert!(settings.game_overrides.is_empty());
+        assert!(settings.system_overrides.is_empty());
+        assert!(settings.set_system_fullscreen("ROM", Some(true)).is_err());
     }
 
     #[test]
@@ -211,6 +250,10 @@ mod tests {
         settings.reduced_motion = true;
         settings.volume = 25;
         settings.library = root.join("custom-roms");
+        settings
+            .set_game_fullscreen("game-one", Some(true))
+            .unwrap();
+        settings.set_system_fullscreen("GBA", Some(true)).unwrap();
 
         settings.reset_section("general", &root).unwrap();
         assert!(!settings.reduced_motion);
@@ -218,6 +261,8 @@ mod tests {
         assert_eq!(settings.library, root.join("custom-roms"));
         settings.reset_section("av", &root).unwrap();
         assert_eq!(settings.volume, 80);
+        assert!(settings.game_overrides.is_empty());
+        assert!(settings.system_overrides.is_empty());
         assert_eq!(settings.library, root.join("custom-roms"));
         assert!(settings.reset_section("unknown", &root).is_err());
         assert_eq!(fs::read(&keep).unwrap(), b"save");
@@ -286,6 +331,8 @@ impl Settings {
                 self.fullscreen = defaults.fullscreen;
                 self.fast_forward = defaults.fast_forward;
                 self.autosave = defaults.autosave;
+                self.game_overrides.clear();
+                self.system_overrides.clear();
             }
             "input" => self.keys = defaults.keys,
             _ => return Err("Sección de configuración no válida".into()),
@@ -338,14 +385,16 @@ impl Settings {
                 && (profile.smooth.is_some()
                     || profile.volume.is_some()
                     || profile.fast_forward.is_some()
-                    || profile.autosave.is_some())
+                    || profile.autosave.is_some()
+                    || profile.fullscreen.is_some())
         });
         value.system_overrides.retain(|system, profile| {
             matches!(system.as_str(), "GB" | "GBC" | "GBA" | "DS")
                 && (profile.smooth.is_some()
                     || profile.volume.is_some()
                     || profile.fast_forward.is_some()
-                    || profile.autosave.is_some())
+                    || profile.autosave.is_some()
+                    || profile.fullscreen.is_some())
         });
         if value.companion_window.as_ref().is_some_and(|bounds| {
             !bounds.x.is_finite()
@@ -413,17 +462,65 @@ impl Settings {
             .unwrap_or(self.smooth)
     }
 
+    pub fn fullscreen_for_game(&self, storage_id: &str, system: &str) -> bool {
+        self.game_overrides
+            .get(storage_id)
+            .and_then(|profile| profile.fullscreen)
+            .or_else(|| {
+                self.system_overrides
+                    .get(system)
+                    .and_then(|profile| profile.fullscreen)
+            })
+            .unwrap_or(self.fullscreen)
+    }
+
+    pub fn set_system_fullscreen(
+        &mut self,
+        system: &str,
+        value: Option<bool>,
+    ) -> Result<(), String> {
+        if !matches!(system, "GB" | "GBC" | "GBA" | "DS") {
+            return Err("Sistema no válido para el perfil".into());
+        }
+        let profile = self.system_overrides.entry(system.into()).or_default();
+        profile.fullscreen = value;
+        if profile.is_empty() {
+            self.system_overrides.remove(system);
+        }
+        Ok(())
+    }
+
+    pub fn set_game_fullscreen(
+        &mut self,
+        storage_id: &str,
+        value: Option<bool>,
+    ) -> Result<(), String> {
+        self.validate_game_profile_id(storage_id)?;
+        if let Some(value) = value {
+            if !self.game_overrides.contains_key(storage_id) && self.game_overrides.len() >= 10_000
+            {
+                return Err("Se alcanzó el límite de perfiles por juego".into());
+            }
+            self.game_overrides
+                .entry(storage_id.to_owned())
+                .or_default()
+                .fullscreen = Some(value);
+        } else if let Some(profile) = self.game_overrides.get_mut(storage_id) {
+            profile.fullscreen = None;
+            if profile.is_empty() {
+                self.game_overrides.remove(storage_id);
+            }
+        }
+        Ok(())
+    }
+
     pub fn set_system_smooth(&mut self, system: &str, smooth: Option<bool>) -> Result<(), String> {
         if !matches!(system, "GB" | "GBC" | "GBA" | "DS") {
             return Err("Sistema no válido para el perfil".into());
         }
         let profile = self.system_overrides.entry(system.into()).or_default();
         profile.smooth = smooth;
-        if profile.smooth.is_none()
-            && profile.volume.is_none()
-            && profile.fast_forward.is_none()
-            && profile.autosave.is_none()
-        {
+        if profile.is_empty() {
             self.system_overrides.remove(system);
         }
         Ok(())
@@ -442,10 +539,7 @@ impl Settings {
         } else {
             if let Some(profile) = self.game_overrides.get_mut(storage_id) {
                 profile.smooth = None;
-                if profile.volume.is_none()
-                    && profile.fast_forward.is_none()
-                    && profile.autosave.is_none()
-                {
+                if profile.is_empty() {
                     self.game_overrides.remove(storage_id);
                 }
             }
@@ -479,10 +573,7 @@ impl Settings {
                 .volume = Some(value);
         } else if let Some(profile) = self.game_overrides.get_mut(storage_id) {
             profile.volume = None;
-            if profile.smooth.is_none()
-                && profile.fast_forward.is_none()
-                && profile.autosave.is_none()
-            {
+            if profile.is_empty() {
                 self.game_overrides.remove(storage_id);
             }
         }
@@ -502,10 +593,7 @@ impl Settings {
                 .volume = Some(value);
         } else if let Some(profile) = self.system_overrides.get_mut(system) {
             profile.volume = None;
-            if profile.smooth.is_none()
-                && profile.fast_forward.is_none()
-                && profile.autosave.is_none()
-            {
+            if profile.is_empty() {
                 self.system_overrides.remove(system);
             }
         }
@@ -553,7 +641,7 @@ impl Settings {
                 .fast_forward = Some(value);
         } else if let Some(profile) = self.game_overrides.get_mut(storage_id) {
             profile.fast_forward = None;
-            if profile.smooth.is_none() && profile.volume.is_none() && profile.autosave.is_none() {
+            if profile.is_empty() {
                 self.game_overrides.remove(storage_id);
             }
         }
@@ -577,7 +665,7 @@ impl Settings {
                 .fast_forward = Some(value);
         } else if let Some(profile) = self.system_overrides.get_mut(system) {
             profile.fast_forward = None;
-            if profile.smooth.is_none() && profile.volume.is_none() && profile.autosave.is_none() {
+            if profile.is_empty() {
                 self.system_overrides.remove(system);
             }
         }
@@ -614,10 +702,7 @@ impl Settings {
                 .autosave = Some(value);
         } else if let Some(profile) = self.game_overrides.get_mut(storage_id) {
             profile.autosave = None;
-            if profile.smooth.is_none()
-                && profile.volume.is_none()
-                && profile.fast_forward.is_none()
-            {
+            if profile.is_empty() {
                 self.game_overrides.remove(storage_id);
             }
         }
@@ -637,10 +722,7 @@ impl Settings {
                 .autosave = Some(value);
         } else if let Some(profile) = self.system_overrides.get_mut(system) {
             profile.autosave = None;
-            if profile.smooth.is_none()
-                && profile.volume.is_none()
-                && profile.fast_forward.is_none()
-            {
+            if profile.is_empty() {
                 self.system_overrides.remove(system);
             }
         }

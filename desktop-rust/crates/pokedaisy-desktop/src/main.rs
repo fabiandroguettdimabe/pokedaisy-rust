@@ -528,6 +528,13 @@ fn sdl_main() -> Result<(), String> {
     fs::create_dir_all(&data).map_err(|e| e.to_string())?;
     let config_path = data.join("vyntra-settings.json");
     let mut config = Settings::load(&config_path, &root)?;
+    let startup_fullscreen = rom_arg
+        .as_ref()
+        .map(|path| {
+            let game = game_from_path(path.clone());
+            config.fullscreen_for_game(&game_storage_key(&game), game.system)
+        })
+        .unwrap_or(config.fullscreen);
     let mut rom_dir = config.library.clone();
     let mut save_dir = config.saves.clone();
     let mut state_dir = config.states.clone();
@@ -592,7 +599,7 @@ fn sdl_main() -> Result<(), String> {
         .set_minimum_size(1000, 660)
         .map_err(|e| e.to_string())?;
     canvas.set_blend_mode(sdl2::render::BlendMode::Blend);
-    if config.fullscreen {
+    if startup_fullscreen {
         canvas
             .window_mut()
             .set_fullscreen(sdl2::video::FullscreenType::Desktop)?;

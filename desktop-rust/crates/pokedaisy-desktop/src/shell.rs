@@ -653,7 +653,10 @@ pub fn run() -> Result<(), String> {
                             if !games.iter().any(|game| game_storage_key(game) == id) {
                                 return Err("El juego ya no está en la biblioteca".into());
                             }
-                            let value = action["value"].as_bool();
+                            let value = optional_setting_bool(
+                                required_setting_value(&action, "Valor inválido")?,
+                                "Valor inválido",
+                            )?;
                             let previous = config.clone();
                             config.set_game_smooth(id, value)?;
                             if let Err(error) = config.save(&config_path) {
@@ -663,13 +666,31 @@ pub fn run() -> Result<(), String> {
                         },
                         "system_smoothing" => {
                             let system = action["system"].as_str().ok_or("Sistema inválido")?;
-                            let value = action["value"].as_bool();
+                            let value = optional_setting_bool(
+                                required_setting_value(&action, "Valor inválido")?,
+                                "Valor inválido",
+                            )?;
                             let previous = config.clone();
                             config.set_system_smooth(system, value)?;
                             if let Err(error) = config.save(&config_path) {
                                 config = previous;
                                 return Err(error);
                             }
+                        },
+                        "game_fullscreen" => {
+                            let id = action["storage_id"].as_str().ok_or("Juego inválido")?;
+                            if !games.iter().any(|game| game_storage_key(game) == id) { return Err("El juego ya no está en la biblioteca".into()); }
+                            let value = optional_setting_bool(required_setting_value(&action, "Valor inválido")?, "Valor inválido")?;
+                            let previous = config.clone();
+                            config.set_game_fullscreen(id, value)?;
+                            if let Err(error) = config.save(&config_path) { config = previous; return Err(error); }
+                        },
+                        "system_fullscreen" => {
+                            let system = action["system"].as_str().ok_or("Sistema inválido")?;
+                            let value = optional_setting_bool(required_setting_value(&action, "Valor inválido")?, "Valor inválido")?;
+                            let previous = config.clone();
+                            config.set_system_fullscreen(system, value)?;
+                            if let Err(error) = config.save(&config_path) { config = previous; return Err(error); }
                         },
                         "game_volume" => {
                             let id = action["storage_id"].as_str().ok_or("Juego inválido")?;
@@ -1399,6 +1420,8 @@ fn is_settings_mutation(action: &str) -> bool {
         "reset_settings_section"
             | "game_smoothing"
             | "system_smoothing"
+            | "game_fullscreen"
+            | "system_fullscreen"
             | "game_volume"
             | "system_volume"
             | "game_fast_forward"
@@ -1435,6 +1458,13 @@ fn optional_setting_u8(value: &serde_json::Value, error: &str) -> Result<Option<
         .and_then(|number| u8::try_from(number).ok())
         .map(Some)
         .ok_or_else(|| error.to_owned())
+}
+
+fn optional_setting_bool(value: &serde_json::Value, error: &str) -> Result<Option<bool>, String> {
+    if value.is_null() {
+        return Ok(None);
+    }
+    value.as_bool().map(Some).ok_or_else(|| error.to_owned())
 }
 
 fn optional_setting_u32(value: &serde_json::Value, error: &str) -> Result<Option<u32>, String> {
@@ -2062,6 +2092,11 @@ mod tests {
         let wrapped_speed = serde_json::json!(4_294_967_298u64);
         assert!(optional_setting_u8(&wrapped_volume, "Volumen inválido").is_err());
         assert!(optional_setting_u32(&wrapped_speed, "Velocidad inválida").is_err());
+        assert_eq!(
+            optional_setting_bool(&serde_json::Value::Null, "Valor inválido").unwrap(),
+            None
+        );
+        assert!(optional_setting_bool(&serde_json::json!(1), "Valor inválido").is_err());
         assert_eq!(
             optional_setting_u8(&serde_json::Value::Null, "Volumen inválido").unwrap(),
             None
