@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import unittest
 
 ROOT = __import__("pathlib").Path(__file__).resolve().parents[2]
@@ -8,8 +9,48 @@ SPEC = importlib.util.spec_from_file_location(
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
-
 class ExportDesktopDexTests(unittest.TestCase):
+    def test_pinned_regional_pokedex_export_preserves_both_numbering_systems_and_generation(self):
+        species = [
+            {"number": 25, "name": "Pikachu", "generation": 1},
+            {"number": 26, "name": "Raichu", "generation": 1},
+        ]
+        dexes = "id,region_id,identifier,is_main_series\n1,,national,1\n2,1,kanto,1\n3,1,unofficial,0\n"
+        dex_numbers = "species_id,pokedex_id,pokedex_number\n25,2,1\n26,2,2\n"
+        version_regions = "version_group_id,region_id\n1,1\n2,1\n"
+        version_groups = "id,identifier,generation_id,order\n1,red-blue,1,1\n2,yellow,1,2\n"
+        regions = "id,identifier\n1,kanto\n"
+        result = MODULE.parse_regional_dexes(
+            dexes, dex_numbers, version_regions, version_groups, regions, species
+        )
+        self.assertEqual(result, [{
+            "dataset_id": "pokeapi-pokedex-2",
+            "identifier": "kanto",
+            "name": "Kanto",
+            "generation": 1,
+            "species_count": 2,
+            "species": [
+                {"number": 1, "national_number": 25, "name": "Pikachu", "generation": 1},
+                {"number": 2, "national_number": 26, "name": "Raichu", "generation": 1},
+            ],
+        }])
+
+    def test_regional_pokedex_export_rejects_duplicate_numbers_and_unknown_species(self):
+        dexes = "id,region_id,identifier,is_main_series\n2,1,kanto,1\n"
+        version_regions = "version_group_id,region_id\n1,1\n"
+        version_groups = "id,identifier,generation_id,order\n1,red-blue,1,1\n"
+        regions = "id,identifier\n1,kanto\n"
+        species = [{"number": 25, "name": "Pikachu", "generation": 1}]
+        with self.assertRaisesRegex(ValueError, "duplicate regional number"):
+            MODULE.parse_regional_dexes(
+                dexes, "species_id,pokedex_id,pokedex_number\n25,2,1\n25,2,1\n",
+                version_regions, version_groups, regions, species,
+            )
+        with self.assertRaisesRegex(ValueError, "unknown National Dex species"):
+            MODULE.parse_regional_dexes(
+                dexes, "species_id,pokedex_id,pokedex_number\n9999,2,1\n",
+                version_regions, version_groups, regions, species,
+            )
     def test_exports_contiguous_species_and_generation_from_national_numbers(self):
         source = '''val speciesNamesNationalDex: Map<Int, String> = mapOf(
             1 to "Bulbasaur", 2 to "Ivysaur", 3 to "Venusaur", 4 to "Charmander")'''
@@ -64,6 +105,23 @@ class ExportDesktopDexTests(unittest.TestCase):
         self.assertEqual(dataset["gen3_item_source_sha256"], MODULE.hashlib.sha256(
             (ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/ItemTextGame.kt").read_bytes()
         ).hexdigest())
+
+    def test_shipped_dataset_includes_pinned_regional_dexes_with_provenance(self):
+        dataset = json.loads(MODULE.OUTPUT.read_text(encoding="utf-8"))
+        by_id = {item["dataset_id"]: item for item in dataset["regional_dexes"]}
+        kanto = by_id["pokeapi-pokedex-2"]
+        self.assertEqual((kanto["name"], kanto["generation"], kanto["species_count"]), ("Kanto", 1, 151))
+        self.assertEqual(kanto["species"][24], {
+            "number": 25, "national_number": 25, "name": "Pikachu", "generation": 1,
+        })
+        self.assertEqual(by_id["pokeapi-pokedex-15"]["species_count"], 211)
+        self.assertEqual(by_id["pokeapi-pokedex-15"]["generation"], 6)
+        self.assertEqual(by_id["pokeapi-pokedex-26"]["generation"], 7)
+        self.assertEqual(by_id["pokeapi-pokedex-34"]["generation"], 9)
+        self.assertEqual(len(dataset["regional_dex_source_sha256"]), 64)
+        self.assertEqual(dataset["regional_dex_source_commit"], "7764ee08de86ac11031ae2b883b598599af2b960")
+        self.assertEqual(kanto["species_license"], "BSD-3-Clause")
+        self.assertIn("no garantiza disponibilidad exacta", kanto["species_scope"])
 
 
 if __name__ == "__main__":
