@@ -11,6 +11,7 @@ const MAX_ARCHIVE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 const MAX_ARCHIVE_ENTRIES: usize = 4096;
 const MAX_ARCHIVE_TOTAL_BYTES: u64 = 1024 * 1024 * 1024;
 const MAX_LOOSE_ROM_BYTES: u64 = 1024 * 1024 * 1024;
+const MAX_FOLDER_SCAN_ENTRIES: usize = 100_000;
 
 #[derive(Debug, Default)]
 pub struct ImportSummary {
@@ -36,7 +37,13 @@ pub fn collect_rom_paths(roots: &[PathBuf], max_files: usize) -> (Vec<PathBuf>, 
     let mut rejected = 0usize;
     let mut seen = HashSet::new();
     let mut pending: Vec<_> = roots.iter().cloned().map(|path| (path, 0usize)).collect();
+    let mut visited = 0usize;
     while let Some((path, depth)) = pending.pop() {
+        if visited >= MAX_FOLDER_SCAN_ENTRIES {
+            rejected = rejected.saturating_add(pending.len().saturating_add(1));
+            break;
+        }
+        visited += 1;
         let Ok(metadata) = fs::symlink_metadata(&path) else {
             rejected += 1;
             continue;
@@ -648,6 +655,23 @@ mod tests {
         assert_eq!(paths.len(), 2);
         assert!(paths.contains(&one.canonicalize().unwrap()));
         assert!(paths.contains(&two.canonicalize().unwrap()));
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn folder_import_reports_candidates_over_the_file_limit() {
+        let root = std::env::temp_dir().join(format!("vyntra-import-limit-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let first = root.join("one.gba");
+        let second = root.join("two.gba");
+        fs::write(&first, valid_gba()).unwrap();
+        fs::write(&second, valid_gba()).unwrap();
+
+        let (paths, rejected) = collect_rom_paths(&[root.clone()], 1);
+
+        assert_eq!(paths.len(), 1);
+        assert_eq!(rejected, 1);
         let _ = fs::remove_dir_all(root);
     }
 
