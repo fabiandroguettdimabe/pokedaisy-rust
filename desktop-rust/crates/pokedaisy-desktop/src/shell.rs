@@ -15,7 +15,7 @@ use tao::{
 use wry::WebViewBuilder;
 
 enum Message {
-    Action(String),
+    Action(String, ActionSource),
     Scanned(u64, Vec<Game>),
     CoreProbed(u64, serde_json::Value),
     Pipe(crate::player_pipe::PipeEvent),
@@ -30,6 +30,12 @@ enum Message {
         Result<(crate::vault::SaveBundleManifest, Vec<u8>), String>,
     ),
     VaultExportFinished(u64, Result<(), String>),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ActionSource {
+    Launcher,
+    Companion,
 }
 
 enum ImportSource {
@@ -99,7 +105,10 @@ pub fn run() -> Result<(), String> {
         })
         .with_ipc_handler(move |request| {
             if request.body().len() < 32768 {
-                let _ = ipc_proxy.send_event(Message::Action(request.body().clone()));
+                let _ = ipc_proxy.send_event(Message::Action(
+                    request.body().clone(),
+                    ActionSource::Launcher,
+                ));
             }
         })
         .build(&window)
@@ -127,10 +136,17 @@ pub fn run() -> Result<(), String> {
     let mut probe_generation = 0u64;
     let mut core_probe: Option<serde_json::Value> = None;
     let mut companion_gen3_source: Option<(PathBuf, crate::gen3_save::Gen3Format)> = None;
-    event_loop.run(move |event,_,flow| {
+    let mut companion_window: Option<tao::window::Window> = None;
+    let mut companion_webview: Option<wry::WebView> = None;
+    event_loop.run(move |event,target,flow| {
         *flow=ControlFlow::Wait;
         match event {
-            TaoEvent::WindowEvent { event:WindowEvent::CloseRequested,.. } => {
+            TaoEvent::WindowEvent { window_id, event:WindowEvent::CloseRequested,.. } => {
+                if companion_window.as_ref().is_some_and(|window|window.id()==window_id) {
+                    companion_webview=None;
+                    companion_window=None;
+                    return;
+                }
                 if player_authenticated {
                     let stopped = stop_player_child(
                         &mut child,
@@ -172,11 +188,11 @@ pub fn run() -> Result<(), String> {
                 if catalog_changed {
                     let _ = library::save(&index_path, &imported);
                 }
-                publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
+                publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe, companion_webview.as_ref());
             },
             TaoEvent::UserEvent(Message::CoreProbed(id, report)) if id == probe_generation => {
                 core_probe = Some(report);
-                publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
+                publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe, companion_webview.as_ref());
             },
             TaoEvent::UserEvent(Message::ImportProgress(id, progress)) if id == import_generation => {
                 if let Ok(payload) = serde_json::to_string(&json!({
@@ -205,7 +221,7 @@ pub fn run() -> Result<(), String> {
                 if let Ok(payload) = serde_json::to_string(&done) {
                     let _ = webview.evaluate_script(&format!("window.vyntraImportDone&&window.vyntraImportDone({payload});"));
                 }
-                publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
+                publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe, companion_webview.as_ref());
             },
             TaoEvent::UserEvent(Message::VaultImportReady(id, result)) if id == vault_generation => {
                 vault_busy = false;
@@ -225,7 +241,7 @@ pub fn run() -> Result<(), String> {
                         if answer == rfd::MessageDialogResult::Yes {
                             match commit_bundle_restore(prepared, &config) {
                                 Ok(()) => {
-                                    publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
+                                    publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe, companion_webview.as_ref());
                                     let _ = webview.evaluate_script("window.vyntraAck&&window.vyntraAck({ok:true,result:{vault_import:{restored:true}}});");
                                 }
                                 Err(error) => { let _ = webview.evaluate_script(&format!("window.vyntraError({});", json!(error))); }
@@ -258,11 +274,11 @@ pub fn run() -> Result<(), String> {
                             player_authenticated = false;
                             session = None;
                             session_epoch = session_epoch.saturating_add(1);
-                            publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
+                            publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe, companion_webview.as_ref());
                         },
                         crate::player_pipe::PipeEventKind::Snapshot(snapshot) => {
                             if let Ok(value) = serde_json::to_string(&snapshot) {
-                                let _ = webview.evaluate_script(&format!("window.vyntraPlayerSnapshot({value});"));
+                                evaluate_both(&webview,companion_webview.as_ref(),&format!("window.vyntraPlayerSnapshot({value});"));
                             }
                         },
                         crate::player_pipe::PipeEventKind::CommandResult { request_id, command, result } => {
@@ -271,7 +287,7 @@ pub fn run() -> Result<(), String> {
                                 Err(error) => json!({"ok":true,"result":{"player_command":{"id":request_id,"command":command,"ok":false,"error":error}}}),
                             };
                             if let Ok(value) = serde_json::to_string(&response) {
-                                let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({value});"));
+                                evaluate_both(&webview,companion_webview.as_ref(),&format!("window.vyntraAck&&window.vyntraAck({value});"));
                             }
                         },
                         crate::player_pipe::PipeEventKind::Disconnected => {
@@ -304,7 +320,7 @@ pub fn run() -> Result<(), String> {
                                 session = None;
                                 session_epoch = session_epoch.saturating_add(1);
                             }
-                            publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
+                            publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe, companion_webview.as_ref());
                         },
                         crate::player_pipe::PipeEventKind::Failed(reason) => {
                             player_commands = None;
@@ -322,21 +338,21 @@ pub fn run() -> Result<(), String> {
                             ));
                             session = None;
                             session_epoch = session_epoch.saturating_add(1);
-                            publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
+                            publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe, companion_webview.as_ref());
                         },
                     }
                 }
             },
-            TaoEvent::UserEvent(Message::Action(body)) => {
+            TaoEvent::UserEvent(Message::Action(body, source)) => {
                 let cmd = match protocol::parse_ui_command(&body) {
                     Ok(cmd) => cmd,
                     Err(error) => {
                         let ack = protocol::UiAck::failure("invalid-envelope", error.clone());
-                        let _ = webview.evaluate_script(&format!(
+                        evaluate_from(&webview,companion_webview.as_ref(),source,&format!(
                             "window.vyntraAck&&window.vyntraAck({});",
                             json!(ack)
                         ));
-                        let _ = webview.evaluate_script(&format!(
+                        evaluate_from(&webview,companion_webview.as_ref(),source,&format!(
                             "window.vyntraError&&window.vyntraError({});",
                             json!(error.reason)
                         ));
@@ -348,7 +364,7 @@ pub fn run() -> Result<(), String> {
                         Ok(lock) => Some(lock),
                         Err(reason) => {
                             let ack = protocol::UiAck::failure(cmd.command_id.clone(), protocol::AppError::new("settings_busy", reason).retryable());
-                            let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
+                            evaluate_from(&webview,companion_webview.as_ref(),source,&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
                             return;
                         }
                     }
@@ -356,7 +372,7 @@ pub fn run() -> Result<(), String> {
                 if let Some(cached) = command_acks.lookup(&cmd).cloned() {
                     let mut replay = cached;
                     replay.revision = Some(command_revision);
-                    let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(replay)));
+                    evaluate_from(&webview,companion_webview.as_ref(),source,&format!("window.vyntraAck&&window.vyntraAck({});", json!(replay)));
                     return;
                 }
                 let action = cmd.payload.clone();
@@ -379,6 +395,19 @@ pub fn run() -> Result<(), String> {
                     validate_command_revision(cmd.expected_revision, command_revision)?;
                     validate_command_session(&session, session_epoch, &cmd)?;
                     match name {
+                        "open_companion_window" => {
+                            if companion_window.is_none() {
+                                let mut builder=WindowBuilder::new().with_title("Vyntra Companion").with_inner_size(tao::dpi::LogicalSize::new(1120.0,820.0)).with_min_inner_size(tao::dpi::LogicalSize::new(760.0,600.0));
+                                if let Ok(position)=window.outer_position(){builder=builder.with_position(tao::dpi::PhysicalPosition::new(position.x+80,position.y+60));}
+                                let new_window=builder.build(target).map_err(|error|format!("No se pudo abrir Companion: {error}"))?;
+                                let companion_proxy=proxy.clone();
+                                let new_webview=WebViewBuilder::new().with_html(include_str!("../../../ui/dist/index.html")).with_initialization_script("window.vyntraCompanionOnly=true;").with_ipc_handler(move |request|{
+                                    if request.body().len()<32768{let _=companion_proxy.send_event(Message::Action(request.body().clone(),ActionSource::Companion));}
+                                }).build(&new_window).map_err(|error|format!("No se pudo iniciar Companion: {error}"))?;
+                                companion_window=Some(new_window);
+                                companion_webview=Some(new_webview);
+                            }
+                        },
                         "ready" | "scan" => refresh=true,
                         "reset_settings_section" => {
                             let section = action["section"].as_str().ok_or("Sección inválida")?;
@@ -969,10 +998,11 @@ pub fn run() -> Result<(), String> {
                     }
                 };
                 command_acks.remember(&cmd, ack.clone());
-                let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
+                let target_webview=if source==ActionSource::Companion { companion_webview.as_ref().unwrap_or(&webview) } else { &webview };
+                let _ = target_webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
                 if let Err(error)=result {
                     if !stale_revision {
-                        let _=webview.evaluate_script(&format!("window.vyntraError({});",json!(error)));
+                        let _=target_webview.evaluate_script(&format!("window.vyntraError({});",json!(error)));
                     }
                 }
                 if refresh {
@@ -990,7 +1020,7 @@ pub fn run() -> Result<(), String> {
                         let _ = tx.send_event(Message::Scanned(id, found));
                     });
                 }
-                publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
+                publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe, companion_webview.as_ref());
             },
             _=>{}
         }
@@ -1544,6 +1574,27 @@ fn game_identity_for_ui(entry: Option<&library::LibraryEntry>) -> serde_json::Va
     })
 }
 
+fn evaluate_both(primary: &wry::WebView, companion: Option<&wry::WebView>, script: &str) {
+    let _ = primary.evaluate_script(script);
+    if let Some(companion) = companion {
+        let _ = companion.evaluate_script(script);
+    }
+}
+
+fn evaluate_from(
+    primary: &wry::WebView,
+    companion: Option<&wry::WebView>,
+    source: ActionSource,
+    script: &str,
+) {
+    let target = if source == ActionSource::Companion {
+        companion.unwrap_or(primary)
+    } else {
+        primary
+    };
+    let _ = target.evaluate_script(script);
+}
+
 fn publish(
     webview: &wry::WebView,
     config: &Settings,
@@ -1554,6 +1605,7 @@ fn publish(
     session_epoch: u64,
     command_revision: u64,
     core_probe: &Option<serde_json::Value>,
+    secondary: Option<&wry::WebView>,
 ) {
     let games:Vec<_>=games.iter().enumerate().map(|(id,g)|{let storage_id=game_storage_key(g);let metadata=imported.iter().find(|entry|entry.id==storage_id);json!({"id":id,"storage_id":storage_id,"title":g.title,"system":g.system,"path":g.path,"missing":!g.path.is_file(),"core":config.core(g.system).is_ok_and(|p|p.is_file()),"favorite":metadata.is_some_and(|entry|entry.favorite),"last_played_unix":metadata.and_then(|entry|entry.last_played_unix),"note":metadata.and_then(|entry|entry.note.clone()).unwrap_or_default(),"identity":game_identity_for_ui(metadata)})}).collect();
     let cores:Vec<_>=["GBC","GBA","DS"].iter().enumerate().map(|(id,s)| {let path=config.core(s).ok();json!({"id":id,"system":s,"path":path,"installed":path.as_ref().is_some_and(|p|p.is_file())})}).collect();
@@ -1570,7 +1622,11 @@ fn publish(
         "core_probe": core_probe,
         "reference_type_chart": crate::reference::gen3_type_chart().ok()
     });
-    let _ = webview.evaluate_script(&format!("window.vyntraState({value});"));
+    let script = format!("window.vyntraState({value});");
+    let _ = webview.evaluate_script(&script);
+    if let Some(secondary) = secondary {
+        let _ = secondary.evaluate_script(&script);
+    }
 }
 
 #[cfg(test)]

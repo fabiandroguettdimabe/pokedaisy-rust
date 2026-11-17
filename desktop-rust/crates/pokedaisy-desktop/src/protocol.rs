@@ -31,6 +31,7 @@ const SUPPORTED_ACTIONS: &[&str] = &[
     "type_matchup",
     "read_gen3_save",
     "refresh_gen3_save",
+    "open_companion_window",
     "import",
     "import_roots",
     "cancel_import",
@@ -161,6 +162,7 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
         "read_gen3_save" | "refresh_gen3_save" => {
             (&[("format", PayloadFieldType::String)], &["format"])
         }
+        "open_companion_window" => (&[], &[]),
         "choose" | "open_folder" => (&[("field", PayloadFieldType::String)], &["field"]),
         "set" => (
             &[
@@ -797,6 +799,7 @@ mod tests {
                 "type_matchup" => serde_json::json!({"attack":10,"defenses":[12,8]}),
                 "read_gen3_save" => serde_json::json!({"format":"emerald"}),
                 "refresh_gen3_save" => serde_json::json!({"format":"emerald"}),
+                "open_companion_window" => serde_json::json!({}),
                 "choose" => serde_json::json!({"field":"library"}),
                 "set" => serde_json::json!({"field":"volume","value":80}),
                 "pause_player" => serde_json::json!({"value":false}),

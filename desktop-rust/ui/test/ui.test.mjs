@@ -110,6 +110,8 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.getByRole('button',{name:'Biblioteca',exact:true}).click();
   await page.locator('.game-card').filter({hasText:'Synthetic GBA fixture'}).nth(1).click();
   await page.getByRole('button',{name:'Acompañante',exact:true}).click();
+  await page.getByRole('button',{name:'Abrir Companion en otra ventana'}).click();
+  await expectCommand('open_companion_window');
   assert.equal(await page.getByText('Código BPEE · Emerald',{exact:true}).isVisible(),true,await page.locator('.companion-grid').textContent());
   await page.getByRole('button',{name:'Abrir guardado',exact:true}).click();
   await expectCommand('read_gen3_save',{format:'emerald'});
@@ -269,5 +271,18 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.evaluate(()=>window.vyntraState({command_revision:9,config:{library_view:'grid',library_filter:'Todos',library_selection:'different-game'},games:[]}));
   assert.equal(await page.getByText('Sin guardado verificado. El planificador manual permanece separado.',{exact:true}).isVisible(),true);
   assert.deepEqual(errors,[]);
+ }finally{await browser.close();}
+});
+
+test('Companion popout starts in the shared Companion view',async()=>{
+ const browser=await chromium.launch({channel:'msedge',headless:true});
+ try{
+  const page=await browser.newPage();
+  await page.addInitScript(()=>{window.vyntraCompanionOnly=true;window.ipc={postMessage:()=>{}};});
+  await page.goto(pathToFileURL(resolve('dist/index.html')).href);
+  await page.waitForFunction(()=>typeof window.vyntraState==='function');
+  await page.evaluate(()=>window.vyntraState({config:{},games:[],cores:[],saves:[],scanning:false,command_revision:1}));
+  assert.equal(await page.getByRole('heading',{name:'Vyntra Companion',exact:true}).isVisible(),true);
+  assert.equal(await page.getByRole('button',{name:'Abrir Companion en otra ventana'}).isVisible(),true);
  }finally{await browser.close();}
 });
