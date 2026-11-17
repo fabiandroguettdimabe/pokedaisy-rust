@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 pub struct GameSettingsOverride {
     pub smooth: Option<bool>,
     pub volume: Option<u8>,
+    pub fast_forward: Option<u32>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -128,6 +129,20 @@ mod tests {
         assert_eq!(settings.volume_for_game("other", "DS"), 70);
         settings.set_game_volume("game-one", None).unwrap();
         assert_eq!(settings.volume_for_game("game-one", "GBA"), 45);
+    }
+
+    #[test]
+    fn per_game_fast_forward_uses_game_system_then_global() {
+        let mut settings = Settings::default();
+        settings.fast_forward = 3;
+        settings.set_system_fast_forward("DS", Some(4)).unwrap();
+        settings.set_game_fast_forward("ds-game", Some(2)).unwrap();
+        assert_eq!(settings.fast_forward_for_game("ds-game", "DS"), 2);
+        assert_eq!(settings.fast_forward_for_game("other", "DS"), 4);
+        assert_eq!(settings.fast_forward_for_game("other", "GBA"), 3);
+        settings.set_game_fast_forward("ds-game", None).unwrap();
+        assert_eq!(settings.fast_forward_for_game("ds-game", "DS"), 4);
+        assert!(settings.set_system_fast_forward("DS", Some(8)).is_err());
     }
 
     #[test]
@@ -265,11 +280,15 @@ impl Settings {
                 && id
                     .bytes()
                     .all(|byte| byte.is_ascii_alphanumeric() || b"-_".contains(&byte))
-                && (profile.smooth.is_some() || profile.volume.is_some())
+                && (profile.smooth.is_some()
+                    || profile.volume.is_some()
+                    || profile.fast_forward.is_some())
         });
         value.system_overrides.retain(|system, profile| {
             matches!(system.as_str(), "GB" | "GBC" | "GBA" | "DS")
-                && (profile.smooth.is_some() || profile.volume.is_some())
+                && (profile.smooth.is_some()
+                    || profile.volume.is_some()
+                    || profile.fast_forward.is_some())
         });
         for dir in [
             &mut value.library,
@@ -327,7 +346,7 @@ impl Settings {
         }
         let profile = self.system_overrides.entry(system.into()).or_default();
         profile.smooth = smooth;
-        if profile.smooth.is_none() && profile.volume.is_none() {
+        if profile.smooth.is_none() && profile.volume.is_none() && profile.fast_forward.is_none() {
             self.system_overrides.remove(system);
         }
         Ok(())
@@ -346,7 +365,7 @@ impl Settings {
         } else {
             if let Some(profile) = self.game_overrides.get_mut(storage_id) {
                 profile.smooth = None;
-                if profile.volume.is_none() {
+                if profile.volume.is_none() && profile.fast_forward.is_none() {
                     self.game_overrides.remove(storage_id);
                 }
             }
@@ -370,13 +389,17 @@ impl Settings {
             return Err("Volumen por juego fuera de rango".into());
         }
         if let Some(value) = volume {
+            if !self.game_overrides.contains_key(storage_id) && self.game_overrides.len() >= 10_000
+            {
+                return Err("Se alcanzó el límite de perfiles por juego".into());
+            }
             self.game_overrides
                 .entry(storage_id.to_owned())
                 .or_default()
                 .volume = Some(value);
         } else if let Some(profile) = self.game_overrides.get_mut(storage_id) {
             profile.volume = None;
-            if profile.smooth.is_none() {
+            if profile.smooth.is_none() && profile.fast_forward.is_none() {
                 self.game_overrides.remove(storage_id);
             }
         }
@@ -396,7 +419,7 @@ impl Settings {
                 .volume = Some(value);
         } else if let Some(profile) = self.system_overrides.get_mut(system) {
             profile.volume = None;
-            if profile.smooth.is_none() {
+            if profile.smooth.is_none() && profile.fast_forward.is_none() {
                 self.system_overrides.remove(system);
             }
         }
@@ -410,6 +433,67 @@ impl Settings {
                 .all(|byte| byte.is_ascii_alphanumeric() || b"-_".contains(&byte))
         {
             return Err("Identificador de juego inválido".into());
+        }
+        Ok(())
+    }
+    pub fn fast_forward_for_game(&self, storage_id: &str, system: &str) -> u32 {
+        self.game_overrides
+            .get(storage_id)
+            .and_then(|profile| profile.fast_forward)
+            .or_else(|| {
+                self.system_overrides
+                    .get(system)
+                    .and_then(|profile| profile.fast_forward)
+            })
+            .unwrap_or(self.fast_forward)
+    }
+    pub fn set_game_fast_forward(
+        &mut self,
+        storage_id: &str,
+        value: Option<u32>,
+    ) -> Result<(), String> {
+        self.validate_game_profile_id(storage_id)?;
+        if value.is_some_and(|value| !(2..=4).contains(&value)) {
+            return Err("Avance rápido por juego inválido".into());
+        }
+        if let Some(value) = value {
+            if !self.game_overrides.contains_key(storage_id) && self.game_overrides.len() >= 10_000
+            {
+                return Err("Se alcanzó el límite de perfiles por juego".into());
+            }
+            self.game_overrides
+                .entry(storage_id.to_owned())
+                .or_default()
+                .fast_forward = Some(value);
+        } else if let Some(profile) = self.game_overrides.get_mut(storage_id) {
+            profile.fast_forward = None;
+            if profile.smooth.is_none() && profile.volume.is_none() {
+                self.game_overrides.remove(storage_id);
+            }
+        }
+        Ok(())
+    }
+    pub fn set_system_fast_forward(
+        &mut self,
+        system: &str,
+        value: Option<u32>,
+    ) -> Result<(), String> {
+        if !matches!(system, "GB" | "GBC" | "GBA" | "DS") {
+            return Err("Sistema no válido para el perfil".into());
+        }
+        if value.is_some_and(|value| !(2..=4).contains(&value)) {
+            return Err("Avance rápido por sistema inválido".into());
+        }
+        if let Some(value) = value {
+            self.system_overrides
+                .entry(system.to_owned())
+                .or_default()
+                .fast_forward = Some(value);
+        } else if let Some(profile) = self.system_overrides.get_mut(system) {
+            profile.fast_forward = None;
+            if profile.smooth.is_none() && profile.volume.is_none() {
+                self.system_overrides.remove(system);
+            }
         }
         Ok(())
     }

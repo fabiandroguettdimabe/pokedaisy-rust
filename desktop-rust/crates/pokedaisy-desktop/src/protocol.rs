@@ -20,6 +20,8 @@ const SUPPORTED_ACTIONS: &[&str] = &[
     "game_volume",
     "system_smoothing",
     "system_volume",
+    "game_fast_forward",
+    "system_fast_forward",
     "library_view",
     "library_filter",
     "library_selection",
@@ -100,6 +102,20 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
             &["storage_id", "value"],
         ),
         "system_volume" => (
+            &[
+                ("system", PayloadFieldType::String),
+                ("value", PayloadFieldType::NullableNumber),
+            ],
+            &["system", "value"],
+        ),
+        "game_fast_forward" => (
+            &[
+                ("storage_id", PayloadFieldType::String),
+                ("value", PayloadFieldType::NullableNumber),
+            ],
+            &["storage_id", "value"],
+        ),
+        "system_fast_forward" => (
             &[
                 ("system", PayloadFieldType::String),
                 ("value", PayloadFieldType::NullableNumber),
@@ -216,6 +232,18 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
         "system_volume" => {
             !matches!(object["system"].as_str(), Some("GB" | "GBC" | "GBA" | "DS"))
                 || object["value"].as_u64().is_some_and(|value| value > 100)
+        }
+        "game_fast_forward" => {
+            invalid_storage_id()
+                || object["value"]
+                    .as_u64()
+                    .is_some_and(|value| !(2..=4).contains(&value))
+        }
+        "system_fast_forward" => {
+            !matches!(object["system"].as_str(), Some("GB" | "GBC" | "GBA" | "DS"))
+                || object["value"]
+                    .as_u64()
+                    .is_some_and(|value| !(2..=4).contains(&value))
         }
         "favorite" | "relink" => invalid_storage_id(),
         "play" => {
@@ -720,6 +748,8 @@ mod tests {
                 "system_smoothing" => serde_json::json!({"system":"GBA","value":false}),
                 "game_volume" => serde_json::json!({"storage_id":"g1","value":40}),
                 "system_volume" => serde_json::json!({"system":"GBA","value":40}),
+                "game_fast_forward" => serde_json::json!({"storage_id":"g1","value":3}),
+                "system_fast_forward" => serde_json::json!({"system":"GBA","value":3}),
                 "library_view" => serde_json::json!({"value":"grid"}),
                 "library_filter" => serde_json::json!({"value":"Todos"}),
                 "library_selection" => serde_json::json!({"value":"g1"}),

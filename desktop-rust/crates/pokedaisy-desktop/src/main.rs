@@ -1169,10 +1169,14 @@ fn sdl_main() -> Result<(), String> {
                 let fast_forward = event_pump
                     .keyboard_state()
                     .is_scancode_pressed(sdl2::keyboard::Scancode::Space);
+                let active_fast_forward = active_game
+                    .as_ref()
+                    .map(|game| config.fast_forward_for_game(&game_storage_key(game), &game.system))
+                    .unwrap_or(config.fast_forward);
                 let fps = core.as_ref().map(|c| c.av_info().fps).unwrap_or(60.0);
                 let frame_interval = timing::frame_interval(fps);
                 let frame_interval = if fast_forward {
-                    frame_interval.div_f64(config.fast_forward.max(1) as f64)
+                    frame_interval.div_f64(active_fast_forward.max(1) as f64)
                 } else {
                     frame_interval
                 };
