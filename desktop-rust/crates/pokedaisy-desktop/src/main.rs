@@ -3137,6 +3137,10 @@ mod tests {
             "fixture build failed: {}",
             String::from_utf8_lossy(&build.stderr)
         );
+        println!(
+            "fixture_core_hash={}",
+            super::identity::sha256_bytes(&std::fs::read(&dll).unwrap())
+        );
         let save_dir = root.join("saves");
         let system_dir = root.join("system");
         fs::create_dir_all(&save_dir).unwrap();

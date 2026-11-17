@@ -1,5 +1,6 @@
 #![cfg(windows)]
 
+use sha2::Digest;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -29,6 +30,10 @@ fn synthetic_core_runs_video_audio_and_runtime_av_through_libretro_api() {
         build.status.success(),
         "fixture build failed: {}",
         String::from_utf8_lossy(&build.stderr)
+    );
+    println!(
+        "fixture_core_hash={:x}",
+        sha2::Sha256::digest(fs::read(&dll).unwrap())
     );
 
     let save_dir = root.join("saves");
