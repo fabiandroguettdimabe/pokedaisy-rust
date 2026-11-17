@@ -119,6 +119,8 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   assert.equal(await page.getByRole('listbox',{name:'Resultados del Dex'}).getByRole('option').count(),1);
   assert.equal(await page.getByRole('heading',{name:'Deoxys',exact:true}).isVisible(),true);
   assert.equal(await page.getByText('Generación 3',{exact:true}).isVisible(),true);
+  await page.getByRole('button',{name:'Analizar efectividad de Deoxys',exact:true}).click();
+  assert.equal(await page.getByText('Contexto del Dex: Deoxys (#386). Elige sus tipos según la ROM o el hack.',{exact:true}).isVisible(),true);
   await page.getByLabel('Buscar Pokémon').fill('chiko');
   await page.getByLabel('Generación del Dex').selectOption('2');
   assert.equal(await page.getByRole('listbox',{name:'Resultados del Dex'}).getByRole('option').count(),1);
