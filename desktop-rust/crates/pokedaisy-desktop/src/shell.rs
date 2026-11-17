@@ -35,7 +35,14 @@ enum Message {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ActionSource {
     Launcher,
-    Companion,
+    Companion(u64),
+}
+
+fn action_source_is_current(source: ActionSource, companion_generation: Option<u64>) -> bool {
+    match source {
+        ActionSource::Launcher => true,
+        ActionSource::Companion(generation) => companion_generation == Some(generation),
+    }
 }
 
 enum ImportSource {
@@ -138,11 +145,14 @@ pub fn run() -> Result<(), String> {
     let mut companion_gen3_source: Option<(PathBuf, crate::gen3_save::Gen3Format)> = None;
     let mut companion_window: Option<tao::window::Window> = None;
     let mut companion_webview: Option<wry::WebView> = None;
+    let mut companion_generation: Option<u64> = None;
+    let mut next_companion_generation = 0u64;
     event_loop.run(move |event,target,flow| {
         *flow=ControlFlow::Wait;
         match event {
             TaoEvent::WindowEvent { window_id, event:WindowEvent::CloseRequested,.. } => {
                 if companion_window.as_ref().is_some_and(|window|window.id()==window_id) {
+                    companion_generation=None;
                     companion_webview=None;
                     companion_window=None;
                     return;
@@ -344,6 +354,9 @@ pub fn run() -> Result<(), String> {
                 }
             },
             TaoEvent::UserEvent(Message::Action(body, source)) => {
+                if !action_source_is_current(source, companion_generation) {
+                    return;
+                }
                 let cmd = match protocol::parse_ui_command(&body) {
                     Ok(cmd) => cmd,
                     Err(error) => {
@@ -397,13 +410,18 @@ pub fn run() -> Result<(), String> {
                     match name {
                         "open_companion_window" => {
                             if companion_window.is_none() {
+                                next_companion_generation = next_companion_generation
+                                    .checked_add(1)
+                                    .ok_or("No se pudo asignar una nueva sesión a Companion")?;
+                                let generation = next_companion_generation;
                                 let mut builder=WindowBuilder::new().with_title("Vyntra Companion").with_inner_size(tao::dpi::LogicalSize::new(1120.0,820.0)).with_min_inner_size(tao::dpi::LogicalSize::new(760.0,600.0));
                                 if let Ok(position)=window.outer_position(){builder=builder.with_position(tao::dpi::PhysicalPosition::new(position.x+80,position.y+60));}
                                 let new_window=builder.build(target).map_err(|error|format!("No se pudo abrir Companion: {error}"))?;
                                 let companion_proxy=proxy.clone();
                                 let new_webview=WebViewBuilder::new().with_html(include_str!("../../../ui/dist/index.html")).with_initialization_script("window.vyntraCompanionOnly=true;").with_ipc_handler(move |request|{
-                                    if request.body().len()<32768{let _=companion_proxy.send_event(Message::Action(request.body().clone(),ActionSource::Companion));}
+                                    if request.body().len()<32768{let _=companion_proxy.send_event(Message::Action(request.body().clone(),ActionSource::Companion(generation)));}
                                 }).build(&new_window).map_err(|error|format!("No se pudo iniciar Companion: {error}"))?;
+                                companion_generation=Some(generation);
                                 companion_window=Some(new_window);
                                 companion_webview=Some(new_webview);
                             }
@@ -998,7 +1016,7 @@ pub fn run() -> Result<(), String> {
                     }
                 };
                 command_acks.remember(&cmd, ack.clone());
-                let target_webview=if source==ActionSource::Companion { companion_webview.as_ref().unwrap_or(&webview) } else { &webview };
+                let target_webview=if matches!(source, ActionSource::Companion(_)) { companion_webview.as_ref().unwrap_or(&webview) } else { &webview };
                 let _ = target_webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
                 if let Err(error)=result {
                     if !stale_revision {
@@ -1587,7 +1605,7 @@ fn evaluate_from(
     source: ActionSource,
     script: &str,
 ) {
-    let target = if source == ActionSource::Companion {
+    let target = if matches!(source, ActionSource::Companion(_)) {
         companion.unwrap_or(primary)
     } else {
         primary
@@ -1632,6 +1650,20 @@ fn publish(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn queued_actions_from_a_closed_companion_generation_are_rejected() {
+        assert!(action_source_is_current(ActionSource::Launcher, None));
+        assert!(action_source_is_current(
+            ActionSource::Companion(7),
+            Some(7)
+        ));
+        assert!(!action_source_is_current(
+            ActionSource::Companion(6),
+            Some(7)
+        ));
+        assert!(!action_source_is_current(ActionSource::Companion(7), None));
+    }
 
     #[test]
     fn active_player_blocks_sensitive_operations_without_losing_child_handle() {
