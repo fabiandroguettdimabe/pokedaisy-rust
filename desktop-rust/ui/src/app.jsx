@@ -2,7 +2,7 @@ import {render} from 'preact';
 import {useState,useEffect,useLayoutEffect} from 'preact/hooks';
 import dexData from './data/pokedex-gen9.json';
 import typeCharts from './data/type-charts-reference.json';
-import {calculateTypeEffectiveness,filterDexEntries,loadSavedTypeChart,saveTypeChart} from './dex.js';
+import {calculateTypeEffectiveness,filterDexEntries,inferTypeChartFromIdentity,loadSavedTypeChart,saveTypeChart} from './dex.js';
 import {Library,Gamepad2,Download,Settings,FolderOpen,Search,Grid2X2,List,Play,ChevronRight,RefreshCw,HardDrive,Save,Link,ShieldCheck,Volume2,Monitor,Keyboard,SlidersHorizontal,ChevronDown,Check,Info,AlertCircle,X,Users,Swords,Map,BookOpen,Package,ExternalLink,FileDown,Activity,Boxes,Folder,RotateCcw,Star} from 'lucide-preact';
 
 let session=null,revision=null,commandSequence=0;
@@ -75,8 +75,8 @@ function App(){
  const visible=games.filter(g=>(filter==='Todos'||(filter==='Favoritos'?g.favorite:g.system===filter))&&(g.title.toLocaleLowerCase().includes(query.toLocaleLowerCase())||(g.identity?.game_code||'').toLocaleLowerCase().includes(query.toLocaleLowerCase()))).slice().sort((a,b)=>(b.last_played_unix||0)-(a.last_played_unix||0)||a.title.localeCompare(b.title));
  const selectedContent=games.find(g=>g.storage_id===selected)?.storage_id;
  const game=games.find(g=>g.storage_id===selectedContent&&String(g.id)===String(selectedSource))||games.find(g=>g.storage_id===selectedContent&&g.identity?.confidence==='strict')||games.find(g=>g.storage_id===selectedContent)||visible[0];
- useEffect(()=>{if(!game?.storage_id)return;const saved=loadSavedTypeChart(game.storage_id,[...(typeChart?[typeChart]:[]),...typeCharts.datasets]);setChartGeneration(saved||typeChart?.dataset_id||'pokemon-gen3-type-chart');},[game?.storage_id]);
- useEffect(()=>{if(!game?.storage_id)return;const key=`vyntra.type-chart.v1:${game.storage_id}`,onStorage=event=>{if(event.key!==key&&event.key!==null)return;const saved=loadSavedTypeChart(game.storage_id,[...(typeChart?[typeChart]:[]),...typeCharts.datasets]);setChartGeneration(saved||typeChart?.dataset_id||'pokemon-gen3-type-chart');setMatchup(null);};window.addEventListener('storage',onStorage);return()=>window.removeEventListener('storage',onStorage);},[game?.storage_id,typeChart]);
+ useEffect(()=>{if(!game?.storage_id)return;const saved=loadSavedTypeChart(game.storage_id,[...(typeChart?[typeChart]:[]),...typeCharts.datasets]);setChartGeneration(saved||inferTypeChartFromIdentity({...game.identity,system:game.system})||typeChart?.dataset_id||'pokemon-gen3-type-chart');},[game?.storage_id]);
+ useEffect(()=>{if(!game?.storage_id)return;const key=`vyntra.type-chart.v1:${game.storage_id}`,onStorage=event=>{if(event.key!==key&&event.key!==null)return;const saved=loadSavedTypeChart(game.storage_id,[...(typeChart?[typeChart]:[]),...typeCharts.datasets]);setChartGeneration(saved||inferTypeChartFromIdentity({...game.identity,system:game.system})||typeChart?.dataset_id||'pokemon-gen3-type-chart');setMatchup(null);};window.addEventListener('storage',onStorage);return()=>window.removeEventListener('storage',onStorage);},[game?.storage_id,typeChart]);
  const selectTypeChart=profile=>{setChartGeneration(profile);saveTypeChart(game?.storage_id,profile);};
  const gameCode=game?.identity?.game_code?.slice(0,3),gen3FormatFromCode=game?.identity?.confidence==='strict'?(gameCode==='AXV'||gameCode==='AXP'?'ruby_sapphire':gameCode==='BPE'?'emerald':gameCode==='BPR'||gameCode==='BPG'?'firered_leafgreen':null):null,gen3SnapshotFormat={ruby_sapphire:'RubySapphire',emerald:'Emerald',firered_leafgreen:'FireRedLeafGreen'}[gen3FormatFromCode];
  useEffect(()=>{setGen3Save(null);setBagSelected(null);setBagQuery('');setBagCategory('');},[selected,selectedSource,gen3FormatFromCode]);

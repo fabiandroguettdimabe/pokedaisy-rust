@@ -2,6 +2,21 @@ const normalize = value => String(value ?? '').normalize('NFD').replace(/[\u0300
 
 const typeChartStorageKey = storageId => `vyntra.type-chart.v1:${storageId}`;
 
+const gen3GameCodes = new Set(['AXV', 'AXP', 'BPE', 'BPR', 'BPG']);
+const gen4GameCodes = new Set(['ADA', 'APA', 'CPU', 'IPK', 'IPG']);
+const gen5GameCodes = new Set(['IRA', 'IRB', 'IRD', 'IRE']);
+
+export function inferTypeChartFromIdentity(identity) {
+  if (identity?.confidence !== 'strict') return null;
+  const code = String(identity.game_code ?? '').toUpperCase();
+  if (!/^[A-Z0-9]{4}$/.test(code)) return null;
+  const prefix = code.slice(0, 3);
+  if (identity.system === 'GBA' && gen3GameCodes.has(prefix)) return 'pokemon-gen3-type-chart';
+  if ((identity.system === 'DS' || identity.system === 'NDS') && gen4GameCodes.has(prefix)) return 'pokemon-gen4-standard-type-chart';
+  if ((identity.system === 'DS' || identity.system === 'NDS') && gen5GameCodes.has(prefix)) return 'pokemon-gen5-standard-type-chart';
+  return null;
+}
+
 export function loadSavedTypeChart(storageId, charts, storage = globalThis.localStorage) {
   if (!storageId || !storage) return null;
   try {

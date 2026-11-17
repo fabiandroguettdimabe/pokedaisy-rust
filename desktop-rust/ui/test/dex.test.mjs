@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {calculateTypeEffectiveness,filterDexEntries,loadSavedTypeChart,saveTypeChart} from '../src/dex.js';
+import {calculateTypeEffectiveness,filterDexEntries,inferTypeChartFromIdentity,loadSavedTypeChart,saveTypeChart} from '../src/dex.js';
 
 const entries=[
  {number:1,name:'Bulbasaur',generation:1},
@@ -46,4 +46,13 @@ test('manual type chart choice persists per ROM and rejects unknown profiles',()
  saveTypeChart('rom-a','missing-chart',storage);
  assert.equal(loadSavedTypeChart('rom-a',charts,storage),null);
  assert.equal(loadSavedTypeChart('',charts,storage),null);
+});
+
+test('automatic type chart inference requires strict identity and a known retail game code',()=>{
+ assert.equal(inferTypeChartFromIdentity({system:'GBA',game_code:'BPEE',confidence:'strict'}),'pokemon-gen3-type-chart');
+ assert.equal(inferTypeChartFromIdentity({system:'DS',game_code:'ADAE',confidence:'strict'}),'pokemon-gen4-standard-type-chart');
+ assert.equal(inferTypeChartFromIdentity({system:'DS',game_code:'IRBO',confidence:'strict'}),'pokemon-gen5-standard-type-chart');
+ assert.equal(inferTypeChartFromIdentity({system:'DS',game_code:'ADAE',confidence:'partial'}),null);
+ assert.equal(inferTypeChartFromIdentity({system:'GBA',game_code:'HACK',confidence:'strict'}),null);
+ assert.equal(inferTypeChartFromIdentity({system:'DS',game_code:'',confidence:'strict'}),null);
 });
