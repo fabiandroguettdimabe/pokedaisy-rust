@@ -237,4 +237,31 @@ mod bundle_tests {
         manifest.sha256 = "0".repeat(64);
         assert!(encode_bundle(&manifest, payload).is_err());
     }
+
+    #[test]
+    fn save_bundle_rejects_payload_corruption_detected_by_zip_crc() {
+        use std::io::Write;
+
+        let payload = b"verified save payload";
+        let manifest = fixture_manifest(payload);
+        let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        let options = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored);
+        writer.start_file("manifest.json", options).unwrap();
+        writer
+            .write_all(&serde_json::to_vec(&manifest).unwrap())
+            .unwrap();
+        writer.start_file("payload.bin", options).unwrap();
+        writer.write_all(payload).unwrap();
+        let mut bytes = writer.finish().unwrap().into_inner();
+
+        let payload_start = zip::ZipArchive::new(std::io::Cursor::new(bytes.as_slice()))
+            .unwrap()
+            .by_name("payload.bin")
+            .unwrap()
+            .data_start() as usize;
+        bytes[payload_start + payload.len() / 2] ^= 0xff;
+
+        assert!(decode_bundle(&bytes).is_err());
+    }
 }
