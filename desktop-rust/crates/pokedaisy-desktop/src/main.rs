@@ -1144,12 +1144,21 @@ fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
     let tmp = path.with_extension("tmp");
-    {
+    let staged = (|| -> Result<(), String> {
         let mut f = fs::File::create(&tmp).map_err(|e| e.to_string())?;
         f.write_all(data).map_err(|e| e.to_string())?;
         f.sync_all().map_err(|e| e.to_string())?;
+        Ok(())
+    })();
+    if let Err(error) = staged {
+        let _ = fs::remove_file(&tmp);
+        return Err(error);
     }
-    fs::rename(&tmp, path).map_err(|e| e.to_string())
+    if let Err(error) = fs::rename(&tmp, path) {
+        let _ = fs::remove_file(&tmp);
+        return Err(error.to_string());
+    }
+    Ok(())
 }
 
 fn open_game(
@@ -2422,7 +2431,7 @@ fn text(c: &mut Canvas<Window>, font: &Font, s: &str, x: i32, y: i32, size: u32,
 
 #[cfg(test)]
 mod tests {
-    use super::{core_names, find_core_in_dirs, scan_games_controlled};
+    use super::{atomic_write, core_names, find_core_in_dirs, scan_games_controlled};
     use std::fs;
     use std::sync::atomic::AtomicBool;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -2436,6 +2445,22 @@ mod tests {
         let cancelled = AtomicBool::new(true);
         assert!(scan_games_controlled(&dir, true, &cancelled).is_empty());
         let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn failed_atomic_rename_preserves_existing_target_and_cleans_staging_file() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-atomic-rename-{}", std::process::id()));
+        let target = root.join("target");
+        let marker = target.join("original.txt");
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&target).unwrap();
+        fs::write(&marker, b"original").unwrap();
+
+        assert!(atomic_write(&target, b"replacement").is_err());
+        assert_eq!(fs::read(&marker).unwrap(), b"original");
+        assert!(!root.join("target.tmp").exists());
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
