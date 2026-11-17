@@ -661,6 +661,39 @@ mod tests {
     }
 
     #[test]
+    fn large_mixed_batch_keeps_valid_imports_and_counts_duplicates_and_rejections() {
+        let root = std::env::temp_dir().join(format!("vyntra-import-mixed-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let mut valid_paths = Vec::new();
+        let mut paths = Vec::new();
+        for index in 0..250 {
+            let valid = root.join(format!("valid-{index:03}.gba"));
+            let mut bytes = valid_gba();
+            let title = format!("V{index:07}");
+            bytes[0xa0..0xa0 + title.len()].copy_from_slice(title.as_bytes());
+            fs::write(&valid, bytes).unwrap();
+            valid_paths.push(valid.clone());
+            paths.push(valid);
+        }
+        for index in 0..250 {
+            let invalid = root.join(format!("invalid-{index:03}.gba"));
+            fs::write(&invalid, b"truncated rom").unwrap();
+            paths.push(invalid);
+        }
+        paths.extend(valid_paths);
+
+        let mut entries = Vec::new();
+        let summary = import_paths(&mut entries, paths);
+
+        assert_eq!(summary.imported, 250);
+        assert_eq!(summary.duplicates, 250);
+        assert_eq!(summary.rejected, 250);
+        assert_eq!(entries.len(), 250);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn folder_import_collects_supported_roms_from_multiple_roots_once() {
         let root = std::env::temp_dir().join(format!("vyntra-import-roots-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
