@@ -1814,6 +1814,9 @@ fn load_compatible_battery(
         candidates.extend(
             backups
                 .into_iter()
+                .filter(|backup| {
+                    backup.join("battery.sav").is_file() && backup.join("manifest.json").is_file()
+                })
                 .take(32)
                 .map(|backup| (backup.join("battery.sav"), backup.join("manifest.json"))),
         );
@@ -2150,6 +2153,10 @@ fn load_compatible_state(
         candidates.extend(
             backups
                 .into_iter()
+                .filter(|backup| {
+                    backup.join("slot1.ss").is_file()
+                        && backup.join("state.manifest.json").is_file()
+                })
                 .take(32)
                 .map(|backup| (backup.join("slot1.ss"), backup.join("state.manifest.json"))),
         );
@@ -3640,6 +3647,13 @@ mod tests {
             b"orphan payload without manifest",
         )
         .unwrap();
+        for index in 0..40 {
+            let incomplete = partial_battery
+                .parent()
+                .unwrap()
+                .join(format!("zz-incomplete-battery-{index:02}"));
+            fs::create_dir(incomplete).unwrap();
+        }
         fs::write(super::preferred_battery_path(&game, &dir), b"damaged").unwrap();
         assert_eq!(
             super::load_compatible_battery(&game, &dir, &core_path)
@@ -3686,6 +3700,13 @@ mod tests {
             b"orphan state without manifest",
         )
         .unwrap();
+        for index in 0..40 {
+            let incomplete = partial_state
+                .parent()
+                .unwrap()
+                .join(format!("zz-incomplete-state-{index:02}"));
+            fs::create_dir(incomplete).unwrap();
+        }
         const INTERRUPT_PATH_ENV: &str = "VYNTRA_STATE_PAYLOAD_INTERRUPT_PATH";
         let child = std::process::Command::new(std::env::current_exe().unwrap())
             .args([
