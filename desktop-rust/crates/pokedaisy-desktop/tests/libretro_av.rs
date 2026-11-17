@@ -279,6 +279,14 @@ fn configured_local_gba_core_receives_a_button_from_libretro_input() {
     .expect("GBA core loads");
     core.load_game(&rom_path)
         .expect("input diagnostic ROM loads");
+    let persisted_sram = vec![0x6C; 32 * 1024];
+    core.restore_save_ram(&persisted_sram)
+        .expect("a fresh Player session must accept the persisted diagnostic SRAM size");
+    assert_eq!(
+        core.read_save_ram().unwrap()[..persisted_sram.len()],
+        persisted_sram,
+        "restored bytes must be present before the first game frame"
+    );
     let mut released = None;
     for _ in 0..4 {
         released = core.run_frame(JoypadState::default()).unwrap().video;

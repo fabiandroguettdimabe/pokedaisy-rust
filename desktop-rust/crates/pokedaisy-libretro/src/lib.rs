@@ -1052,6 +1052,28 @@ impl LibretroCore {
         unsafe { ptr::copy_nonoverlapping(bytes.as_ptr(), ptr, size) };
         Ok(())
     }
+
+    /// Restore a previously committed save into a core buffer that may still be
+    /// larger than the save type the ROM will detect when it starts running.
+    /// The unused tail keeps the core's initialized contents.
+    pub fn restore_save_ram(&mut self, bytes: &[u8]) -> Result<(), CoreError> {
+        if self.loaded_rom.is_none() {
+            return Err(CoreError::NoGameLoaded);
+        }
+        let ptr = unsafe { (self.api.get_memory_data)(RETRO_MEMORY_SAVE_RAM) }.cast::<u8>();
+        let size = unsafe { (self.api.get_memory_size)(RETRO_MEMORY_SAVE_RAM) };
+        if ptr.is_null() || size == 0 {
+            return Err(CoreError::SaveRamUnavailable);
+        }
+        if bytes.is_empty() || bytes.len() > size {
+            return Err(CoreError::SaveRamSize {
+                expected: size,
+                actual: bytes.len(),
+            });
+        }
+        unsafe { ptr::copy_nonoverlapping(bytes.as_ptr(), ptr, bytes.len()) };
+        Ok(())
+    }
 }
 
 impl Drop for LibretroCore {

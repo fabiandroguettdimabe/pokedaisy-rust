@@ -1736,7 +1736,7 @@ fn open_game(
         }
     };
     if let Some(bytes) = save_bytes {
-        if let Err(error) = core.write_save_ram(&bytes) {
+        if let Err(error) = core.restore_save_ram(&bytes) {
             eprintln!(
                 "El núcleo rechazó la SRAM de {}: {error:?}",
                 safe_log_file_name(&game.path)
