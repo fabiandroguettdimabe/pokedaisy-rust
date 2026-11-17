@@ -1,9 +1,13 @@
 //! Non-destructive, journaled migration for legacy save artifacts.
-use crate::identity;
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::io::Write;
+use sha2::{Digest, Sha256};
+use std::fs::{self, OpenOptions};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static NEXT_STAGING_ID: AtomicU64 = AtomicU64::new(0);
+const MAX_MIGRATION_BYTES: u64 = 512 * 1024 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MigrationItem {
@@ -19,7 +23,11 @@ impl MigrationItem {
     pub fn new(source: PathBuf, destination: PathBuf, game_id: String, kind: String) -> Self {
         let metadata = fs::metadata(&source);
         let bytes = metadata.as_ref().map_or(0, |m| m.len());
-        let sha256 = identity::sha256_file(&source).unwrap_or_default();
+        let sha256 = if bytes <= MAX_MIGRATION_BYTES {
+            sha256_file_bounded(&source, bytes).unwrap_or_default()
+        } else {
+            String::new()
+        };
         Self {
             source,
             destination,
@@ -111,7 +119,7 @@ pub fn preview(items: &[MigrationItem]) -> Result<MigrationReport, String> {
                         .into(),
                 ),
             });
-        } else if item.bytes > 512 * 1024 * 1024 {
+        } else if item.bytes > MAX_MIGRATION_BYTES {
             report.items.push(PreviewItem {
                 item: item.clone(),
                 status: MigrationStatus::Conflict,
@@ -124,8 +132,10 @@ pub fn preview(items: &[MigrationItem]) -> Result<MigrationReport, String> {
                 reason: Some("Origen ausente o ilegible".into()),
             });
         } else if item.destination.exists() {
-            let same =
-                identity::sha256_file(&item.destination).ok().as_deref() == Some(&item.sha256);
+            let same = sha256_file_bounded(&item.destination, item.bytes)
+                .ok()
+                .as_deref()
+                == Some(&item.sha256);
             report.items.push(PreviewItem {
                 item: item.clone(),
                 status: if same {
@@ -173,9 +183,16 @@ pub fn apply(journal_path: &Path, report: &MigrationReport) -> Result<(), String
         if journal.items[index].status == MigrationStatus::Conflict {
             continue;
         }
+        if item.bytes > MAX_MIGRATION_BYTES {
+            journal.items[index].status = MigrationStatus::Conflict;
+            journal.items[index].reason =
+                Some("El archivo supera el límite de migración de 512 MiB".into());
+            persist(journal_path, &journal)?;
+            continue;
+        }
         if item.destination.is_file() {
-            let dest_hash = identity::sha256_file(&item.destination).map_err(|e| e.to_string())?;
-            if dest_hash == item.sha256 {
+            let dest_hash = sha256_file_bounded(&item.destination, item.bytes).ok();
+            if dest_hash.as_deref() == Some(&item.sha256) {
                 journal.items[index].status = MigrationStatus::Committed;
                 journal.items[index].reason = None;
                 persist(journal_path, &journal)?;
@@ -186,11 +203,13 @@ pub fn apply(journal_path: &Path, report: &MigrationReport) -> Result<(), String
             persist(journal_path, &journal)?;
             continue;
         }
-        let actual = match identity::sha256_file(&item.source) {
+        let actual = match sha256_file_bounded(&item.source, item.bytes) {
             Ok(hash) => hash,
             Err(_) => {
                 journal.items[index].status = MigrationStatus::Conflict;
-                journal.items[index].reason = Some("El origen ya no está disponible".into());
+                journal.items[index].reason = Some(
+                    "El origen cambió o dejó de estar disponible después de la vista previa".into(),
+                );
                 persist(journal_path, &journal)?;
                 continue;
             }
@@ -218,21 +237,83 @@ fn install_payload_with(
     item: &MigrationItem,
     after_verification: impl FnOnce(&Path) -> Result<(), String>,
 ) -> Result<(), String> {
+    if item.bytes > MAX_MIGRATION_BYTES {
+        return Err("El archivo supera el límite de migración de 512 MiB".into());
+    }
     let parent = item.destination.parent().ok_or("Destino sin carpeta")?;
     fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    let staging = item.destination.with_extension("migration-tmp");
     let mut src = fs::File::open(&item.source).map_err(|e| e.to_string())?;
-    let mut dst = fs::File::create(&staging).map_err(|e| e.to_string())?;
-    std::io::copy(&mut src, &mut dst).map_err(|e| e.to_string())?;
-    dst.sync_all().map_err(|e| e.to_string())?;
-    drop(dst);
-    if identity::sha256_file(&staging).map_err(|e| e.to_string())? != item.sha256 {
+    let (staging, mut dst) = create_staging_file(&item.destination)?;
+    let result = (|| {
+        let copied = std::io::copy(&mut src.take(item.bytes.saturating_add(1)), &mut dst)
+            .map_err(|e| e.to_string())?;
+        if copied != item.bytes {
+            return Err("El origen cambió de tamaño durante la migración".into());
+        }
+        dst.sync_all().map_err(|e| e.to_string())?;
+        drop(dst);
+        if sha256_file_bounded(&staging, item.bytes).map_err(|e| e.to_string())? != item.sha256 {
+            return Err("La copia migrada no coincide con el hash del origen".into());
+        }
+        after_verification(&staging)?;
+        fs::rename(&staging, &item.destination).map_err(|e| e.to_string())?;
+        Ok(())
+    })();
+    if result.is_err() {
         let _ = fs::remove_file(&staging);
-        return Err("La copia migrada no coincide con el hash del origen".into());
     }
-    after_verification(&staging)?;
-    fs::rename(&staging, &item.destination).map_err(|e| e.to_string())?;
-    Ok(())
+    result
+}
+
+fn sha256_file_bounded(path: &Path, expected_bytes: u64) -> Result<String, String> {
+    if expected_bytes > MAX_MIGRATION_BYTES {
+        return Err("El archivo supera el límite de migración de 512 MiB".into());
+    }
+    let file = fs::File::open(path).map_err(|e| e.to_string())?;
+    let mut bounded = file.take(expected_bytes.saturating_add(1));
+    let mut hasher = Sha256::new();
+    let mut total = 0_u64;
+    let mut buffer = [0_u8; 64 * 1024];
+    loop {
+        let read = bounded.read(&mut buffer).map_err(|e| e.to_string())?;
+        if read == 0 {
+            break;
+        }
+        total += read as u64;
+        if total > expected_bytes {
+            return Err("El archivo cambió de tamaño después de la vista previa".into());
+        }
+        hasher.update(&buffer[..read]);
+    }
+    if total != expected_bytes {
+        return Err("El archivo cambió de tamaño después de la vista previa".into());
+    }
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+fn create_staging_file(destination: &Path) -> Result<(PathBuf, fs::File), String> {
+    let parent = destination.parent().ok_or("Destino sin carpeta")?;
+    let name = destination
+        .file_name()
+        .ok_or("Destino sin nombre")?
+        .to_string_lossy();
+    for _ in 0..128 {
+        let sequence = NEXT_STAGING_ID.fetch_add(1, Ordering::Relaxed);
+        let staging = parent.join(format!(
+            ".{name}.vyntra-migration-{}-{sequence}.tmp",
+            std::process::id()
+        ));
+        match OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&staging)
+        {
+            Ok(file) => return Ok((staging, file)),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error.to_string()),
+        }
+    }
+    Err("No se pudo reservar un archivo temporal exclusivo para migración".into())
 }
 
 #[cfg(test)]
@@ -240,10 +321,28 @@ mod tests {
     use super::{
         MigrationItem, MigrationReport, MigrationStatus, apply, install_payload,
         install_payload_with, load_journal, persist, persist_with, persist_with_backup_and_install,
-        persist_with_install, preview,
+        persist_with_install, preview, sha256_file_bounded,
     };
     use std::fs;
     use std::io::Write;
+    use std::path::Path;
+
+    fn migration_staging_files(destination: &Path) -> Vec<std::path::PathBuf> {
+        let parent = destination.parent().unwrap();
+        let prefix = format!(
+            ".{}.vyntra-migration-",
+            destination.file_name().unwrap().to_string_lossy()
+        );
+        fs::read_dir(parent)
+            .unwrap()
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|path| {
+                path.file_name()
+                    .is_some_and(|name| name.to_string_lossy().starts_with(&prefix))
+            })
+            .collect()
+    }
 
     #[test]
     fn migration_refuses_a_source_changed_after_preview() {
@@ -275,10 +374,100 @@ mod tests {
         assert_eq!(recovered.items[0].status, MigrationStatus::Conflict);
         assert_eq!(
             recovered.items[0].reason.as_deref(),
-            Some("El origen cambió después de la vista previa")
+            Some("El origen cambió o dejó de estar disponible después de la vista previa")
         );
         assert_eq!(fs::read(&source).unwrap(), b"save changed after preview");
         assert!(!destination.exists());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn migration_rejects_source_growth_after_preview_without_copying_it() {
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-migration-source-growth-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("legacy.sav");
+        let destination = root.join("by-id/game/battery.sav");
+        let journal = root.join("migration.json");
+        fs::write(&source, b"small preview").unwrap();
+        let report = preview(&[MigrationItem::new(
+            source.clone(),
+            destination.clone(),
+            "game".into(),
+            "battery".into(),
+        )])
+        .unwrap();
+        fs::OpenOptions::new()
+            .append(true)
+            .open(&source)
+            .unwrap()
+            .write_all(b" appended after preview")
+            .unwrap();
+
+        apply(&journal, &report).unwrap();
+
+        let recovered = load_journal(&journal).unwrap().unwrap();
+        assert_eq!(recovered.items[0].status, MigrationStatus::Conflict);
+        assert!(!destination.exists());
+        assert_eq!(
+            fs::read(&source).unwrap(),
+            b"small preview appended after preview"
+        );
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn migration_preserves_an_unowned_staging_neighbor() {
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-migration-unowned-stage-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("legacy.sav");
+        let destination = root.join("by-id/game/battery.sav");
+        let journal = root.join("migration.json");
+        let unowned_staging = destination.with_extension("migration-tmp");
+        let orphan_bytes = b"unrelated file sharing old temporary name";
+        fs::write(&source, b"verified save payload").unwrap();
+        fs::create_dir_all(unowned_staging.parent().unwrap()).unwrap();
+        fs::write(&unowned_staging, orphan_bytes).unwrap();
+        let report = preview(&[MigrationItem::new(
+            source.clone(),
+            destination.clone(),
+            "game".into(),
+            "battery".into(),
+        )])
+        .unwrap();
+
+        apply(&journal, &report).unwrap();
+
+        assert_eq!(fs::read(&destination).unwrap(), b"verified save payload");
+        assert_eq!(fs::read(&source).unwrap(), b"verified save payload");
+        assert_eq!(fs::read(&unowned_staging).unwrap(), orphan_bytes);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn bounded_migration_hash_rejects_bytes_beyond_the_preview_size() {
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-migration-bounded-hash-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("legacy.sav");
+        let bytes = b"previewed bytes";
+        fs::write(&source, bytes).unwrap();
+
+        assert_eq!(
+            sha256_file_bounded(&source, bytes.len() as u64).unwrap(),
+            crate::identity::sha256_bytes(bytes)
+        );
+        assert!(sha256_file_bounded(&source, 4).is_err());
         let _ = fs::remove_dir_all(root);
     }
 
@@ -545,7 +734,7 @@ mod tests {
     }
 
     #[test]
-    fn migration_retry_replaces_partial_staging_after_interrupted_copy() {
+    fn migration_retry_preserves_partial_staging_after_interrupted_copy() {
         let root =
             std::env::temp_dir().join(format!("vyntra-migration-copy-cut-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
@@ -586,15 +775,17 @@ mod tests {
 
         assert_eq!(fs::read(&destination).unwrap(), bytes);
         assert_eq!(fs::read(&source).unwrap(), bytes);
-        assert!(!staging.exists());
+        assert_eq!(
+            fs::read(&staging).unwrap(),
+            b"partial bytes before process interruption"
+        );
         let recovered = load_journal(&journal_path).unwrap().unwrap();
         assert_eq!(recovered.items[0].status, MigrationStatus::Committed);
         let _ = fs::remove_dir_all(root);
     }
 
     #[test]
-    fn migration_retry_replaces_verified_staging_after_process_termination() {
-        const STAGING_ENV: &str = "VYNTRA_MIGRATION_VERIFIED_STAGING_PATH";
+    fn migration_retry_preserves_verified_staging_after_process_termination() {
         let root = std::env::temp_dir().join(format!(
             "vyntra-migration-verified-cut-{}",
             std::process::id()
@@ -620,13 +811,14 @@ mod tests {
                 "--exact",
                 "migration::tests::terminate_after_migration_staging_verification",
             ])
-            .env(STAGING_ENV, destination.with_extension("migration-tmp"))
             .env("VYNTRA_MIGRATION_VERIFIED_SOURCE", &source)
             .env("VYNTRA_MIGRATION_VERIFIED_DEST", &destination)
             .status()
             .unwrap();
         assert_eq!(child.code(), Some(74));
-        let staging = destination.with_extension("migration-tmp");
+        let staging_files = migration_staging_files(&destination);
+        assert_eq!(staging_files.len(), 1);
+        let staging = &staging_files[0];
         assert_eq!(fs::read(&staging).unwrap(), bytes);
         assert!(!destination.exists());
 
@@ -634,7 +826,7 @@ mod tests {
 
         assert_eq!(fs::read(&destination).unwrap(), bytes);
         assert_eq!(fs::read(&source).unwrap(), bytes);
-        assert!(!staging.exists());
+        assert_eq!(fs::read(&staging).unwrap(), bytes);
         assert_eq!(
             load_journal(&journal_path).unwrap().unwrap().items[0].status,
             MigrationStatus::Committed
@@ -644,24 +836,28 @@ mod tests {
 
     #[test]
     fn terminate_after_migration_staging_verification() {
-        const STAGING_ENV: &str = "VYNTRA_MIGRATION_VERIFIED_STAGING_PATH";
         const SOURCE_ENV: &str = "VYNTRA_MIGRATION_VERIFIED_SOURCE";
         const DEST_ENV: &str = "VYNTRA_MIGRATION_VERIFIED_DEST";
-        let (Some(staging), Some(source), Some(destination)) = (
-            std::env::var_os(STAGING_ENV),
-            std::env::var_os(SOURCE_ENV),
-            std::env::var_os(DEST_ENV),
-        ) else {
+        let (Some(source), Some(destination)) =
+            (std::env::var_os(SOURCE_ENV), std::env::var_os(DEST_ENV))
+        else {
             return;
         };
-        let item = MigrationItem::new(
-            source.into(),
-            destination.into(),
-            "game".into(),
-            "battery".into(),
-        );
+        let source = std::path::PathBuf::from(source);
+        let destination = std::path::PathBuf::from(destination);
+        let item = MigrationItem::new(source, destination.clone(), "game".into(), "battery".into());
         install_payload_with(&item, |verified| {
-            assert_eq!(verified, std::path::Path::new(&staging));
+            let expected_prefix = format!(
+                ".{}.vyntra-migration-",
+                destination.file_name().unwrap().to_string_lossy()
+            );
+            assert!(
+                verified
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .starts_with(&expected_prefix)
+            );
             std::process::exit(74);
         })
         .unwrap();
