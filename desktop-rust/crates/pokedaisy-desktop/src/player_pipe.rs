@@ -611,7 +611,7 @@ fn write_all_cancellable(
             return Err("pipe cancelado".into());
         }
         match writer.write(&bytes[written..]) {
-            Ok(0) => return Err("el pipe dejó de aceptar datos".into()),
+            Ok(0) => thread::sleep(Duration::from_millis(5)),
             Ok(count) => written += count,
             Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
                 thread::sleep(Duration::from_millis(5));
@@ -640,8 +640,31 @@ mod tests {
     use interprocess::local_socket::{ConnectOptions, GenericNamespaced, prelude::*};
     use serde_json::json;
     use std::io::Write;
+    use std::sync::atomic::AtomicBool;
     use std::sync::mpsc;
     use std::time::Duration;
+
+    #[test]
+    fn nonblocking_writer_retries_zero_byte_writes() {
+        struct ZeroOnceWriter(Vec<u8>, bool);
+        impl Write for ZeroOnceWriter {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                if !self.1 {
+                    self.1 = true;
+                    return Ok(0);
+                }
+                self.0.extend_from_slice(bytes);
+                Ok(bytes.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+
+        let mut writer = ZeroOnceWriter(Vec::new(), false);
+        super::write_all_cancellable(&mut writer, b"snapshot", &AtomicBool::new(false)).unwrap();
+        assert_eq!(writer.0, b"snapshot");
+    }
 
     #[test]
     fn local_named_pipe_authenticates_child_and_exchanges_commands_and_snapshots() {

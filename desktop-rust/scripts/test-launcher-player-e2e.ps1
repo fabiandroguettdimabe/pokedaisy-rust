@@ -48,12 +48,15 @@ await launcher.getByRole('navigation', { name: 'Navegación principal' }).getByR
 await launcher.getByRole('heading', { name: 'Vyntra Companion' }).waitFor({ timeout: 10000 });
 const session = launcher.locator('.companion-session');
 await session.waitFor({ timeout: 15000 });
+await session.getByText(/Core ·/).waitFor({ timeout: 15000 });
 await session.getByRole('button', { name: 'Pausar' }).click();
-await launcher.waitForTimeout(500);
+await session.getByText(/En pausa/).waitFor({ timeout: 5000 });
+await session.getByRole('button', { name: 'Reanudar' }).click();
+await session.getByText('En pausa').waitFor({ state: 'hidden', timeout: 5000 });
 await session.getByRole('button', { name: 'Guardar estado' }).click();
-await launcher.waitForTimeout(1000);
+await launcher.getByText('Estado guardado en Player.').waitFor({ timeout: 10000 });
 await session.getByRole('button', { name: 'Cargar estado' }).click();
-await launcher.waitForTimeout(1000);
+await launcher.getByText('Estado cargado en Player.').waitFor({ timeout: 10000 });
 await session.getByRole('button', { name: 'Detener partida' }).click();
 console.log('companion-pause-save-load-stop-passed');
 process.exit(0);
