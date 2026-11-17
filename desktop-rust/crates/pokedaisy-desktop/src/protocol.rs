@@ -384,6 +384,20 @@ pub fn parse_ui_command(body: &str) -> Result<UiCommandEnvelope, AppError> {
                 "Falta un command_id válido",
             ));
         }
+        for (name, value) in [
+            ("command_id", Some(command.command_id.as_str())),
+            ("request_id", command.request_id.as_deref()),
+            ("session_id", command.session_id.as_deref()),
+        ] {
+            if value.is_some_and(|value| {
+                value.is_empty() || value.len() > 128 || value.chars().any(char::is_control)
+            }) {
+                return Err(AppError::new(
+                    "invalid_envelope",
+                    format!("El campo `{name}` no es válido"),
+                ));
+            }
+        }
         let action = command.action.trim();
         if action.is_empty() || action != command.action {
             return Err(AppError::new("invalid_action", "Falta una acción válida"));
@@ -470,6 +484,30 @@ mod tests {
         ] {
             assert_eq!(parse_ui_command(body).unwrap_err().code, code);
         }
+
+        let long_command_id = serde_json::json!({
+            "protocol_version": 1,
+            "command_id": "x".repeat(129),
+            "action": "scan",
+            "payload": {},
+        })
+        .to_string();
+        assert_eq!(
+            parse_ui_command(&long_command_id).unwrap_err().code,
+            "invalid_envelope"
+        );
+        let control_request_id = serde_json::json!({
+            "protocol_version": 1,
+            "command_id": "ok",
+            "request_id": "bad\nrequest",
+            "action": "scan",
+            "payload": {},
+        })
+        .to_string();
+        assert_eq!(
+            parse_ui_command(&control_request_id).unwrap_err().code,
+            "invalid_envelope"
+        );
     }
 
     #[test]
