@@ -1151,14 +1151,24 @@ fn preferred_state_path(game: &Game, dir: &Path) -> PathBuf {
 }
 
 fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
+    atomic_write_with(path, data, |file, bytes| {
+        file.write_all(bytes)?;
+        file.sync_all()
+    })
+}
+
+fn atomic_write_with(
+    path: &Path,
+    data: &[u8],
+    stage: impl FnOnce(&mut fs::File, &[u8]) -> std::io::Result<()>,
+) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
     let tmp = path.with_extension("tmp");
     let staged = (|| -> Result<(), String> {
         let mut f = fs::File::create(&tmp).map_err(|e| e.to_string())?;
-        f.write_all(data).map_err(|e| e.to_string())?;
-        f.sync_all().map_err(|e| e.to_string())?;
+        stage(&mut f, data).map_err(|e| e.to_string())?;
         Ok(())
     })();
     if let Err(error) = staged {
@@ -2471,6 +2481,26 @@ mod tests {
         assert!(atomic_write(&target, b"replacement").is_err());
         assert_eq!(fs::read(&marker).unwrap(), b"original");
         assert!(!root.join("target.tmp").exists());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn failed_atomic_write_after_partial_staging_preserves_existing_target() {
+        let root = std::env::temp_dir().join(format!("vyntra-atomic-full-{}", std::process::id()));
+        let target = root.join("save.sav");
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        fs::write(&target, b"committed-save").unwrap();
+
+        let error = super::atomic_write_with(&target, b"replacement", |file, data| {
+            use std::io::Write;
+            file.write_all(&data[..3])?;
+            Err(std::io::Error::from(std::io::ErrorKind::StorageFull))
+        });
+
+        assert!(error.is_err());
+        assert_eq!(fs::read(&target).unwrap(), b"committed-save");
+        assert!(!root.join("save.tmp").exists());
         let _ = fs::remove_dir_all(root);
     }
 
