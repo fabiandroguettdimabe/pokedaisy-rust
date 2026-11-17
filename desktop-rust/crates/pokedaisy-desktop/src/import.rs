@@ -766,6 +766,24 @@ mod tests {
     }
 
     #[test]
+    fn folder_scan_handles_ten_thousand_rom_candidates_within_limit() {
+        const MAX_CANDIDATES: usize = 10_000;
+        let root = std::env::temp_dir().join(format!("vyntra-import-large-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let rom = valid_gba();
+        for index in 0..=MAX_CANDIDATES {
+            fs::write(root.join(format!("game-{index:05}.gba")), &rom).unwrap();
+        }
+
+        let (paths, rejected) = collect_rom_paths(std::slice::from_ref(&root), MAX_CANDIDATES);
+
+        assert_eq!(paths.len(), MAX_CANDIDATES);
+        assert_eq!(rejected, 1);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn folder_scan_reports_progress_and_honors_cancellation() {
         let root = std::env::temp_dir().join(format!("vyntra-import-scan-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
