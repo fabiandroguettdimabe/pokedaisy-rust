@@ -2722,6 +2722,50 @@ mod tests {
     }
 
     #[test]
+    fn atomic_write_recovers_after_process_termination_during_staging() {
+        const CRASH_PATH_ENV: &str = "VYNTRA_ATOMIC_WRITE_CRASH_PATH";
+        if let Some(path) = std::env::var_os(CRASH_PATH_ENV) {
+            let target = std::path::PathBuf::from(path);
+            let _ = super::atomic_write_with(&target, b"replacement", |file, _| {
+                use std::io::Write;
+                file.write_all(b"partial")?;
+                std::process::exit(73);
+            });
+            unreachable!("the subprocess exits while staging the replacement");
+        }
+
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-atomic-crash-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&root).unwrap();
+        let target = root.join("save.sav");
+        fs::write(&target, b"committed-save").unwrap();
+
+        let child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "tests::atomic_write_recovers_after_process_termination_during_staging",
+            ])
+            .env(CRASH_PATH_ENV, &target)
+            .status()
+            .unwrap();
+
+        assert_eq!(child.code(), Some(73));
+        assert_eq!(fs::read(&target).unwrap(), b"committed-save");
+        assert_eq!(fs::read(root.join("save.tmp")).unwrap(), b"partial");
+
+        atomic_write(&target, b"recovered-save").unwrap();
+        assert_eq!(fs::read(&target).unwrap(), b"recovered-save");
+        assert!(!root.join("save.tmp").exists());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn each_system_prefers_vyntra_core_names_and_keeps_legacy_aliases() {
         for (system, expected, legacy) in [
             (
