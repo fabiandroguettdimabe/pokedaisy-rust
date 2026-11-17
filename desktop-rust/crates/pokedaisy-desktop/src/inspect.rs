@@ -1,0 +1,120 @@
+//! Bounded structural checks for supported ROM formats. Header matches remain partial identity.
+use crate::domain::IdentityConfidence;
+use std::io::Read;
+use std::path::Path;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RomInspection {
+    pub system: &'static str,
+    pub title: Option<String>,
+    pub game_code: Option<String>,
+    pub revision: Option<u8>,
+    pub confidence: IdentityConfidence,
+}
+
+pub fn inspect_bytes(file_name: &str, bytes: &[u8]) -> Option<RomInspection> {
+    inspect_header(file_name, bytes, bytes.len() as u64)
+}
+
+pub fn inspect_file(path: &Path) -> Option<RomInspection> {
+    let file_size = std::fs::metadata(path).ok()?.len();
+    let mut header = [0u8; 0x200];
+    let mut file = std::fs::File::open(path).ok()?;
+    let count = file.read(&mut header).ok()?;
+    inspect_header(path.file_name()?.to_str()?, &header[..count], file_size)
+}
+
+fn inspect_header(file_name: &str, bytes: &[u8], file_size: u64) -> Option<RomInspection> {
+    let extension = file_name.rsplit('.').next()?.to_ascii_lowercase();
+    match extension.as_str() {
+        "gba" => inspect_gba(bytes),
+        "gb" => inspect_gb(bytes, false),
+        "gbc" => inspect_gb(bytes, true),
+        "nds" => inspect_ds(bytes, file_size),
+        _ => None,
+    }
+}
+
+fn inspect_gba(bytes: &[u8]) -> Option<RomInspection> {
+    if bytes.len() < 0xc0 || bytes[0xb2] != 0x96 {
+        return None;
+    }
+    let code = clean_ascii(&bytes[0xac..0xb0]);
+    if code.len() != 4 || !code.bytes().all(|b| b.is_ascii_alphanumeric()) {
+        return None;
+    }
+    Some(RomInspection {
+        system: "GBA",
+        title: clean_ascii(&bytes[0xa0..0xac]).into_option(),
+        game_code: Some(code),
+        revision: Some(bytes[0xbc]),
+        confidence: IdentityConfidence::Partial,
+    })
+}
+
+fn inspect_gb(bytes: &[u8], expect_color: bool) -> Option<RomInspection> {
+    const LOGO: [u8; 48] = [
+        0xce, 0xed, 0x66, 0x66, 0xcc, 0x0d, 0x00, 0x0b, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0c, 0x00,
+        0x0d, 0x00, 0x08, 0x11, 0x1f, 0x88, 0x89, 0x00, 0x0e, 0xdc, 0xcc, 0x6e, 0xe6, 0xdd, 0xdd,
+        0xd9, 0x99, 0xbb, 0xbb, 0x67, 0x63, 0x6e, 0x0e, 0xec, 0xcc, 0xdd, 0xdc, 0x99, 0x9f, 0xbb,
+        0xb9, 0x33, 0x3e,
+    ];
+    if bytes.len() < 0x150 || bytes[0x104..0x134] != LOGO {
+        return None;
+    }
+    let color = bytes[0x143] & 0x80 != 0;
+    if color != expect_color {
+        return None;
+    }
+    Some(RomInspection {
+        system: if color { "GBC" } else { "GB" },
+        title: clean_ascii(&bytes[0x134..0x143]).into_option(),
+        game_code: None,
+        revision: None,
+        confidence: IdentityConfidence::Partial,
+    })
+}
+
+fn inspect_ds(bytes: &[u8], file_size: u64) -> Option<RomInspection> {
+    if bytes.len() < 0x200 || u32::from_le_bytes(bytes[0x84..0x88].try_into().ok()?) < 0x160 {
+        return None;
+    }
+    let arm9_offset = u32::from_le_bytes(bytes[0x20..0x24].try_into().ok()?) as usize;
+    let arm9_size = u32::from_le_bytes(bytes[0x2c..0x30].try_into().ok()?) as usize;
+    if arm9_offset < 0x200
+        || arm9_size == 0
+        || arm9_offset.checked_add(arm9_size)? as u64 > file_size
+    {
+        return None;
+    }
+    let code = clean_ascii(&bytes[0x0c..0x10]);
+    let game_code =
+        (code.len() == 4 && code.bytes().all(|b| b.is_ascii_alphanumeric())).then_some(code);
+    Some(RomInspection {
+        system: "DS",
+        title: clean_ascii(&bytes[0..12]).into_option(),
+        game_code,
+        revision: None,
+        confidence: IdentityConfidence::Partial,
+    })
+}
+
+fn clean_ascii(bytes: &[u8]) -> String {
+    String::from_utf8_lossy(bytes)
+        .chars()
+        .take_while(|c| *c != '\0')
+        .filter(|c| !c.is_control())
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
+trait NonEmpty {
+    fn into_option(self) -> Option<String>;
+}
+
+impl NonEmpty for String {
+    fn into_option(self) -> Option<String> {
+        (!self.is_empty()).then_some(self)
+    }
+}

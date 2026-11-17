@@ -2742,6 +2742,7 @@ dependencies = [
  "sdl2",
  "serde",
  "serde_json",
+ "sha2",
  "tao",
  "vyntra-libretro",
  "wry",

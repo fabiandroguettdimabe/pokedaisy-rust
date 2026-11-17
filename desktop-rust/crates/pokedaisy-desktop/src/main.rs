@@ -1,6 +1,13 @@
+mod domain;
+mod identity;
+mod inspect;
+mod library;
+mod migration;
+mod protocol;
 mod settings;
 #[cfg(target_os = "windows")]
 mod shell;
+mod vault;
 use fontdue::Font;
 use sdl2::audio::AudioSpecDesired;
 use sdl2::event::Event;
@@ -12,6 +19,7 @@ use sdl2::video::{Window, WindowContext};
 use settings::Settings;
 use std::env;
 use std::fs;
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use vyntra_libretro::{
@@ -33,6 +41,175 @@ struct Game {
     path: PathBuf,
     title: String,
     system: &'static str,
+    storage_key: std::sync::OnceLock<String>,
+}
+
+#[cfg(test)]
+mod migration_contract_tests {
+    use super::migration::{MigrationItem, MigrationStatus, apply, preview};
+    use std::fs;
+
+    #[test]
+    fn migration_preview_is_read_only_and_apply_is_idempotent() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-migration-red-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let source = root.join("legacy/game.sav");
+        let destination = root.join("new/by-id/game/battery.sav");
+        fs::create_dir_all(source.parent().unwrap()).unwrap();
+        fs::write(&source, b"save-data").unwrap();
+        let item = MigrationItem::new(
+            source.clone(),
+            destination.clone(),
+            "rom-id".into(),
+            "battery".into(),
+        );
+        let report = preview(&[item.clone()]).unwrap();
+        assert!(!destination.exists());
+        assert_eq!(report.items[0].status, MigrationStatus::Ready);
+        apply(&root.join("journal.json"), &report).unwrap();
+        apply(&root.join("journal.json"), &report).unwrap();
+        assert_eq!(fs::read(&destination).unwrap(), b"save-data");
+        assert!(source.exists());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn save_owner_uses_captured_session_after_library_selection_changes() {
+        let first = super::game_from_path(std::path::PathBuf::from("first.gb"));
+        let second = super::game_from_path(std::path::PathBuf::from("second.gb"));
+        let active = Some(first.clone());
+        let games = vec![second];
+        let selected = 0;
+        assert_eq!(super::session_save_owner(&active).unwrap().path, first.path);
+        assert_ne!(
+            super::session_save_owner(&active).unwrap().path,
+            games[selected].path
+        );
+    }
+
+    #[test]
+    fn stable_game_id_resolves_after_library_order_changes() {
+        let first_path = std::env::temp_dir().join("vyntra-id-first.gb");
+        let second_path = std::env::temp_dir().join("vyntra-id-second.gb");
+        std::fs::write(&first_path, b"first-rom").unwrap();
+        std::fs::write(&second_path, b"second-rom").unwrap();
+        let games = vec![
+            super::game_from_path(second_path.clone()),
+            super::game_from_path(first_path.clone()),
+        ];
+        let id = super::game_storage_key(&super::game_from_path(first_path.clone()));
+        assert_eq!(
+            super::resolve_game_by_storage_id(&games, &id).unwrap().path,
+            first_path
+        );
+        let _ = std::fs::remove_file(first_path);
+        let _ = std::fs::remove_file(second_path);
+    }
+
+    #[test]
+    fn migration_preview_marks_homonymous_destinations_as_conflicts() {
+        let root = std::env::temp_dir().join(format!("vyntra-conflict-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let a = root.join("a.sav");
+        let b = root.join("b.sav");
+        std::fs::write(&a, b"save-a").unwrap();
+        std::fs::write(&b, b"save-b").unwrap();
+        let dest = root.join("by-id/game/battery.sav");
+        let report = super::migration::preview(&[
+            super::migration::MigrationItem::new(a, dest.clone(), "g1".into(), "battery".into()),
+            super::migration::MigrationItem::new(b, dest, "g2".into(), "battery".into()),
+        ])
+        .unwrap();
+        assert!(
+            report
+                .items
+                .iter()
+                .all(|item| item.status == super::migration::MigrationStatus::Conflict)
+        );
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn rom_inspection_rejects_truncated_and_false_extension_files() {
+        assert!(super::inspect::inspect_bytes("bad.gb", b"not a rom").is_none());
+        assert!(super::inspect::inspect_bytes("short.nds", &[0; 128]).is_none());
+    }
+
+    #[test]
+    fn gba_inspection_extracts_header_identity_only_when_structure_is_valid() {
+        let mut bytes = vec![0u8; 0xC0];
+        bytes[0xB2] = 0x96;
+        bytes[0xA0..0xAC].copy_from_slice(b"TEST ROM    ");
+        bytes[0xAC..0xB0].copy_from_slice(b"ABCD");
+        bytes[0xBC] = 0x19;
+        let info = super::inspect::inspect_bytes("game.gba", &bytes).unwrap();
+        assert_eq!(info.system, "GBA");
+        assert_eq!(info.game_code.as_deref(), Some("ABCD"));
+        assert_eq!(info.title.as_deref(), Some("TEST ROM"));
+        assert!(super::inspect::inspect_bytes("game.gb", &bytes).is_none());
+    }
+
+    #[test]
+    fn changed_rom_is_rejected_against_the_catalog_content_identity() {
+        let path =
+            std::env::temp_dir().join(format!("vyntra-rom-change-{}.gba", std::process::id()));
+        std::fs::write(&path, b"original").unwrap();
+        let game = super::game_from_path(path.clone());
+        let _published_id = super::game_storage_key(&game);
+        std::fs::write(&path, b"changed").unwrap();
+        assert!(super::validate_game_identity(&game).is_err());
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn migration_journal_accepts_a_new_preview_after_prior_items_finish() {
+        let root = std::env::temp_dir().join(format!("vyntra-journal-next-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let journal = root.join("journal.json");
+        for name in ["one", "two"] {
+            let source = root.join(format!("{name}.sav"));
+            let destination = root.join(format!("{name}/battery.sav"));
+            std::fs::write(&source, name.as_bytes()).unwrap();
+            let item = super::migration::MigrationItem::new(
+                source,
+                destination,
+                name.into(),
+                "battery".into(),
+            );
+            let report = super::migration::preview(&[item]).unwrap();
+            super::migration::apply(&journal, &report).unwrap();
+        }
+        assert!(root.join("two/battery.sav").is_file());
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn save_state_manifest_rejects_a_different_core_or_rom() {
+        let manifest = super::domain::SaveManifest {
+            save_id: "game-state".into(),
+            kind: super::domain::SaveKind::SaveState,
+            rom_sha256: Some("rom-hash".into()),
+            core_hash: Some("core-hash".into()),
+            state_format: Some("libretro-serialize-v1".into()),
+            slot: Some(1),
+            bytes: Some(5),
+            sha256: Some(super::identity::sha256_bytes(b"state")),
+            parent_id: None,
+            created_at_utc: None,
+            created_at_unix: None,
+            status: "committed".into(),
+        };
+        assert!(super::vault::validate_state(&manifest, b"state", "rom-hash", "core-hash").is_ok());
+        assert!(
+            super::vault::validate_state(&manifest, b"state", "other-rom", "core-hash").is_err()
+        );
+        assert!(
+            super::vault::validate_state(&manifest, b"state", "rom-hash", "other-core").is_err()
+        );
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -164,6 +341,8 @@ fn sdl_main() -> Result<(), String> {
     let mut selected = 0usize;
     let mut screen = Screen::Library;
     let mut core: Option<LibretroCore> = None;
+    let mut active_game: Option<Game> = None;
+    let mut active_core_hash: Option<String> = None;
     let mut last_error = None;
     let mut last_frame = None;
     let mut last_auto = Instant::now();
@@ -178,6 +357,8 @@ fn sdl_main() -> Result<(), String> {
             match open_game(game, &save_dir, &system_dir, &config) {
                 Ok(c) => {
                     core = Some(c);
+                    active_game = Some(game.clone());
+                    active_core_hash = core_hash_for(&config, game.system);
                     screen = Screen::Playing;
                     last_error = None;
                 }
@@ -213,7 +394,9 @@ fn sdl_main() -> Result<(), String> {
                             games.insert(0, game_from_path(p));
                             selected = 0;
                         }
-                        screen = Screen::Library;
+                        if core.is_none() {
+                            screen = Screen::Library;
+                        }
                     }
                 }
                 Event::ControllerDeviceAdded { which, .. } if game_controller.is_none() => {
@@ -280,6 +463,8 @@ fn sdl_main() -> Result<(), String> {
                             match open_game(&game, &save_dir, &system_dir, &config) {
                                 Ok(c) => {
                                     core = Some(c);
+                                    active_game = Some(game.clone());
+                                    active_core_hash = core_hash_for(&config, game.system);
                                     screen = Screen::Playing;
                                     last_error = None;
                                 }
@@ -305,6 +490,8 @@ fn sdl_main() -> Result<(), String> {
                                     match open_game(&game, &save_dir, &system_dir, &config) {
                                         Ok(c) => {
                                             core = Some(c);
+                                            active_game = Some(game.clone());
+                                            active_core_hash = core_hash_for(&config, game.system);
                                             screen = Screen::Playing;
                                             last_error = None;
                                         }
@@ -395,6 +582,8 @@ fn sdl_main() -> Result<(), String> {
                                 match open_game(&game, &save_dir, &system_dir, &config) {
                                     Ok(c) => {
                                         core = Some(c);
+                                        active_game = Some(game.clone());
+                                        active_core_hash = core_hash_for(&config, game.system);
                                         screen = Screen::Playing;
                                         last_error = None;
                                     }
@@ -441,21 +630,38 @@ fn sdl_main() -> Result<(), String> {
                     },
                     Screen::Playing => match key {
                         Keycode::Escape => {
-                            if let Some(c) = core.as_mut() {
-                                save_battery(c, &games[selected].path, &save_dir);
+                            if let (Some(c), Some(g)) =
+                                (core.as_mut(), session_save_owner(&active_game))
+                            {
+                                save_battery(c, g, &save_dir, active_core_hash.as_deref());
                             }
                             core = None;
+                            active_game = None;
+                            active_core_hash = None;
                             screen = Screen::Library;
                             last_frame = None;
                         }
                         Keycode::F2 => {
-                            if let (Some(c), Some(g)) = (core.as_mut(), games.get(selected)) {
+                            if let (Some(c), Some(g)) =
+                                (core.as_mut(), session_save_owner(&active_game))
+                            {
                                 match c.serialize() {
                                     Ok(bytes) => {
-                                        let path = state_path(&g.path, &state_dir);
-                                        if let Err(e) = fs::write(path, bytes) {
-                                            last_error =
-                                                Some(format!("No se pudo guardar estado: {e}"));
+                                        let path = state_path(g, &state_dir);
+                                        match atomic_write(&path, &bytes) {
+                                            Ok(()) => write_save_manifest(
+                                                g,
+                                                &state_dir,
+                                                domain::SaveKind::SaveState,
+                                                &bytes,
+                                                Some(1),
+                                                active_core_hash.as_deref(),
+                                                "committed",
+                                            ),
+                                            Err(e) => {
+                                                last_error =
+                                                    Some(format!("No se pudo guardar estado: {e}"))
+                                            }
                                         }
                                     }
                                     Err(e) => {
@@ -465,8 +671,14 @@ fn sdl_main() -> Result<(), String> {
                             }
                         }
                         Keycode::F4 => {
-                            if let (Some(c), Some(g)) = (core.as_mut(), games.get(selected)) {
-                                match fs::read(state_path(&g.path, &state_dir)) {
+                            if let (Some(c), Some(g)) =
+                                (core.as_mut(), session_save_owner(&active_game))
+                            {
+                                match load_compatible_state(
+                                    g,
+                                    &state_dir,
+                                    active_core_hash.as_deref(),
+                                ) {
                                     Ok(bytes) => {
                                         if let Err(e) = c.unserialize(&bytes) {
                                             last_error =
@@ -678,10 +890,10 @@ fn sdl_main() -> Result<(), String> {
                             );
                         }
                         if last_save.elapsed() > Duration::from_secs(config.autosave) {
-                            if let Some(p) = games.get(selected).map(|g| g.path.clone()) {
-                                if let Some(c) = core.as_mut() {
-                                    save_battery(c, &p, &save_dir);
-                                }
+                            if let (Some(g), Some(c)) =
+                                (session_save_owner(&active_game).cloned(), core.as_mut())
+                            {
+                                save_battery(c, &g, &save_dir, active_core_hash.as_deref());
                                 last_save = Instant::now();
                             }
                         }
@@ -703,8 +915,8 @@ fn sdl_main() -> Result<(), String> {
         ));
     }
     if let Some(c) = core.as_mut() {
-        if let Some(g) = games.get(selected) {
-            save_battery(c, &g.path, &save_dir);
+        if let Some(g) = session_save_owner(&active_game) {
+            save_battery(c, g, &save_dir, active_core_hash.as_deref());
         }
     }
     Ok(())
@@ -713,6 +925,72 @@ fn sdl_main() -> Result<(), String> {
 // KeyboardState uses the SDL scancode enum; keep the game mapping in one compact helper.
 fn pressed_key(key: Keycode) -> sdl2::keyboard::Scancode {
     sdl2::keyboard::Scancode::from_keycode(key).unwrap_or(sdl2::keyboard::Scancode::A)
+}
+
+fn game_storage_key(game: &Game) -> String {
+    game.storage_key
+        .get_or_init(|| identity::storage_key(&game.path))
+        .clone()
+}
+
+fn session_save_owner(active: &Option<Game>) -> Option<&Game> {
+    active.as_ref()
+}
+
+fn resolve_game_by_storage_id<'a>(games: &'a [Game], id: &str) -> Option<&'a Game> {
+    games.iter().find(|game| game_storage_key(game) == id)
+}
+
+fn validate_game_identity(game: &Game) -> Result<(), String> {
+    let current = identity::sha256_file(&game.path)
+        .map_err(|_| "No se pudo verificar la ROM. Vuelve a escanear la biblioteca.".to_string())?;
+    if current.starts_with(&game_storage_key(game)) {
+        Ok(())
+    } else {
+        Err(
+            "La ROM cambió desde que se mostró la biblioteca. Vuelve a escanear antes de jugar."
+                .into(),
+        )
+    }
+}
+
+fn legacy_battery_path(game: &Game, dir: &Path) -> PathBuf {
+    dir.join(format!(
+        "{}.sav",
+        game.path.file_name().unwrap_or_default().to_string_lossy()
+    ))
+}
+
+fn preferred_battery_path(game: &Game, dir: &Path) -> PathBuf {
+    dir.join("by-id")
+        .join(game_storage_key(game))
+        .join("battery.sav")
+}
+
+fn legacy_state_path(game: &Game, dir: &Path) -> PathBuf {
+    dir.join(format!(
+        "{}.ss",
+        game.path.file_name().unwrap_or_default().to_string_lossy()
+    ))
+}
+
+fn preferred_state_path(game: &Game, dir: &Path) -> PathBuf {
+    dir.join("by-id")
+        .join(game_storage_key(game))
+        .join("slot1.ss")
+}
+
+fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let tmp = path.with_extension("tmp");
+    {
+        let mut f = fs::File::create(&tmp).map_err(|e| e.to_string())?;
+        f.write_all(data).map_err(|e| e.to_string())?;
+        f.sync_all().map_err(|e| e.to_string())?;
+    }
+    fs::rename(&tmp, path).map_err(|e| e.to_string())
 }
 
 fn open_game(
@@ -734,10 +1012,14 @@ fn open_game(
     .map_err(|e| format!("No se pudo iniciar {}: {e:?}", core_path.display()))?;
     core.load_game(&game.path)
         .map_err(|e| format!("No se pudo abrir {}: {e:?}", game.path.display()))?;
-    let save_path = saves.join(format!(
-        "{}.sav",
-        game.path.file_name().unwrap_or_default().to_string_lossy()
-    ));
+    let save_path = {
+        let preferred = preferred_battery_path(game, saves);
+        if preferred.is_file() {
+            preferred
+        } else {
+            legacy_battery_path(game, saves)
+        }
+    };
     if let Ok(bytes) = fs::read(save_path) {
         let _ = core.write_save_ram(&bytes);
     }
@@ -816,12 +1098,13 @@ fn scan_games(root: &Path, recursive: bool) -> Vec<Game> {
     out
 }
 fn supported(p: &Path) -> bool {
-    p.extension().and_then(|s| s.to_str()).is_some_and(|s| {
+    let extension_supported = p.extension().and_then(|s| s.to_str()).is_some_and(|s| {
         matches!(
             s.to_ascii_lowercase().as_str(),
             "gb" | "gbc" | "gba" | "nds"
         )
-    })
+    });
+    extension_supported && (!p.is_file() || inspect::inspect_file(p).is_some())
 }
 fn pick_rom() -> Option<PathBuf> {
     rfd::FileDialog::new()
@@ -833,44 +1116,168 @@ fn pick_rom() -> Option<PathBuf> {
         .pick_file()
 }
 fn game_from_path(path: PathBuf) -> Game {
+    let inspection = inspect::inspect_file(&path);
     let ext = path
         .extension()
         .and_then(|s| s.to_str())
         .unwrap_or("")
         .to_ascii_lowercase();
-    let system = match ext.as_str() {
+    let extension_system = match ext.as_str() {
         "gba" => "GBA",
         "nds" => "DS",
         "gb" => "GB",
         "gbc" => "GBC",
         _ => "ROM",
     };
-    let title = path
-        .file_stem()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .replace(['_', '-'], " ");
+    let system = inspection
+        .as_ref()
+        .map_or(extension_system, |info| info.system);
+    let title = inspection
+        .as_ref()
+        .and_then(|info| info.title.clone())
+        .unwrap_or_else(|| {
+            path.file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .replace(['_', '-'], " ")
+        });
     Game {
         path,
         title,
         system,
+        storage_key: std::sync::OnceLock::new(),
     }
 }
-fn save_battery(core: &mut LibretroCore, rom: &Path, dir: &Path) {
-    if let Ok(data) = core.read_save_ram() {
-        let path = dir.join(format!(
-            "{}.sav",
-            rom.file_name().unwrap_or_default().to_string_lossy()
-        ));
-        let _ = fs::write(path, data);
+fn now_unix() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+fn core_hash_for(config: &Settings, system: &str) -> Option<String> {
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+    static CORE_HASHES: OnceLock<Mutex<HashMap<PathBuf, String>>> = OnceLock::new();
+    let path = config.core(system).ok()?;
+    let cache = CORE_HASHES.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Ok(map) = cache.lock() {
+        if let Some(hash) = map.get(&path) {
+            return Some(hash.clone());
+        }
+    }
+    let hash = identity::sha256_file(&path).ok()?;
+    if let Ok(mut map) = cache.lock() {
+        map.insert(path, hash.clone());
+    }
+    Some(hash)
+}
+
+fn write_save_manifest(
+    game: &Game,
+    dir: &Path,
+    kind: domain::SaveKind,
+    bytes: &[u8],
+    slot: Option<u32>,
+    core_hash: Option<&str>,
+    status: &str,
+) {
+    let key = game_storage_key(game);
+    let manifest = domain::SaveManifest {
+        save_id: format!("{key}-{:?}", kind).to_lowercase(),
+        kind,
+        rom_sha256: identity::sha256_file(&game.path).ok(),
+        core_hash: core_hash.map(str::to_owned),
+        state_format: (kind == domain::SaveKind::SaveState)
+            .then(|| "libretro-serialize-v1".to_string()),
+        slot,
+        bytes: Some(bytes.len() as u64),
+        sha256: Some(identity::sha256_bytes(bytes)),
+        parent_id: None,
+        created_at_utc: None,
+        created_at_unix: Some(now_unix()),
+        status: status.to_string(),
+    };
+    let file = if kind == domain::SaveKind::SaveState {
+        "state.manifest.json"
+    } else {
+        "manifest.json"
+    };
+    let path = dir.join("by-id").join(key).join(file);
+    match serde_json::to_vec_pretty(&manifest) {
+        Ok(json) => {
+            if let Err(e) = atomic_write(&path, &json) {
+                eprintln!("No se pudo escribir manifiesto en {}: {e}", path.display());
+            }
+        }
+        Err(e) => eprintln!("No se pudo serializar manifiesto de guardado: {e}"),
     }
 }
 
-fn state_path(rom: &Path, dir: &Path) -> PathBuf {
-    dir.join(format!(
-        "{}.ss",
-        rom.file_name().unwrap_or_default().to_string_lossy()
-    ))
+fn save_battery(core: &mut LibretroCore, game: &Game, dir: &Path, core_hash: Option<&str>) {
+    match core.read_save_ram() {
+        Ok(data) => {
+            let path = preferred_battery_path(game, dir);
+            match atomic_write(&path, &data) {
+                Ok(()) => write_save_manifest(
+                    game,
+                    dir,
+                    domain::SaveKind::BatteryRam,
+                    &data,
+                    None,
+                    core_hash,
+                    "committed",
+                ),
+                Err(e) => eprintln!(
+                    "No se pudo guardar SRAM para {} en {}: {e}",
+                    game.path.display(),
+                    path.display()
+                ),
+            }
+        }
+        Err(e) => {
+            eprintln!(
+                "No se pudo leer SRAM del núcleo para {}: {e:?}",
+                game.path.display()
+            );
+        }
+    }
+}
+
+fn state_path(game: &Game, dir: &Path) -> PathBuf {
+    preferred_state_path(game, dir)
+}
+
+fn load_compatible_state(
+    game: &Game,
+    dir: &Path,
+    core_hash: Option<&str>,
+) -> Result<Vec<u8>, String> {
+    validate_game_identity(game)?;
+    let core_hash = core_hash.ok_or("No se pudo verificar el hash del núcleo; estado bloqueado")?;
+    let path = preferred_state_path(game, dir);
+    if !path.is_file() {
+        if legacy_state_path(game, dir).is_file() {
+            return Err(
+                "El estado antiguo no tiene metadatos suficientes para verificar ROM y núcleo"
+                    .into(),
+            );
+        }
+        return Err("No se encontró un estado guardado".into());
+    }
+    let bytes = fs::read(&path).map_err(|e| format!("No se pudo leer el estado: {e}"))?;
+    let manifest_path = path
+        .parent()
+        .ok_or("Ruta de estado inválida")?
+        .join("state.manifest.json");
+    let manifest: domain::SaveManifest = serde_json::from_slice(
+        &fs::read(&manifest_path).map_err(|_| "El estado no tiene un manifiesto verificable")?,
+    )
+    .map_err(|_| "El manifiesto del estado está dañado")?;
+    let rom_hash =
+        identity::sha256_file(&game.path).map_err(|e| format!("No se pudo verificar ROM: {e}"))?;
+    vault::validate_state(&manifest, &bytes, &rom_hash, core_hash)?;
+    Ok(bytes)
 }
 
 #[derive(Clone, Copy)]
@@ -1607,5 +2014,66 @@ mod tests {
         );
         assert!(find_core_in_dirs(&[root.clone()], "GBA").is_none());
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn save_manifest_is_written_atomically() {
+        let dir = std::env::temp_dir().join(format!("vyntra-manifest-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let rom = dir.join("game.gb");
+        fs::write(&rom, b"rom").unwrap();
+        let game = super::Game {
+            path: rom,
+            title: "game".into(),
+            system: "GB",
+            storage_key: std::sync::OnceLock::new(),
+        };
+        super::write_save_manifest(
+            &game,
+            &dir,
+            super::domain::SaveKind::BatteryRam,
+            b"ram",
+            None,
+            None,
+            "committed",
+        );
+        let key = super::game_storage_key(&game);
+        let manifest_path = dir.join("by-id").join(key).join("manifest.json");
+        assert!(manifest_path.is_file());
+        assert!(!manifest_path.with_extension("tmp").exists());
+        let parsed: super::domain::SaveManifest =
+            serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
+        assert_eq!(parsed.bytes, Some(3));
+        assert_eq!(parsed.kind, super::domain::SaveKind::BatteryRam);
+        assert!(parsed.sha256.is_some());
+        assert!(parsed.state_format.is_none());
+
+        super::write_save_manifest(
+            &game,
+            &dir,
+            super::domain::SaveKind::SaveState,
+            b"state",
+            Some(1),
+            Some("corehash"),
+            "committed",
+        );
+        fs::write(super::state_path(&game, &dir), b"state").unwrap();
+        let state_manifest_path = manifest_path.with_file_name("state.manifest.json");
+        assert!(state_manifest_path.is_file());
+        let parsed: super::domain::SaveManifest =
+            serde_json::from_slice(&fs::read(&state_manifest_path).unwrap()).unwrap();
+        assert_eq!(parsed.slot, Some(1));
+        assert_eq!(parsed.core_hash.as_deref(), Some("corehash"));
+        assert_eq!(
+            parsed.state_format.as_deref(),
+            Some("libretro-serialize-v1")
+        );
+        assert_eq!(
+            super::load_compatible_state(&game, &dir, Some("corehash")).unwrap(),
+            b"state"
+        );
+        fs::write(super::state_path(&game, &dir), b"tampered").unwrap();
+        assert!(super::load_compatible_state(&game, &dir, Some("corehash")).is_err());
+        let _ = fs::remove_dir_all(&dir);
     }
 }

@@ -1,6 +1,8 @@
 //! Native window + offline web UI. Emulation remains in the SDL/libretro process.
 use super::*;
-use serde_json::{Value, json};
+use crate::library;
+use crate::protocol;
+use serde_json::json;
 use tao::{
     event::{Event as TaoEvent, WindowEvent},
     event_loop::{ControlFlow, EventLoopBuilder},
@@ -34,16 +36,11 @@ pub fn run() -> Result<(), String> {
         fs::create_dir_all(path).map_err(|e| e.to_string())?;
     }
     let index_path = data.join("vyntra-library.json");
-    let mut imported: Vec<PathBuf> = match fs::read(&index_path) {
-        Ok(bytes) => serde_json::from_slice(&bytes)
-            .map_err(|e| format!("Índice de biblioteca inválido: {e}"))?,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
-        Err(e) => return Err(e.to_string()),
-    };
+    let mut imported: Vec<library::LibraryEntry> = library::load(&index_path)?;
     for arg in &args {
         let p = PathBuf::from(arg);
-        if supported(&p) && p.is_file() && !imported.contains(&p) {
-            imported.push(p);
+        if supported(&p) && p.is_file() && !imported.iter().any(|e| e.path == p) {
+            imported.push(library::LibraryEntry::from_path(p));
         }
     }
     let event_loop = EventLoopBuilder::<Message>::with_user_event().build();
@@ -81,29 +78,55 @@ pub fn run() -> Result<(), String> {
     let mut child: Option<std::process::Child> = None;
     let mut generation = 0u64;
     let mut scanning = false;
+    let mut session: Option<domain::SessionIdentity> = None;
+    let mut session_epoch: u64 = 0;
+    let mut command_revision: u64 = 0;
+    let mut pending_migration: Option<migration::MigrationReport> = None;
     event_loop.run(move |event,_,flow| {
         *flow=ControlFlow::Wait;
         match event {
             TaoEvent::WindowEvent { event:WindowEvent::CloseRequested,.. } => *flow=ControlFlow::Exit,
             TaoEvent::UserEvent(Message::Scanned(id,mut found)) if id==generation => {
-                for path in &imported { if !found.iter().any(|g|&g.path==path) { found.push(game_from_path(path.clone())); } }
+                for entry in &imported { if !found.iter().any(|g| g.path==entry.path) && (!entry.path.is_file() || supported(&entry.path)) { found.push(game_from_path(entry.path.clone())); } }
                 games=found; scanning=false;
-                publish(&webview,&config,&games,scanning);
+                let mut catalog_changed = false;
+                for entry in &mut imported {
+                    if entry.path.is_file() {
+                        let seen = Some(now_unix());
+                        if entry.last_seen_unix != seen {
+                            entry.last_seen_unix = seen;
+                            catalog_changed = true;
+                        }
+                        let current_hash = identity::sha256_file(&entry.path).ok();
+                        if entry.content_hash != current_hash {
+                            entry.refresh();
+                            catalog_changed = true;
+                        }
+                    }
+                }
+                if catalog_changed {
+                    let _ = library::save(&index_path, &imported);
+                }
+                publish(&webview,&config,&games,scanning,&session,session_epoch,command_revision);
             },
             TaoEvent::UserEvent(Message::Action(body)) => {
-                let action:Value=match serde_json::from_str(&body){Ok(v)=>v,Err(_)=>return};
-                let name=action["action"].as_str().unwrap_or("");
-                let mut refresh=false;
-                let result=(|| -> Result<(),String> {
+                let cmd = match protocol::parse_legacy_action(&body) {
+                    Ok(cmd) => cmd,
+                    Err(_) => return,
+                };
+                let action = cmd.payload.clone();
+                let name = cmd.action.as_str();
+                let mut refresh = false;
+                let mut command_result: Option<serde_json::Value> = None;
+                let result = (|| -> Result<(), String> {
+                    validate_command_session(&session, session_epoch, &cmd)?;
                     match name {
                         "ready" | "scan" => refresh=true,
                         "import" => {
                             if let Some(paths)=rfd::FileDialog::new().set_title("Importar ROMs a Vyntra").add_filter("ROMs GB / GBC / GBA / DS", &["gb","gbc","gba","nds"]).pick_files() {
-                                for path in paths { if supported(&path) && !imported.contains(&path){ imported.push(path); } }
-                                let bytes=serde_json::to_vec_pretty(&imported).map_err(|e|e.to_string())?;
-                                if index_path.exists(){fs::copy(&index_path,index_path.with_extension("json.bak")).map_err(|e|e.to_string())?;}
-                                let temp=index_path.with_extension("tmp"); fs::write(&temp,bytes).map_err(|e|e.to_string())?;
-                                fs::rename(temp,&index_path).map_err(|e|e.to_string())?; refresh=true;
+                                for path in paths { if supported(&path) && !imported.iter().any(|e| e.path==path){ imported.push(library::LibraryEntry::from_path(path)); } }
+                                library::save(&index_path, &imported)?;
+                                refresh=true;
                             }
                         },
                         "choose" => {
@@ -142,12 +165,34 @@ pub fn run() -> Result<(), String> {
                             if field=="recursive"{refresh=true;}
                         },
                         "play"=> {
-                            if let Some(running)=child.as_mut(){if running.try_wait().map_err(|e|e.to_string())?.is_none(){return Err("Ya hay una partida abierta. Vuelve a su ventana para continuar.".into());}}
-                            let game=games.get(action["id"].as_u64().ok_or("Selecciona un juego")? as usize).ok_or("Juego no encontrado")?;
-                            if !game.path.is_file(){return Err("La ROM ya no está en su ubicación. Impórtala desde su carpeta actual.".into());}
+                            if let Some(running)=child.as_mut(){
+                                match running.try_wait().map_err(|e|e.to_string())? {
+                                    None => return Err("Ya hay una partida abierta. Vuelve a su ventana para continuar.".into()),
+                                    Some(_) => {
+                                        child = None;
+                                        session = None;
+                                    }
+                                }
+                            }
+                            let game = if let Some(storage_id) = action["storage_id"].as_str() {
+                                crate::resolve_game_by_storage_id(&games, storage_id).ok_or("El juego cambió desde que se mostró la biblioteca; actualízala")?
+                            } else {
+                                games.get(action["id"].as_u64().ok_or("Selecciona un juego")? as usize).ok_or("Juego no encontrado")?
+                            };
+                            if !game.path.is_file(){return Err("La ROM ya no estǭ en su ubicaci��n. Imp��rtala desde su carpeta actual.".into());}
+                            crate::validate_game_identity(game)?;
                             let core=config.core(game.system)?;
-                            if !core.is_file(){return Err("La DLL seleccionada no existe. Revisa Ajustes > Núcleos.".into());}
+                            if !core.is_file(){return Err("La DLL seleccionada no existe. Revisa Ajustes > Nǧcleos.".into());}
                             child=Some(std::process::Command::new(env::current_exe().map_err(|e|e.to_string())?).arg("--emulator").arg("--data").arg(&root).arg(&game.path).spawn().map_err(|e|e.to_string())?);
+                            session_epoch = session_epoch.saturating_add(1);
+                            session = Some(domain::SessionIdentity {
+                                session_id: format!("sess-{}-{}", std::process::id(), session_epoch),
+                                game_id: game_storage_key(game),
+                                rom_sha256: identity::sha256_file(&game.path).ok(),
+                                core_hash: identity::sha256_file(&core).ok(),
+                                adapter_id: None,
+                                epoch: session_epoch,
+                            });
                         },
                         "open_folder"=> {
                             let field=action["field"].as_str().unwrap_or("");
@@ -164,12 +209,52 @@ pub fn run() -> Result<(), String> {
                                 fs::copy(source,dest).map_err(|e|e.to_string())?;
                             }
                         },
+                        "migration_preview" => {
+                            let report = migration::preview(&legacy_migration_items(&games, &config))?;
+                            command_result = Some(json!({"migration": report}));
+                            pending_migration = Some(report);
+                        },
+                        "migration_apply" => {
+                            let report = pending_migration.clone().ok_or("Primero revisa los guardados heredados")?;
+                            for entry in &report.items {
+                                if !entry.item.source.starts_with(&config.saves) && !entry.item.source.starts_with(&config.states) {
+                                    return Err("El journal contiene una ruta fuera de las carpetas configuradas".into());
+                                }
+                                if !entry.item.destination.starts_with(&config.saves) && !entry.item.destination.starts_with(&config.states) {
+                                    return Err("El destino queda fuera de las carpetas configuradas".into());
+                                }
+                            }
+                            migration::apply(&data.join("migration-journal-v1.json"), &report)?;
+                            let refreshed = migration::preview(&report.items.into_iter().map(|entry| entry.item).collect::<Vec<_>>())?;
+                            command_result = Some(json!({"migration": refreshed}));
+                            pending_migration = Some(refreshed);
+                            refresh = true;
+                        },
                         _=>return Err("Acción no disponible".into()),
                     } Ok(())
                 })();
+                command_revision = command_revision.saturating_add(1);
+                let ack = match &result {
+                    Ok(_) => {
+                        let mut ack = protocol::UiAck::success(cmd.command_id.clone(), command_result.take());
+                        ack.request_id = cmd.request_id.clone();
+                        ack.revision = Some(command_revision);
+                        ack
+                    }
+                    Err(error) => {
+                        let mut ack = protocol::UiAck::failure(
+                            cmd.command_id.clone(),
+                            protocol::AppError::new("command_failed", error.clone()),
+                        );
+                        ack.request_id = cmd.request_id.clone();
+                        ack.revision = Some(command_revision);
+                        ack
+                    }
+                };
+                let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
                 if let Err(error)=result { let _=webview.evaluate_script(&format!("window.vyntraError({});",json!(error))); }
                 if refresh {generation+=1; scanning=true; let id=generation; let cfg=config.clone(); let tx=proxy.clone(); std::thread::spawn(move||{let found=scan_games(&cfg.library,cfg.recursive);let _=tx.send_event(Message::Scanned(id,found));});}
-                publish(&webview,&config,&games,scanning);
+                publish(&webview,&config,&games,scanning,&session,session_epoch,command_revision);
             },
             _=>{}
         }
@@ -212,26 +297,183 @@ fn window_icon() -> Option<tao::window::Icon> {
     tao::window::Icon::from_rgba(pixels, 64, 64).ok()
 }
 
+fn validate_command_session(
+    session: &Option<domain::SessionIdentity>,
+    session_epoch: u64,
+    cmd: &protocol::UiCommandEnvelope,
+) -> Result<(), String> {
+    if let Some(expected_session) = cmd.session_id.as_deref() {
+        if session.as_ref().map(|s| s.session_id.as_str()) != Some(expected_session) {
+            return Err("La sesión ya no está activa. Vuelve a abrir el juego.".into());
+        }
+    }
+    if let Some(epoch) = cmd.epoch {
+        if epoch != session_epoch {
+            return Err("Comando de una sesión anterior. Actualiza la vista.".into());
+        }
+    }
+    Ok(())
+}
+
 fn save_files(config: &Settings) -> Vec<PathBuf> {
-    let mut files: Vec<_> = [&config.saves, &config.states]
-        .iter()
-        .flat_map(|dir| fs::read_dir(dir).into_iter().flatten().flatten())
-        .map(|e| e.path())
-        .filter(|p| {
-            p.is_file()
+    let mut files = save_files_in(&[&config.saves, &config.states]);
+    files.sort_by_key(|p| {
+        std::cmp::Reverse(
+            p.metadata()
+                .ok()
+                .and_then(|m| m.modified().ok())
+                .unwrap_or(std::time::UNIX_EPOCH),
+        )
+    });
+    files
+}
+
+fn legacy_migration_items(games: &[Game], config: &Settings) -> Vec<migration::MigrationItem> {
+    let mut items = Vec::new();
+    for game in games {
+        let game_id = game_storage_key(game);
+        let battery_source = legacy_battery_path(game, &config.saves);
+        if battery_source.is_file() {
+            items.push(migration::MigrationItem::new(
+                battery_source,
+                preferred_battery_path(game, &config.saves),
+                game_id.clone(),
+                "battery".into(),
+            ));
+        }
+        let state_source = legacy_state_path(game, &config.states);
+        if state_source.is_file() {
+            items.push(migration::MigrationItem::new(
+                state_source,
+                preferred_state_path(game, &config.states),
+                game_id,
+                "state_unverified".into(),
+            ));
+        }
+    }
+    items
+}
+
+fn save_files_in(roots: &[&Path]) -> Vec<PathBuf> {
+    fn walk(root: &Path, out: &mut Vec<PathBuf>) {
+        let Ok(entries) = fs::read_dir(root) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_symlink() {
+                continue;
+            }
+            if p.is_dir() {
+                walk(&p, out);
+            } else if p.is_file()
                 && p.extension()
                     .and_then(|s| s.to_str())
                     .is_some_and(|s| ["sav", "srm", "ss", "state"].contains(&s))
-        })
-        .collect();
-    files.sort_by_key(|p| std::cmp::Reverse(p.metadata().ok().and_then(|m| m.modified().ok())));
+            {
+                out.push(p);
+            }
+        }
+    }
+    let mut files = Vec::new();
+    for root in roots {
+        walk(root, &mut files);
+    }
     files
 }
-fn publish(webview: &wry::WebView, config: &Settings, games: &[Game], scanning: bool) {
-    let games:Vec<_>=games.iter().enumerate().map(|(id,g)|json!({"id":id,"title":g.title,"system":g.system,"path":g.path,"missing":!g.path.is_file(),"core":config.core(g.system).is_ok_and(|p|p.is_file())})).collect();
+fn publish(
+    webview: &wry::WebView,
+    config: &Settings,
+    games: &[Game],
+    scanning: bool,
+    session: &Option<domain::SessionIdentity>,
+    session_epoch: u64,
+    command_revision: u64,
+) {
+    let games:Vec<_>=games.iter().enumerate().map(|(id,g)|json!({"id":id,"storage_id":game_storage_key(g),"title":g.title,"system":g.system,"path":g.path,"missing":!g.path.is_file(),"core":config.core(g.system).is_ok_and(|p|p.is_file())})).collect();
     let cores:Vec<_>=["GBC","GBA","DS"].iter().enumerate().map(|(id,s)| {let path=config.core(s).ok();json!({"id":id,"system":s,"path":path,"installed":path.as_ref().is_some_and(|p|p.is_file())})}).collect();
     let saves:Vec<_>=save_files(config).iter().enumerate().map(|(id,p)|{let meta=p.metadata().ok();json!({"id":id,"path":p,"name":p.file_name().unwrap_or_default().to_string_lossy(),"bytes":meta.as_ref().map(|m|m.len()),"date":meta.and_then(|m|m.modified().ok()).and_then(|t|t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d|d.as_secs()),"state":p.starts_with(&config.states)})}).collect();
-    let value =
-        json!({"config":config,"games":games,"cores":cores,"saves":saves,"scanning":scanning});
+    let value = json!({
+        "config": config,
+        "games": games,
+        "cores": cores,
+        "saves": saves,
+        "scanning": scanning,
+        "session": session,
+        "session_epoch": session_epoch,
+        "command_revision": command_revision
+    });
     let _ = webview.evaluate_script(&format!("window.vyntraState({value});"));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn cmd(action: &str) -> protocol::UiCommandEnvelope {
+        protocol::UiCommandEnvelope {
+            protocol_version: protocol::default_protocol_version(),
+            command_id: "c1".into(),
+            action: action.into(),
+            request_id: None,
+            session_id: None,
+            epoch: None,
+            expected_revision: None,
+            payload: serde_json::Value::Null,
+        }
+    }
+
+    fn session() -> domain::SessionIdentity {
+        domain::SessionIdentity {
+            session_id: "sess-1".into(),
+            game_id: "game-1".into(),
+            rom_sha256: None,
+            core_hash: None,
+            adapter_id: None,
+            epoch: 3,
+        }
+    }
+
+    #[test]
+    fn commands_without_session_context_are_accepted() {
+        assert!(validate_command_session(&None, 0, &cmd("scan")).is_ok());
+    }
+
+    #[test]
+    fn matching_session_and_epoch_are_accepted() {
+        let mut c = cmd("set");
+        c.session_id = Some("sess-1".into());
+        c.epoch = Some(3);
+        assert!(validate_command_session(&Some(session()), 3, &c).is_ok());
+    }
+
+    #[test]
+    fn stale_session_or_epoch_is_rejected() {
+        let mut c = cmd("set");
+        c.session_id = Some("sess-old".into());
+        assert!(validate_command_session(&Some(session()), 3, &c).is_err());
+        c.session_id = Some("sess-1".into());
+        c.epoch = Some(2);
+        assert!(validate_command_session(&Some(session()), 3, &c).is_err());
+        assert!(validate_command_session(&None, 3, &c).is_err());
+    }
+
+    #[test]
+    fn save_listing_walks_by_id_directories_and_filters_extensions() {
+        let root = std::env::temp_dir().join(format!("vyntra-saves-{}", std::process::id()));
+        let nested = root.join("by-id").join("abc123");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(nested.join("battery.sav"), b"ram").unwrap();
+        fs::write(nested.join("slot1.ss"), b"state").unwrap();
+        fs::write(nested.join("manifest.json"), b"{}").unwrap();
+        fs::write(root.join("top.srm"), b"ram").unwrap();
+        let mut found = save_files_in(&[&root]);
+        found.sort();
+        assert_eq!(found.len(), 3);
+        assert!(found.contains(&nested.join("battery.sav")));
+        assert!(found.contains(&nested.join("slot1.ss")));
+        assert!(found.contains(&root.join("top.srm")));
+        assert_eq!(save_files_in(&[&root.join("missing")]).len(), 0);
+        fs::remove_dir_all(&root).unwrap();
+    }
 }

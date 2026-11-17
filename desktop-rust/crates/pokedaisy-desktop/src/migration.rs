@@ -1,0 +1,233 @@
+//! Non-destructive, journaled migration for legacy save artifacts.
+use crate::identity;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MigrationItem {
+    pub source: PathBuf,
+    pub destination: PathBuf,
+    pub game_id: String,
+    pub kind: String,
+    pub sha256: String,
+    pub bytes: u64,
+}
+
+impl MigrationItem {
+    pub fn new(source: PathBuf, destination: PathBuf, game_id: String, kind: String) -> Self {
+        let metadata = fs::metadata(&source);
+        let bytes = metadata.as_ref().map_or(0, |m| m.len());
+        let sha256 = identity::sha256_file(&source).unwrap_or_default();
+        Self {
+            source,
+            destination,
+            game_id,
+            kind,
+            sha256,
+            bytes,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MigrationStatus {
+    Ready,
+    Conflict,
+    Committed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PreviewItem {
+    pub item: MigrationItem,
+    pub status: MigrationStatus,
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MigrationReport {
+    pub schema: u32,
+    pub items: Vec<PreviewItem>,
+}
+
+pub fn preview(items: &[MigrationItem]) -> Result<MigrationReport, String> {
+    let mut destinations = std::collections::HashMap::<String, (&str, &str, &str)>::new();
+    let mut ambiguous = std::collections::HashSet::<String>::new();
+    for item in items {
+        let key = item.destination.to_string_lossy().to_lowercase();
+        if let Some((game_id, kind, hash)) = destinations.get(&key) {
+            if *game_id != item.game_id || *kind != item.kind || *hash != item.sha256 {
+                ambiguous.insert(key);
+            }
+        } else {
+            destinations.insert(key, (&item.game_id, &item.kind, &item.sha256));
+        }
+    }
+    let mut report = MigrationReport {
+        schema: 1,
+        items: Vec::with_capacity(items.len()),
+    };
+    for item in items {
+        let key = item.destination.to_string_lossy().to_lowercase();
+        if ambiguous.contains(&key) {
+            report.items.push(PreviewItem {
+                item: item.clone(),
+                status: MigrationStatus::Conflict,
+                reason: Some("Varios guardados distintos apuntan al mismo destino".into()),
+            });
+        } else if item.kind == "state_unverified" {
+            report.items.push(PreviewItem {
+                item: item.clone(),
+                status: MigrationStatus::Conflict,
+                reason: Some(
+                    "El estado legado no identifica ROM ni versión de core; se conserva sin migrar"
+                        .into(),
+                ),
+            });
+        } else if item.bytes > 512 * 1024 * 1024 {
+            report.items.push(PreviewItem {
+                item: item.clone(),
+                status: MigrationStatus::Conflict,
+                reason: Some("El archivo supera el límite de migración de 512 MiB".into()),
+            });
+        } else if item.sha256.is_empty() || !item.source.is_file() {
+            report.items.push(PreviewItem {
+                item: item.clone(),
+                status: MigrationStatus::Conflict,
+                reason: Some("Origen ausente o ilegible".into()),
+            });
+        } else if item.destination.exists() {
+            let same =
+                identity::sha256_file(&item.destination).ok().as_deref() == Some(&item.sha256);
+            report.items.push(PreviewItem {
+                item: item.clone(),
+                status: if same {
+                    MigrationStatus::Committed
+                } else {
+                    MigrationStatus::Conflict
+                },
+                reason: (!same).then(|| "El destino ya contiene otros datos".into()),
+            });
+        } else {
+            report.items.push(PreviewItem {
+                item: item.clone(),
+                status: MigrationStatus::Ready,
+                reason: None,
+            });
+        }
+    }
+    Ok(report)
+}
+
+pub fn apply(journal_path: &Path, report: &MigrationReport) -> Result<(), String> {
+    if report.schema != 1 {
+        return Err("Versión de journal de migración no compatible".into());
+    }
+    let mut journal = load_journal(journal_path)?.unwrap_or_else(|| report.clone());
+    let same_preview = journal.items.len() == report.items.len()
+        && journal
+            .items
+            .iter()
+            .zip(&report.items)
+            .all(|(a, b)| a.item == b.item);
+    if !same_preview {
+        if journal
+            .items
+            .iter()
+            .any(|item| item.status == MigrationStatus::Ready)
+        {
+            return Err("Hay una migración anterior pendiente de recuperación".into());
+        }
+        journal = report.clone();
+    }
+    persist(journal_path, &journal)?;
+    for index in 0..journal.items.len() {
+        let item = journal.items[index].item.clone();
+        if journal.items[index].status == MigrationStatus::Conflict {
+            continue;
+        }
+        if item.destination.is_file() {
+            let dest_hash = identity::sha256_file(&item.destination).map_err(|e| e.to_string())?;
+            if dest_hash == item.sha256 {
+                journal.items[index].status = MigrationStatus::Committed;
+                journal.items[index].reason = None;
+                persist(journal_path, &journal)?;
+                continue;
+            }
+            journal.items[index].status = MigrationStatus::Conflict;
+            journal.items[index].reason = Some("El destino ya contiene otros datos".into());
+            persist(journal_path, &journal)?;
+            continue;
+        }
+        let actual = match identity::sha256_file(&item.source) {
+            Ok(hash) => hash,
+            Err(_) => {
+                journal.items[index].status = MigrationStatus::Conflict;
+                journal.items[index].reason = Some("El origen ya no está disponible".into());
+                persist(journal_path, &journal)?;
+                continue;
+            }
+        };
+        if actual != item.sha256 {
+            journal.items[index].status = MigrationStatus::Conflict;
+            journal.items[index].reason =
+                Some("El origen cambió después de la vista previa".into());
+            persist(journal_path, &journal)?;
+            continue;
+        }
+        let parent = item.destination.parent().ok_or("Destino sin carpeta")?;
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        let staging = item.destination.with_extension("migration-tmp");
+        let mut src = fs::File::open(&item.source).map_err(|e| e.to_string())?;
+        let mut dst = fs::File::create(&staging).map_err(|e| e.to_string())?;
+        std::io::copy(&mut src, &mut dst).map_err(|e| e.to_string())?;
+        dst.sync_all().map_err(|e| e.to_string())?;
+        drop(dst);
+        if identity::sha256_file(&staging).map_err(|e| e.to_string())? != item.sha256 {
+            let _ = fs::remove_file(&staging);
+            return Err("La copia migrada no coincide con el hash del origen".into());
+        }
+        fs::rename(&staging, &item.destination).map_err(|e| e.to_string())?;
+        journal.items[index].status = MigrationStatus::Committed;
+        journal.items[index].reason = None;
+        persist(journal_path, &journal)?;
+    }
+    Ok(())
+}
+
+fn load_journal(path: &Path) -> Result<Option<MigrationReport>, String> {
+    let backup = path.with_extension("bak");
+    let bytes = match fs::read(path) {
+        Ok(bytes) => bytes,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => match fs::read(backup) {
+            Ok(bytes) => bytes,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(e) => return Err(e.to_string()),
+        },
+        Err(e) => return Err(e.to_string()),
+    };
+    serde_json::from_slice(&bytes)
+        .map(Some)
+        .map_err(|e| e.to_string())
+}
+
+fn persist(path: &Path, report: &MigrationReport) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let tmp = path.with_extension("tmp");
+    let bytes = serde_json::to_vec_pretty(report).map_err(|e| e.to_string())?;
+    let mut file = fs::File::create(&tmp).map_err(|e| e.to_string())?;
+    file.write_all(&bytes).map_err(|e| e.to_string())?;
+    file.sync_all().map_err(|e| e.to_string())?;
+    drop(file);
+    if path.exists() {
+        fs::copy(path, path.with_extension("bak")).map_err(|e| e.to_string())?;
+    }
+    if path.exists() {
+        fs::remove_file(path).map_err(|e| e.to_string())?;
+    }
+    fs::rename(tmp, path).map_err(|e| e.to_string())
+}
