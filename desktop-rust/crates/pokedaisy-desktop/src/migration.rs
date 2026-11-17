@@ -199,7 +199,7 @@ pub fn apply(journal_path: &Path, report: &MigrationReport) -> Result<(), String
 
 #[cfg(test)]
 mod tests {
-    use super::{MigrationReport, persist, persist_with, persist_with_install};
+    use super::{MigrationReport, load_journal, persist, persist_with, persist_with_install};
     use std::fs;
     use std::io::Write;
 
@@ -264,6 +264,31 @@ mod tests {
             serde_json::to_vec_pretty(&previous).unwrap()
         );
         assert!(!path.with_extension("tmp").exists());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn journal_load_recovers_backup_after_interrupted_replacement() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-migration-cut-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join("migration.json");
+        let previous = MigrationReport {
+            schema: 1,
+            items: Vec::new(),
+        };
+        let next = MigrationReport {
+            schema: 2,
+            items: Vec::new(),
+        };
+        persist(&path, &previous).unwrap();
+        persist(&path, &next).unwrap();
+
+        // Simulate termination after the old journal was removed but before
+        // the staged replacement became the active file.
+        fs::remove_file(&path).unwrap();
+        assert_eq!(load_journal(&path).unwrap(), Some(previous));
         let _ = fs::remove_dir_all(root);
     }
 }
