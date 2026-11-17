@@ -200,10 +200,22 @@ pub struct CorePaths {
 
 #[derive(Debug)]
 pub enum CoreError {
-    LoadLibrary { path: PathBuf, message: String },
-    MissingSymbol { path: PathBuf, symbol: &'static str },
-    UnsupportedApi { path: PathBuf, version: u32 },
-    ReadRom { path: PathBuf, message: String },
+    LoadLibrary {
+        path: PathBuf,
+        message: String,
+    },
+    MissingSymbol {
+        path: PathBuf,
+        symbol: &'static str,
+    },
+    UnsupportedApi {
+        path: PathBuf,
+        version: u32,
+    },
+    ReadRom {
+        path: PathBuf,
+        message: String,
+    },
     InvalidPath(PathBuf),
     GameLoad(PathBuf),
     NoGameLoaded,
@@ -212,8 +224,19 @@ pub enum CoreError {
     StateLoadFailed,
     SaveRamUnavailable,
     SystemRamUnavailable,
-    SystemRamTooLarge { actual: usize, max: usize },
-    SaveRamSize { expected: usize, actual: usize },
+    SystemRamRangeOutOfBounds {
+        offset: usize,
+        length: usize,
+        size: usize,
+    },
+    SystemRamTooLarge {
+        actual: usize,
+        max: usize,
+    },
+    SaveRamSize {
+        expected: usize,
+        actual: usize,
+    },
     InvalidFrame,
     ContextBusy,
     PoisonedContext,
@@ -248,6 +271,15 @@ impl std::fmt::Display for CoreError {
             Self::StateLoadFailed => f.write_str("The core could not load that state"),
             Self::SaveRamUnavailable => f.write_str("The core does not expose battery save RAM"),
             Self::SystemRamUnavailable => f.write_str("The core does not expose system RAM"),
+            Self::SystemRamRangeOutOfBounds {
+                offset,
+                length,
+                size,
+            } => write!(
+                f,
+                "System RAM range {offset}..{} exceeds {size} bytes",
+                offset.saturating_add(*length)
+            ),
             Self::SystemRamTooLarge { actual, max } => write!(
                 f,
                 "System RAM size {actual} exceeds the safe capture limit {max}"
@@ -835,6 +867,42 @@ impl LibretroCore {
         Ok(unsafe { std::slice::from_raw_parts(ptr, size) }.to_vec())
     }
 
+    /// Copy a checked System RAM range from the live core owner. The returned bytes own their storage.
+    pub fn read_system_ram_range(
+        &mut self,
+        offset: usize,
+        length: usize,
+    ) -> Result<Vec<u8>, CoreError> {
+        if self.loaded_rom.is_none() {
+            return Err(CoreError::NoGameLoaded);
+        }
+        let ptr = unsafe { (self.api.get_memory_data)(RETRO_MEMORY_SYSTEM_RAM) }.cast::<u8>();
+        let size = unsafe { (self.api.get_memory_size)(RETRO_MEMORY_SYSTEM_RAM) };
+        if ptr.is_null() || size == 0 {
+            return Err(CoreError::SystemRamUnavailable);
+        }
+        if size > MAX_SYSTEM_RAM_BYTES {
+            return Err(CoreError::SystemRamTooLarge {
+                actual: size,
+                max: MAX_SYSTEM_RAM_BYTES,
+            });
+        }
+        let end = offset
+            .checked_add(length)
+            .ok_or(CoreError::SystemRamRangeOutOfBounds {
+                offset,
+                length,
+                size,
+            })?;
+        if end > size {
+            return Err(CoreError::SystemRamRangeOutOfBounds {
+                offset,
+                length,
+                size,
+            });
+        }
+        Ok(unsafe { std::slice::from_raw_parts(ptr.add(offset), length) }.to_vec())
+    }
     pub fn write_save_ram(&mut self, bytes: &[u8]) -> Result<(), CoreError> {
         if self.loaded_rom.is_none() {
             return Err(CoreError::NoGameLoaded);

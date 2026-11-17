@@ -40,11 +40,35 @@ pub enum CaptureError {
     WrongSession,
     StaleEpoch,
     StaleRevision,
+    ReaderUnavailable,
 }
 
 /// Owner-scoped read capability. Implementations return copied bytes only.
 pub trait MemoryReader {
     fn read(&mut self, offset: usize, length: usize) -> Result<Vec<u8>, CaptureError>;
+}
+pub struct LibretroSystemRamReader<'a> {
+    core: &'a mut vyntra_libretro::LibretroCore,
+}
+
+impl<'a> LibretroSystemRamReader<'a> {
+    pub fn new(core: &'a mut vyntra_libretro::LibretroCore) -> Self {
+        Self { core }
+    }
+}
+
+impl MemoryReader for LibretroSystemRamReader<'_> {
+    fn read(&mut self, offset: usize, length: usize) -> Result<Vec<u8>, CaptureError> {
+        self.core
+            .read_system_ram_range(offset, length)
+            .map_err(|error| match error {
+                vyntra_libretro::CoreError::SystemRamRangeOutOfBounds { .. } => {
+                    CaptureError::OutOfBounds
+                }
+                vyntra_libretro::CoreError::SystemRamTooLarge { .. } => CaptureError::TooLarge,
+                _ => CaptureError::ReaderUnavailable,
+            })
+    }
 }
 pub trait MemoryAdapter {
     fn identity(&self) -> &GameIdentity;

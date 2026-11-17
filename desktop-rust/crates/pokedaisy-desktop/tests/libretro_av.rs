@@ -82,6 +82,11 @@ fn synthetic_core_runs_video_audio_and_runtime_av_through_libretro_api() {
     );
     assert_eq!(core.read_system_ram().unwrap(), [2, 2, 3, 4]);
 
+    assert_eq!(core.read_system_ram_range(1, 2).unwrap(), [2, 3]);
+    assert!(matches!(
+        core.read_system_ram_range(usize::MAX, 2),
+        Err(vyntra_libretro::CoreError::SystemRamRangeOutOfBounds { .. })
+    ));
     let updated = core.av_info();
     assert_eq!(
         (updated.geometry.base_width, updated.geometry.base_height),
