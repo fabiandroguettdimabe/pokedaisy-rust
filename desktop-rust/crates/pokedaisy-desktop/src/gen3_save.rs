@@ -598,13 +598,26 @@ mod tests {
                     .ok_or(crate::memory_adapter::CaptureError::OutOfBounds)
             }
         }
-        let reader = || FixtureReader(vec![0; 0x1000 + 600]);
-        let mut reader = reader();
+        let mut memory = vec![0; 0x1000 + 600];
+        memory[0] = 1;
+        let mut reader = FixtureReader(memory);
         let mut poller = MemoryPoller::new("session-1", identity.clone(), 4);
         assert_eq!(
-            poller.poll(&registry, &mut reader).unwrap(),
-            Some(serde_json::json!({ "party_count": 0, "party": [] }))
+            poller.poll(&registry, &mut reader),
+            Err(crate::memory_adapter::CaptureError::DecodeRejected)
         );
+        let party = 0x1000;
+        put16(&mut reader.0, party + 0x20, 25);
+        put16(&mut reader.0, party + 0x20 + 12, 33);
+        reader.0[party + 0x20 + 12 + 8] = 15;
+        let sum = checksum(&reader.0[party + 0x20..party + 0x50]);
+        put16(&mut reader.0, party + 0x1C, sum);
+        reader.0[party + 0x54] = 12;
+        put16(&mut reader.0, party + 0x56, 5);
+        put16(&mut reader.0, party + 0x58, 10);
+        let snapshot = poller.poll(&registry, &mut reader).unwrap().unwrap();
+        assert_eq!(snapshot["party_count"], 1);
+        assert_eq!(snapshot["party"][0]["species_id"], 25);
 
         let other = GameIdentity {
             rom_sha256: "other-rom".into(),

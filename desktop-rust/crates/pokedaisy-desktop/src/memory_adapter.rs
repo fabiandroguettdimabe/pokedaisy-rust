@@ -180,9 +180,11 @@ impl MemoryPoller {
             .checked_add(1)
             .ok_or(CaptureError::StaleRevision)?;
         let capture = capture(adapter, reader, self.epoch, revision)?;
+        // The gate records this revision before decoding. Keep our counter in sync
+        // even when a malformed capture is rejected so the next poll can recover.
+        self.revision = revision;
         self.gate.accept(&self.session_id, &capture)?;
         let snapshot = adapter.snapshot(&capture)?;
-        self.revision = revision;
         Ok(Some(snapshot))
     }
 }
