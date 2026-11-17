@@ -3,5 +3,6 @@
   "session_id": "fixture-session",
   "epoch": 3,
   "revision": 8,
+  "optional_trace_id": "future-field-ignored-by-v1",
   "payload": { "game_code": "BPRE", "paused": false }
 }

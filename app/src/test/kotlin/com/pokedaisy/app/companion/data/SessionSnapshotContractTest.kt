@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.data
 
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -12,6 +13,7 @@ class SessionSnapshotContractTest {
     @Test
     fun sharedV1FixtureDecodesWithTheRustFieldNames() {
         val fixture = File(root, "contracts/vyntra/v1/session-snapshot-v1.json").readText()
+        assertEquals("future-field-ignored-by-v1", JSONObject(fixture).getString("optional_trace_id"))
         val snapshot = CompanionSessionSnapshot.parse(fixture)
         assertEquals(1, snapshot.protocolVersion)
         assertEquals("fixture-session", snapshot.sessionId)
