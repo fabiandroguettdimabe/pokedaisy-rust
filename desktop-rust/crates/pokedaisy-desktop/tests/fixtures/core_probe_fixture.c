@@ -7,6 +7,9 @@
 #ifdef PROBE_MISSING_DEPENDENCY
 __declspec(dllimport) void vyntra_probe_dependency(void);
 #endif
+#ifdef PROBE_CRASH
+#include <stdlib.h>
+#endif
 
 typedef void (*retro_environment_t)(unsigned, void *);
 typedef void (*retro_video_refresh_t)(const void *, unsigned, unsigned, size_t);
@@ -38,6 +41,9 @@ EXPORT void retro_set_audio_sample_batch(retro_audio_sample_batch_t callback) { 
 EXPORT void retro_set_input_poll(retro_input_poll_t callback) { (void)callback; }
 EXPORT void retro_set_input_state(retro_input_state_t callback) { (void)callback; }
 EXPORT void retro_init(void) {
+#ifdef PROBE_CRASH
+    abort();
+#endif
 #ifdef PROBE_MISSING_DEPENDENCY
     vyntra_probe_dependency();
 #endif

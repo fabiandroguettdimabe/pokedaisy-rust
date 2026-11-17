@@ -102,5 +102,28 @@ fn core_probe_child_reports_loadable_fixture_and_system_mismatch() {
             .as_str()
             .is_some_and(|reason| !reason.is_empty())
     );
+
+    let crash_dll = root.join("vyntra-crash-fixture.dll");
+    let crash_build = Command::new(compiler)
+        .arg("-shared")
+        .arg("-O2")
+        .arg("-DPROBE_CRASH")
+        .arg("-o")
+        .arg(&crash_dll)
+        .arg(&source)
+        .output()
+        .unwrap();
+    assert!(
+        crash_build.status.success(),
+        "{}",
+        String::from_utf8_lossy(&crash_build.stderr)
+    );
+    let output = Command::new(launcher)
+        .arg("--probe-core")
+        .arg(&crash_dll)
+        .arg("GBA")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
     let _ = std::fs::remove_dir_all(root);
 }
