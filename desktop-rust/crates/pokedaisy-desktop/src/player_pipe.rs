@@ -26,6 +26,7 @@ const MAX_REJECTED_PIPE_CLIENTS: usize = 8;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PipeEventKind {
     Authenticated,
+    Cancelled,
     Snapshot(Value),
     CommandResult {
         request_id: u64,
@@ -47,6 +48,16 @@ pub struct PipeLaunch {
     pub name: String,
     pub nonce: String,
     pub commands: PlayerCommandSender,
+    pub cancellation: PipeCancellation,
+}
+
+#[derive(Clone, Default)]
+pub struct PipeCancellation(Arc<AtomicBool>);
+
+impl PipeCancellation {
+    pub fn cancel(&self) {
+        self.0.store(true, Ordering::Release);
+    }
 }
 
 type PipeSendHalf =
@@ -147,6 +158,8 @@ fn start_with_timeout(
 
     let command_queue = PlayerCommandQueue::new(16);
     let command_sender = command_queue.sender();
+    let cancellation = PipeCancellation::default();
+    let worker_cancellation = Arc::clone(&cancellation.0);
     let pipe_nonce = nonce.clone();
     thread::Builder::new()
         .name("vyntra-player-pipe".into())
@@ -158,6 +171,7 @@ fn start_with_timeout(
                 pipe_nonce,
                 timeout,
                 command_queue,
+                worker_cancellation,
                 on_event,
             );
         })
@@ -166,6 +180,7 @@ fn start_with_timeout(
         name,
         nonce,
         commands: command_sender,
+        cancellation,
     })
 }
 
@@ -253,11 +268,15 @@ fn serve_session(
     nonce: String,
     timeout: Duration,
     command_queue: PlayerCommandQueue,
+    cancellation: Arc<AtomicBool>,
     on_event: impl Fn(PipeEvent),
 ) {
     let deadline = Instant::now() + timeout;
     let mut rejected_clients = 0;
-    while Instant::now() < deadline && rejected_clients < MAX_REJECTED_PIPE_CLIENTS {
+    while Instant::now() < deadline
+        && rejected_clients < MAX_REJECTED_PIPE_CLIENTS
+        && !cancellation.load(Ordering::Acquire)
+    {
         let mut stream = match listener.accept() {
             Ok(stream) => stream,
             Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
@@ -277,7 +296,7 @@ fn serve_session(
         if stream.set_nonblocking(true).is_err() {
             continue;
         }
-        let hello = match read_frame_with_deadline(&mut stream, deadline) {
+        let hello = match read_frame_with_deadline(&mut stream, deadline, &cancellation) {
             Ok(frame) => frame,
             Err(_) => continue,
         };
@@ -404,10 +423,15 @@ fn serve_session(
         });
         return;
     }
+    let kind = if cancellation.load(Ordering::Acquire) {
+        PipeEventKind::Cancelled
+    } else {
+        PipeEventKind::Failed("No se autenticó el proceso Player dentro del plazo".into())
+    };
     on_event(PipeEvent {
         session_id,
         epoch,
-        kind: PipeEventKind::Failed("No se autenticó el proceso Player dentro del plazo".into()),
+        kind,
     });
 }
 
@@ -446,10 +470,14 @@ fn command_payload(command: PlayerCommand) -> Value {
 fn read_frame_with_deadline(
     stream: &mut impl interprocess::local_socket::traits::Stream,
     deadline: Instant,
+    cancellation: &AtomicBool,
 ) -> Result<TransportFrame, String> {
     let mut bytes = Vec::with_capacity(1024);
     let mut chunk = [0u8; 4096];
     loop {
+        if cancellation.load(Ordering::Acquire) {
+            return Err("handshake cancelado".into());
+        }
         if Instant::now() >= deadline {
             return Err("timeout de handshake".into());
         }
@@ -563,6 +591,32 @@ mod tests {
         client.write_all(&[0x20, 0x00]).unwrap();
         let event = receiver.recv_timeout(Duration::from_secs(2)).unwrap();
         assert!(matches!(event.kind, PipeEventKind::Failed(_)));
+    }
+
+    #[test]
+    fn pending_handshake_can_be_cancelled_before_its_timeout() {
+        let (sender, receiver) = mpsc::channel();
+        let launch = start_with_timeout(
+            "session-cancel".into(),
+            5,
+            Duration::from_secs(10),
+            move |event| sender.send(event).unwrap(),
+        )
+        .unwrap();
+
+        let name = launch
+            .name
+            .as_str()
+            .to_ns_name::<GenericNamespaced>()
+            .unwrap()
+            .into_owned();
+        let mut client = ConnectOptions::new().name(name).connect_sync().unwrap();
+        client.write_all(&[0x20, 0x00]).unwrap();
+
+        launch.cancellation.cancel();
+
+        let event = receiver.recv_timeout(Duration::from_secs(1)).unwrap();
+        assert_eq!(event.kind, PipeEventKind::Cancelled);
     }
 
     #[test]

@@ -112,6 +112,8 @@ pub fn run() -> Result<(), String> {
     let mut session: Option<domain::SessionIdentity> = None;
     let mut session_epoch: u64 = 0;
     let mut player_commands: Option<crate::transport::PlayerCommandSender> = None;
+    let mut player_cancellation: Option<crate::player_pipe::PipeCancellation> = None;
+    let mut player_authenticated = false;
     let mut player_command_generation = 0u64;
     let mut import_generation = 0u64;
     let mut active_import: Option<Arc<AtomicBool>> = None;
@@ -126,7 +128,11 @@ pub fn run() -> Result<(), String> {
         *flow=ControlFlow::Wait;
         match event {
             TaoEvent::WindowEvent { event:WindowEvent::CloseRequested,.. } => {
+                if let Some(cancellation) = &player_cancellation { cancellation.cancel(); }
                 if let Some(commands) = &player_commands { let _ = commands.send(crate::transport::PlayerCommand::Stop); }
+                if !player_authenticated {
+                    if let Err(error) = terminate_child_process(&mut child) { eprintln!("No se pudo cerrar Player al salir: {error}"); }
+                }
                 *flow=ControlFlow::Exit
             },
             TaoEvent::UserEvent(Message::Scanned(id,mut found)) if id==generation => {
@@ -228,7 +234,18 @@ pub fn run() -> Result<(), String> {
                 });
                 if matches_session {
                     match event.kind {
-                        crate::player_pipe::PipeEventKind::Authenticated => {},
+                        crate::player_pipe::PipeEventKind::Authenticated => {
+                            player_authenticated = true;
+                            player_cancellation = None;
+                        },
+                        crate::player_pipe::PipeEventKind::Cancelled => {
+                            player_commands = None;
+                            player_cancellation = None;
+                            player_authenticated = false;
+                            session = None;
+                            session_epoch = session_epoch.saturating_add(1);
+                            publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
+                        },
                         crate::player_pipe::PipeEventKind::Snapshot(snapshot) => {
                             if let Ok(value) = serde_json::to_string(&snapshot) {
                                 let _ = webview.evaluate_script(&format!("window.vyntraPlayerSnapshot({value});"));
@@ -264,12 +281,16 @@ pub fn run() -> Result<(), String> {
                                 ));
                             }
                             player_commands = None;
+                            player_cancellation = None;
+                            player_authenticated = false;
                             session = None;
                             session_epoch = session_epoch.saturating_add(1);
                             publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
                         },
                         crate::player_pipe::PipeEventKind::Failed(reason) => {
                             player_commands = None;
+                            player_cancellation = None;
+                            player_authenticated = false;
                             let notice = if child.is_some() {
                                 format!("Falló el canal local de Player: {reason}. Usa Detener si la ventana sigue abierta.")
                             } else {
@@ -593,6 +614,7 @@ pub fn run() -> Result<(), String> {
                             if library::mark_played(&mut imported, &game_id, now_unix()) {
                                 library::save(&index_path, &imported)?;
                             }
+                            let player_executable = env::current_exe().map_err(|e| e.to_string())?;
                             let next_epoch = session_epoch.saturating_add(1);
                             let session_id = format!("sess-{}-{next_epoch}", std::process::id());
                             let pipe_proxy = proxy.clone();
@@ -600,11 +622,22 @@ pub fn run() -> Result<(), String> {
                                 let _ = pipe_proxy.send_event(Message::Pipe(event));
                             })?;
                             player_commands = Some(pipe.commands.clone());
-                            child=Some(std::process::Command::new(env::current_exe().map_err(|e|e.to_string())?)
+                            let cancellation = pipe.cancellation.clone();
+                            let spawn_result = std::process::Command::new(player_executable)
                                 .arg("--emulator").arg("--data").arg(&root).arg(&game.path)
                                 .arg("--pipe").arg(&pipe.name).arg("--nonce").arg(&pipe.nonce)
                                 .arg("--session-id").arg(&session_id).arg("--session-epoch").arg(next_epoch.to_string())
-                                .spawn().map_err(|e|e.to_string())?);
+                                .spawn();
+                            match spawn_result {
+                                Ok(process) => child = Some(process),
+                                Err(error) => {
+                                    cancellation.cancel();
+                                    player_commands = None;
+                                    return Err(error.to_string());
+                                }
+                            }
+                            player_cancellation = Some(cancellation);
+                            player_authenticated = false;
                             session_epoch = next_epoch;
                             session = Some(domain::SessionIdentity {
                                 session_id,
@@ -616,6 +649,16 @@ pub fn run() -> Result<(), String> {
                             });
                         },
                         "stop_player" => {
+                            if !player_authenticated {
+                                if let Some(cancellation) = &player_cancellation { cancellation.cancel(); }
+                                terminate_child_process(&mut child)?;
+                                player_commands = None;
+                                player_cancellation = None;
+                                player_authenticated = false;
+                                session = None;
+                                session_epoch = session_epoch.saturating_add(1);
+                                return Ok(());
+                            }
                             let sent = player_commands.as_ref().is_some_and(|commands| {
                                 commands
                                     .send(crate::transport::PlayerCommand::Stop)
@@ -624,6 +667,8 @@ pub fn run() -> Result<(), String> {
                             if !sent {
                                 terminate_child_process(&mut child)?;
                                 player_commands = None;
+                                player_cancellation = None;
+                                player_authenticated = false;
                                 session = None;
                                 session_epoch = session_epoch.saturating_add(1);
                             }
