@@ -40,14 +40,18 @@ object RomIntake {
 
     /** [input] into [out], throwing past [maxCopyBytes]: nothing handed in fills the disk. */
     fun copyCapped(input: InputStream, out: OutputStream) {
+        copyCapped(input, out, maxCopyBytes)
+    }
+
+    /** Limit-injectable core for small deterministic tests. */
+    internal fun copyCapped(input: InputStream, out: OutputStream, maxBytes: Long) {
         val buf = ByteArray(1 shl 16)
-        val max = maxCopyBytes
         var total = 0L
         while (true) {
             val n = input.read(buf)
             if (n < 0) return
-            total += n
-            if (total > max) throw IOException("more than $max bytes - not a ROM")
+            total += n.toLong()
+            if (total > maxBytes) throw IOException("more than $maxBytes bytes - not a ROM")
             out.write(buf, 0, n)
         }
     }
