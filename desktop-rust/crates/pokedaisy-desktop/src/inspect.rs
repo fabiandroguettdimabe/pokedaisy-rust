@@ -247,7 +247,7 @@ mod tests {
     #[test]
     fn file_inspection_reads_only_a_bounded_header_from_large_roms() {
         let path =
-            std::env::temp_dir().join(format!("vyntra-inspect-bounded-{}.gba", std::process::id()));
+            std::env::temp_dir().join(format!("vyntra-inspect-bounded-{}.GBA", std::process::id()));
         let _ = std::fs::remove_file(&path);
         let mut file = std::fs::File::create(&path).unwrap();
         let mut header = vec![0; 0xc0];
