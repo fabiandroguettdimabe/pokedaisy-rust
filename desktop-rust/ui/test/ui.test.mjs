@@ -43,6 +43,7 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
    await page.screenshot({path:resolve('../../.taste-skill/companion/library-mobile.png'),fullPage:true});
    await page.setViewportSize({width:1360,height:880});
   await page.locator('.game-card').filter({hasText:'Synthetic GBA fixture'}).first().click();
+  assert.equal(await page.getByText('Origen actual: global (Suave).').isVisible(),true);
   await page.getByLabel('Suavizado de imagen para este juego').selectOption('off');
   await expectCommand('game_smoothing',{storage_id:'gba-fixture',value:false});
   await page.getByLabel('Volumen para este juego').selectOption('25');
