@@ -225,6 +225,15 @@ mod tests {
     }
 
     #[test]
+    fn malformed_and_truncated_json_return_a_structured_error() {
+        for body in [r#"{"action":"scan""#, "{"] {
+            let error = parse_legacy_action(body).unwrap_err();
+            assert_eq!(error.code, "invalid_json");
+            assert!(!error.reason.is_empty());
+        }
+    }
+
+    #[test]
     fn ack_helpers() {
         let ok = UiAck::success("c1", None);
         assert!(ok.ok);

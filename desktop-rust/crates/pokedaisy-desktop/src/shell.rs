@@ -262,7 +262,13 @@ pub fn run() -> Result<(), String> {
             TaoEvent::UserEvent(Message::Action(body)) => {
                 let cmd = match protocol::parse_legacy_action(&body) {
                     Ok(cmd) => cmd,
-                    Err(_) => return,
+                    Err(error) => {
+                        let _ = webview.evaluate_script(&format!(
+                            "window.vyntraError&&window.vyntraError({});",
+                            json!(error.reason)
+                        ));
+                        return;
+                    }
                 };
                 if let Some(cached) = command_acks.lookup(&cmd).cloned() {
                     let mut replay = cached;

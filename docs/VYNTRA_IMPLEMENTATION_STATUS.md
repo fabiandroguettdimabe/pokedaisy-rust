@@ -13,6 +13,7 @@ Actualizado: 2026-11-17. Este documento registra el comportamiento comprobado de
 ## Cambios implementados en este checkout
 
 - **T02 parcial:** el shell mantiene una caché acotada de 128 ACK para comandos revisionados. Si se reenvía el mismo comando (revisión, request, sesión/época, acción y payload), devuelve el ACK guardado antes de ejecutar el handler, evitando repetir efectos después de perderse la respuesta. El test cubre replay, otra revisión, comandos legacy y capacidad; falta migrar todas las acciones al contrato y sanear logs.
+- **T02 parcial:** JSON malformado/truncado enviado por IPC ahora llega a `window.vyntraError` en lugar de descartarse silenciosamente; tests verifican el código `invalid_json` y la descripción.
 - **T03 parcial:** `inspect.rs` ahora tiene fixtures negativos para headers GBA truncados/firma inválida, GB/GBC truncados y segmentos ARM9 DS que exceden el archivo; también verifica código de juego DS. Los checksums siguen siendo diagnósticos que no bloquean inspección.
 - **T04 parcial:** se inyecta un fallo al instalar el nuevo journal tras completar el staging y el backup. La prueba confirma que el journal anterior se restaura y el temporal se elimina; siguen pendientes los cortes abruptos entre fases.
 - **T05 parcial:** si falla la escritura del manifiesto tras escribir el nuevo payload en una restauración Vault, la prueba confirma que ambos archivos vuelven a la copia verificada anterior. Esto cubre el error controlado; falta simular muerte abrupta del proceso entre esos pasos.
