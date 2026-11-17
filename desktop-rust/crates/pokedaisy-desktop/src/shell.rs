@@ -142,6 +142,8 @@ pub fn run() -> Result<(), String> {
                     "member": progress.member,
                     "completed_bytes": progress.completed_bytes,
                     "total_bytes": progress.total_bytes,
+                    "batch_item": progress.batch_item,
+                    "batch_total": progress.batch_total,
                 })) {
                     let _ = webview.evaluate_script(&format!("window.vyntraImportProgress&&window.vyntraImportProgress({payload});"));
                 }
@@ -292,14 +294,15 @@ pub fn run() -> Result<(), String> {
                                     let worker_proxy = proxy.clone();
                                     let spawn = std::thread::Builder::new().name("vyntra-import".into()).spawn(move || {
                                         let mut summary = crate::import::ImportSummary::default();
-                                        for source in sources {
+                                        let batch_total = sources.len();
+                                        for (batch_index, source) in sources.into_iter().enumerate() {
                                             if cancel_worker.load(Ordering::Acquire) { summary.cancelled = true; break; }
                                             match source {
                                                 ImportSource::Loose(path) => {
                                                     let proxy = worker_proxy.clone();
                                                     let result = crate::import::import_paths_controlled(
                                                         &mut worker_entries, [path], 1024 * 1024 * 1024,
-                                                        &cancel_worker, move |progress| { let _ = proxy.send_event(Message::ImportProgress(id, progress)); },
+                                                        &cancel_worker, move |mut progress| { progress.batch_item = batch_index + 1; progress.batch_total = batch_total; let _ = proxy.send_event(Message::ImportProgress(id, progress)); },
                                                     );
                                                     summary.imported += result.imported;
                                                     summary.duplicates += result.duplicates;
@@ -311,7 +314,7 @@ pub fn run() -> Result<(), String> {
                                                     let result = crate::import::import_archive_members_controlled(
                                                         &mut worker_entries, &path, &worker_data,
                                                         crate::import::ArchivePolicy::default(), &selected,
-                                                        &cancel_worker, move |progress| { let _ = proxy.send_event(Message::ImportProgress(id, progress)); },
+                                                        &cancel_worker, move |mut progress| { progress.batch_item = batch_index + 1; progress.batch_total = batch_total; let _ = proxy.send_event(Message::ImportProgress(id, progress)); },
                                                     );
                                                     summary.imported += result.imported;
                                                     summary.duplicates += result.duplicates;
@@ -351,14 +354,15 @@ pub fn run() -> Result<(), String> {
                                     let worker_proxy = proxy.clone();
                                     let spawn = std::thread::Builder::new().name("vyntra-import-roots".into()).spawn(move || {
                                         let mut summary = crate::import::ImportSummary::default();
-                                        for source in sources {
+                                        let batch_total = sources.len();
+                                        for (batch_index, source) in sources.into_iter().enumerate() {
                                             if cancel_worker.load(Ordering::Acquire) { summary.cancelled = true; break; }
                                             match source {
                                                 ImportSource::Loose(path) => {
                                                     let proxy = worker_proxy.clone();
                                                     let result = crate::import::import_paths_controlled(
                                                         &mut worker_entries, [path], 1024 * 1024 * 1024,
-                                                        &cancel_worker, move |progress| { let _ = proxy.send_event(Message::ImportProgress(id, progress)); },
+                                                        &cancel_worker, move |mut progress| { progress.batch_item = batch_index + 1; progress.batch_total = batch_total; let _ = proxy.send_event(Message::ImportProgress(id, progress)); },
                                                     );
                                                     summary.imported += result.imported;
                                                     summary.duplicates += result.duplicates;

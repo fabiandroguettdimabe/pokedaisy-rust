@@ -55,8 +55,9 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'type_matchup',attack:10,defenses:[12,8]});
   await page.evaluate(()=>window.vyntraAck({ok:true,result:{dataset_id:'pokemon-gen3-type-chart',attack_type:'Fire',defense_types:['Grass','Steel'],multiplier_percent:400}}));
   assert.equal(await page.getByText('4×').isVisible(),true);
-  await page.evaluate(()=>window.vyntraImportProgress({member:'Pokemon.gba',completed_bytes:512,total_bytes:1024}));
+  await page.evaluate(()=>window.vyntraImportProgress({member:'Pokemon.gba',completed_bytes:512,total_bytes:1024,batch_item:2,batch_total:5}));
   assert.equal(await page.getByText('Pokemon.gba').isVisible(),true);
+  assert.equal(await page.getByText('Importando ROM 2 de 5').isVisible(),true);
   await page.getByRole('button',{name:'Cancelar',exact:true}).click();
   assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'cancel_import'});
   await page.evaluate(()=>window.vyntraImportDone({imported:0,duplicates:0,rejected:0,cancelled:true}));

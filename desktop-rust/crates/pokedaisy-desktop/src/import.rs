@@ -25,6 +25,8 @@ pub struct ArchiveProgress {
     pub completed_bytes: u64,
     pub total_bytes: u64,
     pub member: String,
+    pub batch_item: usize,
+    pub batch_total: usize,
 }
 
 /// Enumerate ROM candidates below explicitly chosen roots without following
@@ -384,6 +386,8 @@ fn import_archive_selected(
                         completed_bytes: total_copied,
                         total_bytes: preflight_total,
                         member: member.name().to_owned(),
+                        batch_item: 0,
+                        batch_total: 0,
                     });
                     if cancelled.is_some_and(|flag| flag.load(Ordering::Acquire)) {
                         summary.cancelled = true;
@@ -546,6 +550,8 @@ pub fn import_paths_controlled(
                             .unwrap_or_default()
                             .to_string_lossy()
                             .into_owned(),
+                        batch_item: 0,
+                        batch_total: 0,
                     });
                     if cancelled.load(Ordering::Acquire) {
                         summary.cancelled = true;
