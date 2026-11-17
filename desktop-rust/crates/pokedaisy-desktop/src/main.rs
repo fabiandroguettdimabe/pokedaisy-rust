@@ -9,6 +9,7 @@ mod protocol;
 mod settings;
 #[cfg(target_os = "windows")]
 mod shell;
+mod timing;
 mod vault;
 use fontdue::Font;
 use sdl2::audio::AudioSpecDesired;
@@ -837,10 +838,12 @@ fn sdl_main() -> Result<(), String> {
                 let fast_forward = event_pump
                     .keyboard_state()
                     .is_scancode_pressed(sdl2::keyboard::Scancode::Space);
+                let fps = core.as_ref().map(|c| c.av_info().fps).unwrap_or(60.0);
+                let frame_interval = timing::frame_interval(fps);
                 let frame_interval = if fast_forward {
-                    Duration::from_micros(16_667 / config.fast_forward as u64)
+                    frame_interval.div_f64(config.fast_forward.max(1) as f64)
                 } else {
-                    Duration::from_micros(16_667)
+                    frame_interval
                 };
                 if last_auto.elapsed() >= frame_interval {
                     if let Some(c) = core.as_mut() {
@@ -905,14 +908,31 @@ fn sdl_main() -> Result<(), String> {
                                     if fast_forward {
                                         audio_device.clear();
                                     } else {
-                                        let samples: Vec<i16> = f
-                                            .audio
-                                            .iter()
-                                            .map(|s| {
-                                                (*s as i32 * config.volume as i32 / 100) as i16
-                                            })
-                                            .collect();
-                                        let _ = audio_device.queue_audio(&samples);
+                                        let target_rate = audio_device.spec().freq.max(1) as u32;
+                                        let source_rate = core
+                                            .as_ref()
+                                            .map(|core| core.av_info().sample_rate)
+                                            .unwrap_or(target_rate as f64);
+                                        let samples: Vec<i16> = timing::resample_stereo(
+                                            &f.audio,
+                                            source_rate,
+                                            target_rate,
+                                        )
+                                        .iter()
+                                        .map(|s| (*s as i32 * config.volume as i32 / 100) as i16)
+                                        .collect();
+                                        let queue_limit_bytes =
+                                            (target_rate as u64 * 4 * 12 / 100) as u32;
+                                        let queued = audio_device.size();
+                                        let incoming_bytes = (samples.len() as u64
+                                            * std::mem::size_of::<i16>() as u64)
+                                            .min(u32::MAX as u64)
+                                            as u32;
+                                        if queued.saturating_add(incoming_bytes)
+                                            <= queue_limit_bytes
+                                        {
+                                            let _ = audio_device.queue_audio(&samples);
+                                        }
                                     }
                                 }
                             }
