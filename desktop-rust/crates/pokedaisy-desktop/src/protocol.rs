@@ -17,7 +17,9 @@ const SUPPORTED_ACTIONS: &[&str] = &[
     "favorite",
     "game_note",
     "game_smoothing",
+    "game_volume",
     "system_smoothing",
+    "system_volume",
     "library_view",
     "library_filter",
     "library_selection",
@@ -50,6 +52,7 @@ enum PayloadFieldType {
     Array,
     Any,
     NullableBoolean,
+    NullableNumber,
 }
 
 fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppError> {
@@ -86,6 +89,20 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
             &[
                 ("system", PayloadFieldType::String),
                 ("value", PayloadFieldType::NullableBoolean),
+            ],
+            &["system", "value"],
+        ),
+        "game_volume" => (
+            &[
+                ("storage_id", PayloadFieldType::String),
+                ("value", PayloadFieldType::NullableNumber),
+            ],
+            &["storage_id", "value"],
+        ),
+        "system_volume" => (
+            &[
+                ("system", PayloadFieldType::String),
+                ("value", PayloadFieldType::NullableNumber),
             ],
             &["system", "value"],
         ),
@@ -142,6 +159,7 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
             PayloadFieldType::Array => value.is_array(),
             PayloadFieldType::Any => !value.is_null(),
             PayloadFieldType::NullableBoolean => value.is_boolean() || value.is_null(),
+            PayloadFieldType::NullableNumber => value.is_null() || value.as_u64().is_some(),
         };
         if !matches_type {
             return Err(AppError::new(
@@ -191,6 +209,13 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
         }
         "system_smoothing" => {
             !matches!(object["system"].as_str(), Some("GB" | "GBC" | "GBA" | "DS"))
+        }
+        "game_volume" => {
+            invalid_storage_id() || object["value"].as_u64().is_some_and(|value| value > 100)
+        }
+        "system_volume" => {
+            !matches!(object["system"].as_str(), Some("GB" | "GBC" | "GBA" | "DS"))
+                || object["value"].as_u64().is_some_and(|value| value > 100)
         }
         "favorite" | "relink" => invalid_storage_id(),
         "play" => {
@@ -693,6 +718,8 @@ mod tests {
                 "game_note" => serde_json::json!({"storage_id":"g1","value":"note"}),
                 "game_smoothing" => serde_json::json!({"storage_id":"g1","value":false}),
                 "system_smoothing" => serde_json::json!({"system":"GBA","value":false}),
+                "game_volume" => serde_json::json!({"storage_id":"g1","value":40}),
+                "system_volume" => serde_json::json!({"system":"GBA","value":40}),
                 "library_view" => serde_json::json!({"value":"grid"}),
                 "library_filter" => serde_json::json!({"value":"Todos"}),
                 "library_selection" => serde_json::json!({"value":"g1"}),

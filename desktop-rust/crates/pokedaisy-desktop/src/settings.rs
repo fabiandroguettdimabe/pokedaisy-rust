@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 #[serde(default)]
 pub struct GameSettingsOverride {
     pub smooth: Option<bool>,
+    pub volume: Option<u8>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -114,6 +115,19 @@ mod tests {
             serde_json::from_slice(&serde_json::to_vec(&settings).unwrap()).unwrap();
         assert!(!restored.smooth_for_game("unscoped-game", "GBA"));
         assert!(settings.set_system_smooth("unknown", Some(false)).is_err());
+    }
+
+    #[test]
+    fn per_game_volume_override_uses_profile_then_global_and_persists() {
+        let mut settings = Settings::default();
+        settings.volume = 70;
+        settings.set_game_volume("game-one", Some(25)).unwrap();
+        settings.set_system_volume("GBA", Some(45)).unwrap();
+        assert_eq!(settings.volume_for_game("game-one", "GBA"), 25);
+        assert_eq!(settings.volume_for_game("other", "GBA"), 45);
+        assert_eq!(settings.volume_for_game("other", "DS"), 70);
+        settings.set_game_volume("game-one", None).unwrap();
+        assert_eq!(settings.volume_for_game("game-one", "GBA"), 45);
     }
 
     #[test]
@@ -251,10 +265,11 @@ impl Settings {
                 && id
                     .bytes()
                     .all(|byte| byte.is_ascii_alphanumeric() || b"-_".contains(&byte))
-                && profile.smooth.is_some()
+                && (profile.smooth.is_some() || profile.volume.is_some())
         });
         value.system_overrides.retain(|system, profile| {
-            matches!(system.as_str(), "GB" | "GBC" | "GBA" | "DS") && profile.smooth.is_some()
+            matches!(system.as_str(), "GB" | "GBC" | "GBA" | "DS")
+                && (profile.smooth.is_some() || profile.volume.is_some())
         });
         for dir in [
             &mut value.library,
@@ -310,22 +325,84 @@ impl Settings {
         if !matches!(system, "GB" | "GBC" | "GBA" | "DS") {
             return Err("Sistema no válido para el perfil".into());
         }
-        match smooth {
-            Some(smooth) => {
-                self.system_overrides.insert(
-                    system.into(),
-                    GameSettingsOverride {
-                        smooth: Some(smooth),
-                    },
-                );
+        let profile = self.system_overrides.entry(system.into()).or_default();
+        profile.smooth = smooth;
+        if profile.smooth.is_none() && profile.volume.is_none() {
+            self.system_overrides.remove(system);
+        }
+        Ok(())
+    }
+    pub fn set_game_smooth(&mut self, storage_id: &str, value: Option<bool>) -> Result<(), String> {
+        self.validate_game_profile_id(storage_id)?;
+        if let Some(smooth) = value {
+            if !self.game_overrides.contains_key(storage_id) && self.game_overrides.len() >= 10_000
+            {
+                return Err("Se alcanzó el límite de perfiles por juego".into());
             }
-            None => {
+            self.game_overrides
+                .entry(storage_id.to_owned())
+                .or_default()
+                .smooth = Some(smooth);
+        } else {
+            if let Some(profile) = self.game_overrides.get_mut(storage_id) {
+                profile.smooth = None;
+                if profile.volume.is_none() {
+                    self.game_overrides.remove(storage_id);
+                }
+            }
+        }
+        Ok(())
+    }
+    pub fn volume_for_game(&self, storage_id: &str, system: &str) -> u8 {
+        self.game_overrides
+            .get(storage_id)
+            .and_then(|profile| profile.volume)
+            .or_else(|| {
+                self.system_overrides
+                    .get(system)
+                    .and_then(|profile| profile.volume)
+            })
+            .unwrap_or(self.volume)
+    }
+    pub fn set_game_volume(&mut self, storage_id: &str, volume: Option<u8>) -> Result<(), String> {
+        self.validate_game_profile_id(storage_id)?;
+        if volume.is_some_and(|value| value > 100) {
+            return Err("Volumen por juego fuera de rango".into());
+        }
+        if let Some(value) = volume {
+            self.game_overrides
+                .entry(storage_id.to_owned())
+                .or_default()
+                .volume = Some(value);
+        } else if let Some(profile) = self.game_overrides.get_mut(storage_id) {
+            profile.volume = None;
+            if profile.smooth.is_none() {
+                self.game_overrides.remove(storage_id);
+            }
+        }
+        Ok(())
+    }
+    pub fn set_system_volume(&mut self, system: &str, volume: Option<u8>) -> Result<(), String> {
+        if !matches!(system, "GB" | "GBC" | "GBA" | "DS") {
+            return Err("Sistema no válido para el perfil".into());
+        }
+        if volume.is_some_and(|value| value > 100) {
+            return Err("Volumen por sistema fuera de rango".into());
+        }
+        if let Some(value) = volume {
+            self.system_overrides
+                .entry(system.to_owned())
+                .or_default()
+                .volume = Some(value);
+        } else if let Some(profile) = self.system_overrides.get_mut(system) {
+            profile.volume = None;
+            if profile.smooth.is_none() {
                 self.system_overrides.remove(system);
             }
         }
         Ok(())
     }
-    pub fn set_game_smooth(&mut self, storage_id: &str, value: Option<bool>) -> Result<(), String> {
+    fn validate_game_profile_id(&self, storage_id: &str) -> Result<(), String> {
         if storage_id.is_empty()
             || storage_id.len() > 64
             || !storage_id
@@ -333,20 +410,6 @@ impl Settings {
                 .all(|byte| byte.is_ascii_alphanumeric() || b"-_".contains(&byte))
         {
             return Err("Identificador de juego inválido".into());
-        }
-        if let Some(smooth) = value {
-            if !self.game_overrides.contains_key(storage_id) && self.game_overrides.len() >= 10_000
-            {
-                return Err("Se alcanzó el límite de perfiles por juego".into());
-            }
-            self.game_overrides.insert(
-                storage_id.to_owned(),
-                GameSettingsOverride {
-                    smooth: Some(smooth),
-                },
-            );
-        } else {
-            self.game_overrides.remove(storage_id);
         }
         Ok(())
     }

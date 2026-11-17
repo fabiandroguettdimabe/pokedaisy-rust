@@ -45,6 +45,8 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.locator('.game-card').filter({hasText:'Synthetic GBA fixture'}).first().click();
   await page.getByLabel('Suavizado de imagen para este juego').selectOption('off');
   await expectCommand('game_smoothing',{storage_id:'gba-fixture',value:false});
+  await page.getByLabel('Volumen para este juego').selectOption('25');
+  await expectCommand('game_volume',{storage_id:'gba-fixture',value:25});
   await page.getByLabel('Copia del juego').selectOption('2');
   await page.getByRole('button',{name:'Jugar',exact:true}).click();
   await expectCommand('play',{storage_id:'gba-fixture',source_index:2});
@@ -63,6 +65,8 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.getByLabel('Sistema para perfil de suavizado').selectOption('GBA');
   await page.getByLabel('Suavizado para sistema').selectOption('off');
   await expectCommand('system_smoothing',{system:'GBA',value:false});
+  await page.getByLabel('Volumen para sistema').selectOption('50');
+  await expectCommand('system_volume',{system:'GBA',value:50});
   await page.getByRole('button',{name:'Biblioteca',exact:true}).click();
   await page.getByRole('textbox',{name:'Buscar juegos'}).fill('ABCD');
   assert.equal(await page.locator('.game-card').count(),1);

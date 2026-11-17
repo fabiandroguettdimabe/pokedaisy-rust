@@ -1233,7 +1233,19 @@ fn sdl_main() -> Result<(), String> {
                                         let samples: Vec<i16> = resampled
                                             .iter()
                                             .map(|s| {
-                                                (*s as i32 * config.volume as i32 / 100) as i16
+                                                (*s as i32
+                                                    * active_game
+                                                        .as_ref()
+                                                        .map(|game| {
+                                                            config.volume_for_game(
+                                                                &game_storage_key(game),
+                                                                &game.system,
+                                                            )
+                                                        })
+                                                        .unwrap_or(config.volume)
+                                                        as i32
+                                                    / 100)
+                                                    as i16
                                             })
                                             .collect();
                                         let queue_limit_bytes =
