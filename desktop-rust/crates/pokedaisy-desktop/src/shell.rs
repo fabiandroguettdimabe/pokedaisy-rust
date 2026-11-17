@@ -244,6 +244,25 @@ pub fn run() -> Result<(), String> {
                             }
                         },
                         crate::player_pipe::PipeEventKind::Disconnected => {
+                            let exit_status = child
+                                .as_mut()
+                                .and_then(|process| process.try_wait().ok().flatten());
+                            if exit_status.is_some() {
+                                child = None;
+                            }
+                            let notice = match exit_status {
+                                Some(status) => player_exit_notice(status.success(), status.code()),
+                                None if child.is_some() => Some(
+                                    "Se perdió el canal de Player, pero su ventana sigue activa. Usa Detener para cerrarla.".into(),
+                                ),
+                                None => None,
+                            };
+                            if let Some(notice) = notice {
+                                let _ = webview.evaluate_script(&format!(
+                                    "window.vyntraError&&window.vyntraError({});",
+                                    json!(notice)
+                                ));
+                            }
                             player_commands = None;
                             session = None;
                             session_epoch = session_epoch.saturating_add(1);
@@ -251,7 +270,16 @@ pub fn run() -> Result<(), String> {
                         },
                         crate::player_pipe::PipeEventKind::Failed(reason) => {
                             player_commands = None;
-                            eprintln!("Falló el canal de la sesión Player: {reason}");
+                            let notice = if child.is_some() {
+                                format!("Falló el canal local de Player: {reason}. Usa Detener si la ventana sigue abierta.")
+                            } else {
+                                format!("Falló el canal local de Player: {reason}.")
+                            };
+                            eprintln!("{notice}");
+                            let _ = webview.evaluate_script(&format!(
+                                "window.vyntraError&&window.vyntraError({});",
+                                json!(notice)
+                            ));
                             session = None;
                             session_epoch = session_epoch.saturating_add(1);
                             publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
@@ -830,6 +858,17 @@ fn window_icon() -> Option<tao::window::Icon> {
     tao::window::Icon::from_rgba(pixels, 64, 64).ok()
 }
 
+fn player_exit_notice(success: bool, code: Option<i32>) -> Option<String> {
+    if success {
+        None
+    } else {
+        Some(match code {
+            Some(code) => format!("Player terminó inesperadamente (código {code})."),
+            None => "Player terminó inesperadamente (sin código de salida).".into(),
+        })
+    }
+}
+
 fn terminate_child_process(child: &mut Option<std::process::Child>) -> Result<(), String> {
     let Some(mut process) = child.take() else {
         return Ok(());
@@ -1263,6 +1302,19 @@ mod tests {
         stop.session_id = Some("sess-1".into());
         stop.epoch = Some(3);
         assert!(validate_command_session(&None, 4, &stop).is_ok());
+    }
+
+    #[test]
+    fn player_exit_notice_only_reports_unexpected_process_exit() {
+        assert_eq!(player_exit_notice(true, Some(0)), None);
+        assert_eq!(
+            player_exit_notice(false, Some(9)).as_deref(),
+            Some("Player terminó inesperadamente (código 9).")
+        );
+        assert_eq!(
+            player_exit_notice(false, None).as_deref(),
+            Some("Player terminó inesperadamente (sin código de salida).")
+        );
     }
 
     #[test]
