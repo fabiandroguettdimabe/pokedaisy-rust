@@ -209,12 +209,14 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   assert.equal(await page.getByText('FIRE contra GRASS / STEEL',{exact:true}).isVisible(),true);
   assert.equal(await page.getByText('4×',{exact:true}).isVisible(),true);
   await page.getByLabel('Generación de la tabla').selectOption('pokemon-gen4-standard-type-chart');
+  assert.equal(await page.getByText('Tabla de tipos · Gen IV',{exact:true}).isVisible(),true);
   await page.getByLabel('Ataque').selectOption('7');
   await page.getByLabel('Defensa 1').selectOption('8');
   await page.getByRole('button',{name:'Calcular',exact:true}).click();
   assert.equal(await page.getByText('Ghost contra Steel',{exact:true}).isVisible(),true);
   assert.equal(await page.getByText('0,5×',{exact:true}).isVisible(),true);
   await page.getByLabel('Generación de la tabla').selectOption('pokemon-gen9-standard-type-chart');
+  assert.equal(await page.getByText('Tabla de tipos · Gen IX',{exact:true}).isVisible(),true);
   await page.getByLabel('Ataque').selectOption('9');
   await page.getByLabel('Defensa 1').selectOption('16');
   await page.getByRole('button',{name:'Calcular',exact:true}).click();
