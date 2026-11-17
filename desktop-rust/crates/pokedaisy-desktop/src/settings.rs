@@ -2,6 +2,15 @@ use super::*;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CompanionWindowBounds {
+    pub monitor_name: Option<String>,
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct GameSettingsOverride {
@@ -33,6 +42,7 @@ pub struct Settings {
     pub library_selection: Option<String>,
     pub game_overrides: BTreeMap<String, GameSettingsOverride>,
     pub system_overrides: BTreeMap<String, GameSettingsOverride>,
+    pub companion_window: Option<CompanionWindowBounds>,
 }
 
 #[cfg(test)]
@@ -76,6 +86,35 @@ mod tests {
         assert_eq!(loaded.library_view, "list");
         assert_eq!(loaded.library_filter, "Favoritos");
         assert_eq!(loaded.library_selection.as_deref(), Some("content-id-123"));
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn companion_window_bounds_survive_restart_and_invalid_values_are_discarded() {
+        let dir =
+            std::env::temp_dir().join(format!("vyntra-companion-bounds-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("settings.json");
+        let mut settings = Settings::load(&path, &dir).unwrap();
+        settings.companion_window = Some(CompanionWindowBounds {
+            monitor_name: Some("DISPLAY2".into()),
+            x: 24.0,
+            y: 48.0,
+            width: 960.0,
+            height: 720.0,
+        });
+        settings.save(&path).unwrap();
+        assert_eq!(
+            Settings::load(&path, &dir).unwrap().companion_window,
+            settings.companion_window
+        );
+        fs::write(&path, br#"{"schema":1,"companion_window":{"monitor_name":"DISPLAY2","x":0.0,"y":0.0,"width":1e99,"height":720.0}}"#).unwrap();
+        assert!(
+            Settings::load(&path, &dir)
+                .unwrap()
+                .companion_window
+                .is_none()
+        );
         let _ = fs::remove_dir_all(dir);
     }
 
@@ -206,6 +245,7 @@ impl Default for Settings {
             library_selection: None,
             game_overrides: BTreeMap::new(),
             system_overrides: BTreeMap::new(),
+            companion_window: None,
             keys: [
                 "Z",
                 "X",
@@ -307,6 +347,22 @@ impl Settings {
                     || profile.fast_forward.is_some()
                     || profile.autosave.is_some())
         });
+        if value.companion_window.as_ref().is_some_and(|bounds| {
+            !bounds.x.is_finite()
+                || !bounds.y.is_finite()
+                || bounds.x.abs() > 100_000.0
+                || bounds.y.abs() > 100_000.0
+                || !bounds.width.is_finite()
+                || !bounds.height.is_finite()
+                || !(300.0..=4096.0).contains(&bounds.width)
+                || !(240.0..=4096.0).contains(&bounds.height)
+                || bounds
+                    .monitor_name
+                    .as_ref()
+                    .is_some_and(|name| name.len() > 128 || name.chars().any(char::is_control))
+        }) {
+            value.companion_window = None;
+        }
         for dir in [
             &mut value.library,
             &mut value.saves,

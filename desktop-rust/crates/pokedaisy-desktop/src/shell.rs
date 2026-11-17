@@ -78,6 +78,7 @@ fn companion_position(
 fn companion_logical_size(
     monitor_size: tao::dpi::PhysicalSize<u32>,
     scale_factor: f64,
+    preferred: Option<(f64, f64)>,
 ) -> (tao::dpi::LogicalSize<f64>, tao::dpi::LogicalSize<f64>) {
     let scale = if scale_factor.is_finite() && scale_factor > 0.0 {
         scale_factor
@@ -86,8 +87,13 @@ fn companion_logical_size(
     };
     let available_width = f64::from(monitor_size.width) / scale;
     let available_height = f64::from(monitor_size.height) / scale;
-    let width = 1120.0_f64.min(available_width.max(1.0));
-    let height = 820.0_f64.min(available_height.max(1.0));
+    let (preferred_width, preferred_height) = preferred.unwrap_or((1120.0, 820.0));
+    let width = preferred_width
+        .clamp(300.0, 4096.0)
+        .min(available_width.max(1.0));
+    let height = preferred_height
+        .clamp(240.0, 4096.0)
+        .min(available_height.max(1.0));
     let min_width = 760.0_f64.min(width);
     let min_height = 600.0_f64.min(height);
 
@@ -95,6 +101,44 @@ fn companion_logical_size(
         tao::dpi::LogicalSize::new(width, height),
         tao::dpi::LogicalSize::new(min_width, min_height),
     )
+}
+
+fn restored_companion_position(
+    bounds: &settings::CompanionWindowBounds,
+    monitor_origin: tao::dpi::PhysicalPosition<i32>,
+    scale_factor: f64,
+) -> tao::dpi::PhysicalPosition<i32> {
+    let scale = if scale_factor.is_finite() && scale_factor > 0.0 {
+        scale_factor
+    } else {
+        1.0
+    };
+    let physical_offset = |value: f64| {
+        (value * scale)
+            .round()
+            .clamp(i32::MIN as f64, i32::MAX as f64) as i32
+    };
+    tao::dpi::PhysicalPosition::new(
+        monitor_origin.x.saturating_add(physical_offset(bounds.x)),
+        monitor_origin.y.saturating_add(physical_offset(bounds.y)),
+    )
+}
+
+fn companion_bounds_for_window(
+    window: &tao::window::Window,
+) -> Option<settings::CompanionWindowBounds> {
+    let monitor = window.current_monitor()?;
+    let position = window.outer_position().ok()?;
+    let scale = monitor.scale_factor();
+    let origin = monitor.position();
+    let inner_size = window.inner_size().to_logical::<f64>(scale);
+    Some(settings::CompanionWindowBounds {
+        monitor_name: monitor.name(),
+        x: f64::from(position.x.saturating_sub(origin.x)) / scale,
+        y: f64::from(position.y.saturating_sub(origin.y)) / scale,
+        width: inner_size.width,
+        height: inner_size.height,
+    })
 }
 
 enum ImportSource {
@@ -204,6 +248,29 @@ pub fn run() -> Result<(), String> {
         match event {
             TaoEvent::WindowEvent { window_id, event:WindowEvent::CloseRequested,.. } => {
                 if companion_window.as_ref().is_some_and(|window|window.id()==window_id) {
+                    if let Some(bounds) = companion_window
+                        .as_ref()
+                        .and_then(companion_bounds_for_window)
+                    {
+                        match SettingsMutex::acquire() {
+                            Ok(_lock) => {
+                                let previous = config.companion_window.clone();
+                                config.companion_window = Some(bounds);
+                                match config.save(&config_path) {
+                                    Ok(()) => {
+                                        if let Ok(fingerprint) = settings_fingerprint(&config_path) {
+                                            config_fingerprint = fingerprint;
+                                        }
+                                    }
+                                    Err(error) => {
+                                        config.companion_window = previous;
+                                        eprintln!("No se pudieron guardar los límites de Companion: {error}");
+                                    }
+                                }
+                            }
+                            Err(error) => eprintln!("No se pudieron guardar los límites de Companion: {error}"),
+                        }
+                    }
                     companion_generation=None;
                     companion_webview=None;
                     companion_window=None;
@@ -467,10 +534,24 @@ pub fn run() -> Result<(), String> {
                                     .ok_or("No se pudo asignar una nueva sesión a Companion")?;
                                 let generation = next_companion_generation;
                                 let mut builder=WindowBuilder::new().with_title("Vyntra Companion").with_inner_size(tao::dpi::LogicalSize::new(1120.0,820.0)).with_min_inner_size(tao::dpi::LogicalSize::new(760.0,600.0));
-                                if let (Ok(position), Some(monitor)) = (window.outer_position(), window.current_monitor()) {
+                                let saved_bounds = config.companion_window.as_ref();
+                                let monitor = saved_bounds
+                                    .and_then(|bounds| {
+                                        bounds.monitor_name.as_ref().and_then(|name| {
+                                            window.available_monitors().find(|monitor| {
+                                                monitor.name().as_ref() == Some(name)
+                                            })
+                                        })
+                                    })
+                                    .or_else(|| window.current_monitor());
+                                if let Some(monitor) = monitor {
                                     let scale = monitor.scale_factor();
                                     let (inner_size, min_inner_size) =
-                                        companion_logical_size(monitor.size(), scale);
+                                        companion_logical_size(
+                                            monitor.size(),
+                                            scale,
+                                            saved_bounds.map(|bounds| (bounds.width, bounds.height)),
+                                        );
                                     builder = builder
                                         .with_inner_size(inner_size)
                                         .with_min_inner_size(min_inner_size);
@@ -478,10 +559,23 @@ pub fn run() -> Result<(), String> {
                                         (inner_size.width * scale).round() as u32,
                                         (inner_size.height * scale).round() as u32,
                                     );
-                                    let desired = tao::dpi::PhysicalPosition::new(
-                                        position.x.saturating_add(80),
-                                        position.y.saturating_add(60),
-                                    );
+                                    let desired = saved_bounds
+                                        .map(|bounds| {
+                                            restored_companion_position(
+                                                bounds,
+                                                monitor.position(),
+                                                scale,
+                                            )
+                                        })
+                                        .or_else(|| {
+                                            window.outer_position().ok().map(|position| {
+                                                tao::dpi::PhysicalPosition::new(
+                                                    position.x.saturating_add(80),
+                                                    position.y.saturating_add(60),
+                                                )
+                                            })
+                                        })
+                                        .unwrap_or(monitor.position());
                                     builder = builder.with_position(companion_position(
                                         desired,
                                         monitor.position(),
@@ -1752,10 +1846,26 @@ mod tests {
 
     #[test]
     fn companion_size_fits_small_high_dpi_monitor() {
-        let (size, minimum) = companion_logical_size(tao::dpi::PhysicalSize::new(900, 600), 1.5);
+        let (size, minimum) =
+            companion_logical_size(tao::dpi::PhysicalSize::new(900, 600), 1.5, None);
 
         assert_eq!(size, tao::dpi::LogicalSize::new(600.0, 400.0));
         assert_eq!(minimum, tao::dpi::LogicalSize::new(600.0, 400.0));
+    }
+
+    #[test]
+    fn restored_companion_bounds_follow_monitor_origin_and_scale() {
+        let bounds = settings::CompanionWindowBounds {
+            monitor_name: Some("DISPLAY2".into()),
+            x: 80.0,
+            y: 40.0,
+            width: 960.0,
+            height: 720.0,
+        };
+        assert_eq!(
+            restored_companion_position(&bounds, tao::dpi::PhysicalPosition::new(-1920, 0), 1.5,),
+            tao::dpi::PhysicalPosition::new(-1800, 60)
+        );
     }
 
     #[test]
