@@ -254,17 +254,35 @@ pub fn run() -> Result<(), String> {
                     {
                         match SettingsMutex::acquire() {
                             Ok(_lock) => {
-                                let previous = config.companion_window.clone();
-                                config.companion_window = Some(bounds);
-                                match config.save(&config_path) {
-                                    Ok(()) => {
-                                        if let Ok(fingerprint) = settings_fingerprint(&config_path) {
-                                            config_fingerprint = fingerprint;
-                                        }
+                                let can_save = match reload_external_settings(
+                                    &config_path,
+                                    &root,
+                                    &config_fingerprint,
+                                ) {
+                                    Ok(Some((latest, fingerprint))) => {
+                                        config = latest;
+                                        config_fingerprint = fingerprint;
+                                        true
                                     }
+                                    Ok(None) => true,
                                     Err(error) => {
-                                        config.companion_window = previous;
-                                        eprintln!("No se pudieron guardar los límites de Companion: {error}");
+                                        eprintln!("No se pudieron actualizar los ajustes antes de guardar Companion: {error}");
+                                        false
+                                    }
+                                };
+                                if can_save {
+                                    let previous = config.companion_window.clone();
+                                    config.companion_window = Some(bounds);
+                                    match config.save(&config_path) {
+                                        Ok(()) => {
+                                            if let Ok(fingerprint) = settings_fingerprint(&config_path) {
+                                                config_fingerprint = fingerprint;
+                                            }
+                                        }
+                                        Err(error) => {
+                                            config.companion_window = previous;
+                                            eprintln!("No se pudieron guardar los límites de Companion: {error}");
+                                        }
                                     }
                                 }
                             }
