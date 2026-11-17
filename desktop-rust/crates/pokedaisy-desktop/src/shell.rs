@@ -439,12 +439,12 @@ pub fn run() -> Result<(), String> {
                             }
                         },
                         crate::player_pipe::PipeEventKind::Disconnected => {
-                            let exit_status = child
-                                .as_mut()
-                                .and_then(|process| process.try_wait().ok().flatten());
-                            if exit_status.is_some() {
-                                child = None;
-                            }
+                            let exit_status = reap_child_after_disconnect(
+                                &mut child,
+                                Duration::from_millis(250),
+                            )
+                            .ok()
+                            .flatten();
                             let notice = match exit_status {
                                 Some(status) => player_exit_notice(status.success(), status.code()),
                                 None if child.is_some() => Some(
@@ -1367,6 +1367,26 @@ fn stop_player_child(
         if std::time::Instant::now() >= deadline {
             terminate_child_process(child)?;
             return Ok(false);
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+fn reap_child_after_disconnect(
+    child: &mut Option<std::process::Child>,
+    timeout: Duration,
+) -> Result<Option<std::process::ExitStatus>, String> {
+    let deadline = std::time::Instant::now() + timeout;
+    loop {
+        let Some(process) = child.as_mut() else {
+            return Ok(None);
+        };
+        if let Some(status) = process.try_wait().map_err(|error| error.to_string())? {
+            *child = None;
+            return Ok(Some(status));
+        }
+        if std::time::Instant::now() >= deadline {
+            return Ok(None);
         }
         std::thread::sleep(Duration::from_millis(10));
     }
@@ -2308,6 +2328,43 @@ mod tests {
         assert!(!graceful);
         assert!(child.is_none());
         let _ = fs::remove_file(ready_path);
+    }
+
+    #[test]
+    fn disconnected_player_exit_is_reaped_after_pipe_closes_first() {
+        const READY_ENV: &str = "VYNTRA_TEST_DELAYED_EXIT_PLAYER_READY";
+        let ready_path =
+            std::env::temp_dir().join(format!("vyntra-player-exit-ready-{}", std::process::id()));
+        let _ = fs::remove_file(&ready_path);
+        let child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "shell::tests::delayed_exit_player_child"])
+            .env(READY_ENV, &ready_path)
+            .spawn()
+            .unwrap();
+        for _ in 0..200 {
+            if ready_path.exists() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        assert!(ready_path.exists(), "child Player fixture did not start");
+        let mut child = Some(child);
+        assert!(
+            reap_child_after_disconnect(&mut child, Duration::from_secs(1))
+                .unwrap()
+                .is_some()
+        );
+        assert!(child.is_none());
+        let _ = fs::remove_file(ready_path);
+    }
+
+    #[test]
+    fn delayed_exit_player_child() {
+        let Some(ready) = std::env::var_os("VYNTRA_TEST_DELAYED_EXIT_PLAYER_READY") else {
+            return;
+        };
+        fs::write(ready, "ready").unwrap();
+        std::thread::sleep(Duration::from_millis(80));
     }
 
     #[test]

@@ -25,6 +25,7 @@ $port = ([Net.IPEndPoint]$listener.LocalEndpoint).Port
 $listener.Stop()
 $cdpUrl = "http://127.0.0.1:$port"
 $clickScript = Join-Path $data "click-play.mjs"
+$companionScript = Join-Path $data "companion-commands.mjs"
 $moduleUrl = ([Uri]::new($playwrightModule)).AbsoluteUri
 @"
 import { chromium } from '$moduleUrl';
@@ -32,11 +33,31 @@ const browser = await chromium.connectOverCDP(process.env.VYNTRA_E2E_CDP_URL);
 const pages = browser.contexts().flatMap(context => context.pages());
 const launcher = pages[0];
 if (!launcher) throw new Error('Launcher WebView2 page is missing');
+await launcher.getByRole('navigation', { name: 'Navegación principal' }).getByRole('button', { name: 'Biblioteca' }).click();
 await launcher.getByRole('heading', { name: 'PD INPUT GBA' }).waitFor({ timeout: 10000 });
 await launcher.getByRole('button', { name: 'Jugar', exact: true }).click();
 console.log('launcher-play-clicked');
 process.exit(0);
 "@ | Set-Content -LiteralPath $clickScript -Encoding utf8
+@"
+import { chromium } from '$moduleUrl';
+const browser = await chromium.connectOverCDP(process.env.VYNTRA_E2E_CDP_URL);
+const launcher = browser.contexts().flatMap(context => context.pages())[0];
+if (!launcher) throw new Error('Launcher WebView2 page is missing');
+await launcher.getByRole('navigation', { name: 'Navegación principal' }).getByRole('button', { name: 'Acompañante' }).click();
+await launcher.getByRole('heading', { name: 'Vyntra Companion' }).waitFor({ timeout: 10000 });
+const session = launcher.locator('.companion-session');
+await session.waitFor({ timeout: 15000 });
+await session.getByRole('button', { name: 'Pausar' }).click();
+await launcher.waitForTimeout(500);
+await session.getByRole('button', { name: 'Guardar estado' }).click();
+await launcher.waitForTimeout(1000);
+await session.getByRole('button', { name: 'Cargar estado' }).click();
+await launcher.waitForTimeout(1000);
+await session.getByRole('button', { name: 'Detener partida' }).click();
+console.log('companion-pause-save-load-stop-passed');
+process.exit(0);
+"@ | Set-Content -LiteralPath $companionScript -Encoding utf8
 
 if (-not ("VyntraLauncherPlayerSmoke" -as [type])) {
   Add-Type -TypeDefinition @'
@@ -52,6 +73,11 @@ function Invoke-LauncherPlay {
   $env:VYNTRA_E2E_CDP_URL = $cdpUrl
   & $Node $clickScript
   if ($LASTEXITCODE -ne 0) { throw "Playwright could not click Play in Launcher" }
+}
+function Invoke-CompanionCommands {
+  $env:VYNTRA_E2E_CDP_URL = $cdpUrl
+  & $Node $companionScript
+  if ($LASTEXITCODE -ne 0) { throw "Companion commands did not complete successfully" }
 }
 function Wait-PlayerChild([int]$ParentId) {
   for ($attempt = 0; $attempt -lt 120; $attempt++) {
@@ -111,7 +137,8 @@ try {
   Start-Sleep -Milliseconds 400
   [void][VyntraLauncherPlayerSmoke]::SendMessage($playerProcess.MainWindowHandle, 0x0101, [IntPtr]0x5A, [IntPtr]0xC02C0001)
   Start-Sleep -Milliseconds 400
-  Close-Player $playerProcess
+  Invoke-CompanionCommands
+  if (-not $playerProcess.WaitForExit(15000)) { throw "Companion Stop did not close Player" }
   $playerProcess.Dispose()
   $playerProcess = $null
   Start-Sleep -Milliseconds 800
@@ -132,6 +159,20 @@ try {
       $manifest.sha256 -ne $saveHash -or $manifest.rom_sha256 -ne $romHash -or $manifest.core_hash -ne $coreHash) {
     throw "The Launcher session save does not match the expected input marker and ROM/core hashes"
   }
+  $stateDir = Join-Path $data ("data/states/by-id/" + $romHash.Substring(0, 16))
+  $statePath = Join-Path $stateDir "slot1.ss"
+  $stateManifestPath = Join-Path $stateDir "state.manifest.json"
+  if (-not (Test-Path -LiteralPath $statePath) -or -not (Test-Path -LiteralPath $stateManifestPath)) {
+    throw "Companion Save State did not commit a state and manifest"
+  }
+  $stateBytes = [IO.File]::ReadAllBytes($statePath)
+  $stateManifest = Get-Content -LiteralPath $stateManifestPath -Raw | ConvertFrom-Json
+  $stateHash = (Get-FileHash -LiteralPath $statePath -Algorithm SHA256).Hash.ToLowerInvariant()
+  if ($stateBytes.Length -eq 0 -or $stateManifest.status -ne "committed" -or
+      $stateManifest.sha256 -ne $stateHash -or $stateManifest.rom_sha256 -ne $romHash -or
+      $stateManifest.core_hash -ne $coreHash) {
+    throw "Companion state manifest does not match the committed state payload and core"
+  }
   if ($launcherProcess.HasExited) { throw "Launcher exited when Player closed instead of returning to its window" }
 
   # A second Play proves the first pipe/session and save locks were released cleanly.
@@ -143,12 +184,14 @@ try {
 
   [PSCustomObject]@{
     result = "PASS"
-    flow = "Launcher UI → session pipe → Player SDL → committed SRAM → second Play"
+    flow = "Launcher UI → Companion pause/save/load/stop → committed SRAM+state → second Play"
     session_arguments = "pipe, nonce, session id, epoch"
     input = "Z → libretro A"
     sram_marker = "0xA5"
     bytes = $bytes.Length
     manifest = $manifest.status
+    state_bytes = $stateBytes.Length
+    state_manifest = $stateManifest.status
     rom_sha256 = $romHash
     core_sha256 = $coreHash
     save_sha256 = $saveHash
