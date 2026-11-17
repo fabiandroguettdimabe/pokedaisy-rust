@@ -491,6 +491,490 @@
       ]
     },
     {
+      "dataset_id": "pokemon-gen1-yellow-legacy-type-chart",
+      "generation": 1,
+      "reference_game": "Pokémon Yellow Legacy v1.0.10",
+      "source_files": [
+        "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartYellowLegacy.kt"
+      ],
+      "source_sha256": "39a7e5848e0bb02df4951fa8be6214034c3185dc27d27ebe3e9902ead8fc6b7e",
+      "license": "GPL-3.0-only",
+      "default_percent": 100,
+      "types": [
+        {
+          "id": 0,
+          "name": "NORMAL"
+        },
+        {
+          "id": 1,
+          "name": "FIGHTING"
+        },
+        {
+          "id": 2,
+          "name": "FLYING"
+        },
+        {
+          "id": 3,
+          "name": "POISON"
+        },
+        {
+          "id": 4,
+          "name": "GROUND"
+        },
+        {
+          "id": 5,
+          "name": "ROCK"
+        },
+        {
+          "id": 6,
+          "name": "NORMAL"
+        },
+        {
+          "id": 7,
+          "name": "BUG"
+        },
+        {
+          "id": 8,
+          "name": "GHOST"
+        },
+        {
+          "id": 20,
+          "name": "FIRE"
+        },
+        {
+          "id": 21,
+          "name": "WATER"
+        },
+        {
+          "id": 22,
+          "name": "GRASS"
+        },
+        {
+          "id": 23,
+          "name": "ELECTRIC"
+        },
+        {
+          "id": 24,
+          "name": "PSYCHIC"
+        },
+        {
+          "id": 25,
+          "name": "ICE"
+        },
+        {
+          "id": 26,
+          "name": "DRAGON"
+        }
+      ],
+      "matchups": [
+        {
+          "attack": 0,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 0,
+          "defense": 8,
+          "percent": 0
+        },
+        {
+          "attack": 1,
+          "defense": 0,
+          "percent": 200
+        },
+        {
+          "attack": 1,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 1,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 8,
+          "percent": 0
+        },
+        {
+          "attack": 1,
+          "defense": 24,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 25,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 1,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 22,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 23,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 22,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 2,
+          "percent": 0
+        },
+        {
+          "attack": 4,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 20,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 22,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 23,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 1,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 20,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 25,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 1,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 20,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 22,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 24,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 0,
+          "percent": 0
+        },
+        {
+          "attack": 8,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 24,
+          "percent": 200
+        },
+        {
+          "attack": 20,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 20,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 20,
+          "defense": 20,
+          "percent": 50
+        },
+        {
+          "attack": 20,
+          "defense": 21,
+          "percent": 50
+        },
+        {
+          "attack": 20,
+          "defense": 22,
+          "percent": 200
+        },
+        {
+          "attack": 20,
+          "defense": 25,
+          "percent": 200
+        },
+        {
+          "attack": 20,
+          "defense": 26,
+          "percent": 50
+        },
+        {
+          "attack": 21,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 21,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 21,
+          "defense": 20,
+          "percent": 200
+        },
+        {
+          "attack": 21,
+          "defense": 21,
+          "percent": 50
+        },
+        {
+          "attack": 21,
+          "defense": 22,
+          "percent": 50
+        },
+        {
+          "attack": 21,
+          "defense": 26,
+          "percent": 50
+        },
+        {
+          "attack": 22,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 22,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 22,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 22,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 22,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 22,
+          "defense": 20,
+          "percent": 50
+        },
+        {
+          "attack": 22,
+          "defense": 21,
+          "percent": 200
+        },
+        {
+          "attack": 22,
+          "defense": 22,
+          "percent": 50
+        },
+        {
+          "attack": 22,
+          "defense": 26,
+          "percent": 50
+        },
+        {
+          "attack": 23,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 23,
+          "defense": 4,
+          "percent": 0
+        },
+        {
+          "attack": 23,
+          "defense": 21,
+          "percent": 200
+        },
+        {
+          "attack": 23,
+          "defense": 22,
+          "percent": 50
+        },
+        {
+          "attack": 23,
+          "defense": 23,
+          "percent": 50
+        },
+        {
+          "attack": 23,
+          "defense": 26,
+          "percent": 50
+        },
+        {
+          "attack": 24,
+          "defense": 1,
+          "percent": 200
+        },
+        {
+          "attack": 24,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 24,
+          "defense": 24,
+          "percent": 50
+        },
+        {
+          "attack": 25,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 25,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 25,
+          "defense": 21,
+          "percent": 50
+        },
+        {
+          "attack": 25,
+          "defense": 22,
+          "percent": 200
+        },
+        {
+          "attack": 25,
+          "defense": 25,
+          "percent": 50
+        },
+        {
+          "attack": 25,
+          "defense": 26,
+          "percent": 200
+        },
+        {
+          "attack": 26,
+          "defense": 26,
+          "percent": 200
+        }
+      ]
+    },
+    {
       "dataset_id": "pokemon-gen2-crystal-type-chart",
       "generation": 2,
       "reference_game": "Pokémon Crystal",
@@ -2497,6 +2981,5506 @@
         {
           "attack": 18,
           "defense": 17,
+          "percent": 200
+        }
+      ]
+    },
+    {
+      "dataset_id": "pokemon-gen6-wishes-type-chart",
+      "generation": 6,
+      "reference_game": "Pokémon Wishes of Tomorrow v1.2.6",
+      "source_files": [
+        "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartWishes.kt"
+      ],
+      "source_sha256": "0c4e185d6008482555124b7c9563b40774027e12701e14042289d5adb5fb080d",
+      "license": "GPL-3.0-only",
+      "default_percent": 100,
+      "types": [
+        {
+          "id": 1,
+          "name": "Normal"
+        },
+        {
+          "id": 2,
+          "name": "Fighting"
+        },
+        {
+          "id": 3,
+          "name": "Flying"
+        },
+        {
+          "id": 4,
+          "name": "Poison"
+        },
+        {
+          "id": 5,
+          "name": "Ground"
+        },
+        {
+          "id": 6,
+          "name": "Rock"
+        },
+        {
+          "id": 7,
+          "name": "Bug"
+        },
+        {
+          "id": 8,
+          "name": "Ghost"
+        },
+        {
+          "id": 9,
+          "name": "Steel"
+        },
+        {
+          "id": 11,
+          "name": "Fire"
+        },
+        {
+          "id": 12,
+          "name": "Water"
+        },
+        {
+          "id": 13,
+          "name": "Grass"
+        },
+        {
+          "id": 14,
+          "name": "Electric"
+        },
+        {
+          "id": 15,
+          "name": "Psychic"
+        },
+        {
+          "id": 16,
+          "name": "Ice"
+        },
+        {
+          "id": 17,
+          "name": "Dragon"
+        },
+        {
+          "id": 18,
+          "name": "Dark"
+        },
+        {
+          "id": 19,
+          "name": "Fairy"
+        }
+      ],
+      "matchups": [
+        {
+          "attack": 1,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 8,
+          "percent": 0
+        },
+        {
+          "attack": 1,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 1,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 8,
+          "percent": 0
+        },
+        {
+          "attack": 2,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 15,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 18,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 9,
+          "percent": 0
+        },
+        {
+          "attack": 4,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 19,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 3,
+          "percent": 0
+        },
+        {
+          "attack": 5,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 14,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 18,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 8,
+          "defense": 1,
+          "percent": 0
+        },
+        {
+          "attack": 8,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 9,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 9,
+          "defense": 19,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 14,
+          "defense": 5,
+          "percent": 0
+        },
+        {
+          "attack": 14,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 14,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 15,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 18,
+          "percent": 0
+        },
+        {
+          "attack": 16,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 16,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 17,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 17,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 17,
+          "defense": 19,
+          "percent": 0
+        },
+        {
+          "attack": 18,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 18,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 18,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 19,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 19,
+          "defense": 18,
+          "percent": 200
+        }
+      ]
+    },
+    {
+      "dataset_id": "pokemon-gen6-team-rocket-type-chart",
+      "generation": 6,
+      "reference_game": "Pokémon Team Rocket Edition 2026 (ES) v3.0.9",
+      "source_files": [
+        "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartTeamRocketV3.kt"
+      ],
+      "source_sha256": "5f5d3ec99d5b20c483b2786423ed0344606978a8485f2e9302c1d672a21ca945",
+      "license": "GPL-3.0-only",
+      "default_percent": 100,
+      "types": [
+        {
+          "id": 1,
+          "name": "Normal"
+        },
+        {
+          "id": 2,
+          "name": "Fighting"
+        },
+        {
+          "id": 3,
+          "name": "Flying"
+        },
+        {
+          "id": 4,
+          "name": "Poison"
+        },
+        {
+          "id": 5,
+          "name": "Ground"
+        },
+        {
+          "id": 6,
+          "name": "Rock"
+        },
+        {
+          "id": 7,
+          "name": "Bug"
+        },
+        {
+          "id": 8,
+          "name": "Ghost"
+        },
+        {
+          "id": 9,
+          "name": "Steel"
+        },
+        {
+          "id": 11,
+          "name": "Fire"
+        },
+        {
+          "id": 12,
+          "name": "Water"
+        },
+        {
+          "id": 13,
+          "name": "Grass"
+        },
+        {
+          "id": 14,
+          "name": "Electric"
+        },
+        {
+          "id": 15,
+          "name": "Psychic"
+        },
+        {
+          "id": 16,
+          "name": "Ice"
+        },
+        {
+          "id": 17,
+          "name": "Dragon"
+        },
+        {
+          "id": 18,
+          "name": "Dark"
+        },
+        {
+          "id": 19,
+          "name": "Fairy"
+        }
+      ],
+      "matchups": [
+        {
+          "attack": 1,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 8,
+          "percent": 0
+        },
+        {
+          "attack": 1,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 1,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 8,
+          "percent": 0
+        },
+        {
+          "attack": 2,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 15,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 18,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 9,
+          "percent": 0
+        },
+        {
+          "attack": 4,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 19,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 3,
+          "percent": 0
+        },
+        {
+          "attack": 5,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 14,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 18,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 8,
+          "defense": 1,
+          "percent": 0
+        },
+        {
+          "attack": 8,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 9,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 9,
+          "defense": 19,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 14,
+          "defense": 5,
+          "percent": 0
+        },
+        {
+          "attack": 14,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 14,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 15,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 18,
+          "percent": 0
+        },
+        {
+          "attack": 16,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 16,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 17,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 17,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 17,
+          "defense": 19,
+          "percent": 0
+        },
+        {
+          "attack": 18,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 18,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 18,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 19,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 19,
+          "defense": 18,
+          "percent": 200
+        }
+      ]
+    },
+    {
+      "dataset_id": "pokemon-gen6-soul-gold-type-chart",
+      "generation": 6,
+      "reference_game": "Pokémon SoulGold v1.1.4",
+      "source_files": [
+        "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartSoulGold.kt"
+      ],
+      "source_sha256": "e44f738db192a978ff9f21e953b7d8f9536f97b86be1c98802b3b5679a148b1f",
+      "license": "GPL-3.0-only",
+      "default_percent": 100,
+      "types": [
+        {
+          "id": 1,
+          "name": "Normal"
+        },
+        {
+          "id": 2,
+          "name": "Fighting"
+        },
+        {
+          "id": 3,
+          "name": "Flying"
+        },
+        {
+          "id": 4,
+          "name": "Poison"
+        },
+        {
+          "id": 5,
+          "name": "Ground"
+        },
+        {
+          "id": 6,
+          "name": "Rock"
+        },
+        {
+          "id": 7,
+          "name": "Bug"
+        },
+        {
+          "id": 8,
+          "name": "Ghost"
+        },
+        {
+          "id": 9,
+          "name": "Steel"
+        },
+        {
+          "id": 11,
+          "name": "Fire"
+        },
+        {
+          "id": 12,
+          "name": "Water"
+        },
+        {
+          "id": 13,
+          "name": "Grass"
+        },
+        {
+          "id": 14,
+          "name": "Electric"
+        },
+        {
+          "id": 15,
+          "name": "Psychic"
+        },
+        {
+          "id": 16,
+          "name": "Ice"
+        },
+        {
+          "id": 17,
+          "name": "Dragon"
+        },
+        {
+          "id": 18,
+          "name": "Dark"
+        },
+        {
+          "id": 19,
+          "name": "Fairy"
+        }
+      ],
+      "matchups": [
+        {
+          "attack": 1,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 8,
+          "percent": 0
+        },
+        {
+          "attack": 1,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 1,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 8,
+          "percent": 0
+        },
+        {
+          "attack": 2,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 15,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 18,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 9,
+          "percent": 0
+        },
+        {
+          "attack": 4,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 19,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 3,
+          "percent": 0
+        },
+        {
+          "attack": 5,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 14,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 18,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 8,
+          "defense": 1,
+          "percent": 0
+        },
+        {
+          "attack": 8,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 9,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 9,
+          "defense": 19,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 14,
+          "defense": 5,
+          "percent": 0
+        },
+        {
+          "attack": 14,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 14,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 15,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 18,
+          "percent": 0
+        },
+        {
+          "attack": 16,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 16,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 17,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 17,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 17,
+          "defense": 19,
+          "percent": 0
+        },
+        {
+          "attack": 18,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 18,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 18,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 19,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 19,
+          "defense": 18,
+          "percent": 200
+        }
+      ]
+    },
+    {
+      "dataset_id": "pokemon-gen6-rogue-type-chart",
+      "generation": 6,
+      "reference_game": "Emerald Rogue v2.2.1-EX",
+      "source_files": [
+        "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartRogue.kt"
+      ],
+      "source_sha256": "d542195f11a9acc07501dbb2ea50d1520d6b137834579955853f45ff48f542e1",
+      "license": "GPL-3.0-only",
+      "default_percent": 100,
+      "types": [
+        {
+          "id": 0,
+          "name": "Normal"
+        },
+        {
+          "id": 1,
+          "name": "Fighting"
+        },
+        {
+          "id": 2,
+          "name": "Flying"
+        },
+        {
+          "id": 3,
+          "name": "Poison"
+        },
+        {
+          "id": 4,
+          "name": "Ground"
+        },
+        {
+          "id": 5,
+          "name": "Rock"
+        },
+        {
+          "id": 6,
+          "name": "Bug"
+        },
+        {
+          "id": 7,
+          "name": "Ghost"
+        },
+        {
+          "id": 8,
+          "name": "Steel"
+        },
+        {
+          "id": 9,
+          "name": "???"
+        },
+        {
+          "id": 10,
+          "name": "Fire"
+        },
+        {
+          "id": 11,
+          "name": "Water"
+        },
+        {
+          "id": 12,
+          "name": "Grass"
+        },
+        {
+          "id": 13,
+          "name": "Electric"
+        },
+        {
+          "id": 14,
+          "name": "Psychic"
+        },
+        {
+          "id": 15,
+          "name": "Ice"
+        },
+        {
+          "id": 16,
+          "name": "Dragon"
+        },
+        {
+          "id": 17,
+          "name": "Dark"
+        },
+        {
+          "id": 18,
+          "name": "Fairy"
+        }
+      ],
+      "matchups": [
+        {
+          "attack": 0,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 0,
+          "defense": 7,
+          "percent": 0
+        },
+        {
+          "attack": 0,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 0,
+          "percent": 200
+        },
+        {
+          "attack": 1,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 1,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 7,
+          "percent": 0
+        },
+        {
+          "attack": 1,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 1,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 1,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 1,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 1,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 8,
+          "percent": 0
+        },
+        {
+          "attack": 3,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 18,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 2,
+          "percent": 0
+        },
+        {
+          "attack": 4,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 10,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 1,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 10,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 1,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 10,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 14,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 0,
+          "percent": 0
+        },
+        {
+          "attack": 7,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 14,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 8,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 8,
+          "defense": 10,
+          "percent": 50
+        },
+        {
+          "attack": 8,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 8,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 8,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 18,
+          "percent": 200
+        },
+        {
+          "attack": 10,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 10,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 10,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 10,
+          "defense": 10,
+          "percent": 50
+        },
+        {
+          "attack": 10,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 10,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 10,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 10,
+          "defense": 16,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 10,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 16,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 10,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 16,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 4,
+          "percent": 0
+        },
+        {
+          "attack": 13,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 16,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 1,
+          "percent": 200
+        },
+        {
+          "attack": 14,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 14,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 17,
+          "percent": 0
+        },
+        {
+          "attack": 15,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 10,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 15,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 18,
+          "percent": 0
+        },
+        {
+          "attack": 17,
+          "defense": 1,
+          "percent": 50
+        },
+        {
+          "attack": 17,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 17,
+          "defense": 14,
+          "percent": 200
+        },
+        {
+          "attack": 17,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 17,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 1,
+          "percent": 200
+        },
+        {
+          "attack": 18,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 10,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 18,
+          "defense": 17,
+          "percent": 200
+        }
+      ]
+    },
+    {
+      "dataset_id": "pokemon-gen6-quetzal-type-chart",
+      "generation": 6,
+      "reference_game": "Pokémon Quetzal English Alpha 9 v0",
+      "source_files": [
+        "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartQuetzal.kt"
+      ],
+      "source_sha256": "4ca21822548573cab1e0e1214e9d82c4ac50870a7c6bbbc50e56b57e6c2fd5fd",
+      "license": "GPL-3.0-only",
+      "default_percent": 100,
+      "types": [
+        {
+          "id": 0,
+          "name": "Normal"
+        },
+        {
+          "id": 1,
+          "name": "Fighting"
+        },
+        {
+          "id": 2,
+          "name": "Flying"
+        },
+        {
+          "id": 3,
+          "name": "Poison"
+        },
+        {
+          "id": 4,
+          "name": "Ground"
+        },
+        {
+          "id": 5,
+          "name": "Rock"
+        },
+        {
+          "id": 6,
+          "name": "Bug"
+        },
+        {
+          "id": 7,
+          "name": "Ghost"
+        },
+        {
+          "id": 8,
+          "name": "Steel"
+        },
+        {
+          "id": 10,
+          "name": "Fire"
+        },
+        {
+          "id": 11,
+          "name": "Water"
+        },
+        {
+          "id": 12,
+          "name": "Grass"
+        },
+        {
+          "id": 13,
+          "name": "Electric"
+        },
+        {
+          "id": 14,
+          "name": "Psychic"
+        },
+        {
+          "id": 15,
+          "name": "Ice"
+        },
+        {
+          "id": 16,
+          "name": "Dragon"
+        },
+        {
+          "id": 17,
+          "name": "Dark"
+        },
+        {
+          "id": 18,
+          "name": "Fairy"
+        }
+      ],
+      "matchups": [
+        {
+          "attack": 0,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 0,
+          "defense": 7,
+          "percent": 0
+        },
+        {
+          "attack": 0,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 0,
+          "percent": 200
+        },
+        {
+          "attack": 1,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 1,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 7,
+          "percent": 0
+        },
+        {
+          "attack": 1,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 1,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 1,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 1,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 1,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 8,
+          "percent": 0
+        },
+        {
+          "attack": 3,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 18,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 2,
+          "percent": 0
+        },
+        {
+          "attack": 4,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 10,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 1,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 10,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 1,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 10,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 14,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 0,
+          "percent": 0
+        },
+        {
+          "attack": 7,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 14,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 8,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 8,
+          "defense": 10,
+          "percent": 50
+        },
+        {
+          "attack": 8,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 8,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 8,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 18,
+          "percent": 200
+        },
+        {
+          "attack": 10,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 10,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 10,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 10,
+          "defense": 10,
+          "percent": 50
+        },
+        {
+          "attack": 10,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 10,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 10,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 10,
+          "defense": 16,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 10,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 16,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 10,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 16,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 4,
+          "percent": 0
+        },
+        {
+          "attack": 13,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 16,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 1,
+          "percent": 200
+        },
+        {
+          "attack": 14,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 14,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 17,
+          "percent": 0
+        },
+        {
+          "attack": 15,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 10,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 15,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 18,
+          "percent": 0
+        },
+        {
+          "attack": 17,
+          "defense": 1,
+          "percent": 50
+        },
+        {
+          "attack": 17,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 17,
+          "defense": 14,
+          "percent": 200
+        },
+        {
+          "attack": 17,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 17,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 1,
+          "percent": 200
+        },
+        {
+          "attack": 18,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 10,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 18,
+          "defense": 17,
+          "percent": 200
+        }
+      ]
+    },
+    {
+      "dataset_id": "pokemon-gen6-lazarus-type-chart",
+      "generation": 6,
+      "reference_game": "Pokémon Lazarus v2.0",
+      "source_files": [
+        "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartLazarus.kt"
+      ],
+      "source_sha256": "942d2252aa672c8e81aebcd3c5eafefac3db7d5e444cc355a1098356b94af792",
+      "license": "GPL-3.0-only",
+      "default_percent": 100,
+      "types": [
+        {
+          "id": 1,
+          "name": "Normal"
+        },
+        {
+          "id": 2,
+          "name": "Fighting"
+        },
+        {
+          "id": 3,
+          "name": "Flying"
+        },
+        {
+          "id": 4,
+          "name": "Poison"
+        },
+        {
+          "id": 5,
+          "name": "Ground"
+        },
+        {
+          "id": 6,
+          "name": "Rock"
+        },
+        {
+          "id": 7,
+          "name": "Bug"
+        },
+        {
+          "id": 8,
+          "name": "Ghost"
+        },
+        {
+          "id": 9,
+          "name": "Steel"
+        },
+        {
+          "id": 11,
+          "name": "Fire"
+        },
+        {
+          "id": 12,
+          "name": "Water"
+        },
+        {
+          "id": 13,
+          "name": "Grass"
+        },
+        {
+          "id": 14,
+          "name": "Electric"
+        },
+        {
+          "id": 15,
+          "name": "Psychic"
+        },
+        {
+          "id": 16,
+          "name": "Ice"
+        },
+        {
+          "id": 17,
+          "name": "Dragon"
+        },
+        {
+          "id": 18,
+          "name": "Dark"
+        },
+        {
+          "id": 19,
+          "name": "Fairy"
+        }
+      ],
+      "matchups": [
+        {
+          "attack": 1,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 8,
+          "percent": 0
+        },
+        {
+          "attack": 1,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 1,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 8,
+          "percent": 0
+        },
+        {
+          "attack": 2,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 15,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 18,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 9,
+          "percent": 0
+        },
+        {
+          "attack": 4,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 19,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 3,
+          "percent": 0
+        },
+        {
+          "attack": 5,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 14,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 18,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 8,
+          "defense": 1,
+          "percent": 0
+        },
+        {
+          "attack": 8,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 9,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 9,
+          "defense": 19,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 14,
+          "defense": 5,
+          "percent": 0
+        },
+        {
+          "attack": 14,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 14,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 15,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 18,
+          "percent": 0
+        },
+        {
+          "attack": 16,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 16,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 17,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 17,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 17,
+          "defense": 19,
+          "percent": 0
+        },
+        {
+          "attack": 18,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 18,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 18,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 19,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 19,
+          "defense": 18,
+          "percent": 200
+        }
+      ]
+    },
+    {
+      "dataset_id": "pokemon-gen6-imperium-type-chart",
+      "generation": 6,
+      "reference_game": "Pokémon Emerald Imperium v1.3.1",
+      "source_files": [
+        "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartImperium.kt"
+      ],
+      "source_sha256": "df82f7d1d9b2b237e83360695f5900b4ec4048212d378f4603673d1a0da6bf7e",
+      "license": "GPL-3.0-only",
+      "default_percent": 100,
+      "types": [
+        {
+          "id": 1,
+          "name": "Normal"
+        },
+        {
+          "id": 2,
+          "name": "Fighting"
+        },
+        {
+          "id": 3,
+          "name": "Flying"
+        },
+        {
+          "id": 4,
+          "name": "Poison"
+        },
+        {
+          "id": 5,
+          "name": "Ground"
+        },
+        {
+          "id": 6,
+          "name": "Rock"
+        },
+        {
+          "id": 7,
+          "name": "Bug"
+        },
+        {
+          "id": 8,
+          "name": "Ghost"
+        },
+        {
+          "id": 9,
+          "name": "Steel"
+        },
+        {
+          "id": 11,
+          "name": "Fire"
+        },
+        {
+          "id": 12,
+          "name": "Water"
+        },
+        {
+          "id": 13,
+          "name": "Grass"
+        },
+        {
+          "id": 14,
+          "name": "Electric"
+        },
+        {
+          "id": 15,
+          "name": "Psychic"
+        },
+        {
+          "id": 16,
+          "name": "Ice"
+        },
+        {
+          "id": 17,
+          "name": "Dragon"
+        },
+        {
+          "id": 18,
+          "name": "Dark"
+        },
+        {
+          "id": 19,
+          "name": "Fairy"
+        }
+      ],
+      "matchups": [
+        {
+          "attack": 1,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 8,
+          "percent": 0
+        },
+        {
+          "attack": 1,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 1,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 8,
+          "percent": 0
+        },
+        {
+          "attack": 2,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 15,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 18,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 9,
+          "percent": 0
+        },
+        {
+          "attack": 4,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 19,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 3,
+          "percent": 0
+        },
+        {
+          "attack": 5,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 14,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 18,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 8,
+          "defense": 1,
+          "percent": 0
+        },
+        {
+          "attack": 8,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 9,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 9,
+          "defense": 19,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 14,
+          "defense": 5,
+          "percent": 0
+        },
+        {
+          "attack": 14,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 14,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 15,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 18,
+          "percent": 0
+        },
+        {
+          "attack": 16,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 16,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 17,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 17,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 17,
+          "defense": 19,
+          "percent": 0
+        },
+        {
+          "attack": 18,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 18,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 18,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 19,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 19,
+          "defense": 18,
+          "percent": 200
+        }
+      ]
+    },
+    {
+      "dataset_id": "pokemon-gen6-hns-type-chart",
+      "generation": 6,
+      "reference_game": "Pokémon Heart and Soul v2.0.6",
+      "source_files": [
+        "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartHns.kt"
+      ],
+      "source_sha256": "7acfa127a8d1ca4b7b5c73f8c36ee0f5db0ec36ba6eb24519e43b9e3385e92a2",
+      "license": "GPL-3.0-only",
+      "default_percent": 100,
+      "types": [
+        {
+          "id": 1,
+          "name": "Normal"
+        },
+        {
+          "id": 2,
+          "name": "Fighting"
+        },
+        {
+          "id": 3,
+          "name": "Flying"
+        },
+        {
+          "id": 4,
+          "name": "Poison"
+        },
+        {
+          "id": 5,
+          "name": "Ground"
+        },
+        {
+          "id": 6,
+          "name": "Rock"
+        },
+        {
+          "id": 7,
+          "name": "Bug"
+        },
+        {
+          "id": 8,
+          "name": "Ghost"
+        },
+        {
+          "id": 9,
+          "name": "Steel"
+        },
+        {
+          "id": 11,
+          "name": "Fire"
+        },
+        {
+          "id": 12,
+          "name": "Water"
+        },
+        {
+          "id": 13,
+          "name": "Grass"
+        },
+        {
+          "id": 14,
+          "name": "Electric"
+        },
+        {
+          "id": 15,
+          "name": "Psychic"
+        },
+        {
+          "id": 16,
+          "name": "Ice"
+        },
+        {
+          "id": 17,
+          "name": "Dragon"
+        },
+        {
+          "id": 18,
+          "name": "Dark"
+        },
+        {
+          "id": 19,
+          "name": "Fairy"
+        }
+      ],
+      "matchups": [
+        {
+          "attack": 1,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 1,
+          "defense": 8,
+          "percent": 0
+        },
+        {
+          "attack": 1,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 1,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 8,
+          "percent": 0
+        },
+        {
+          "attack": 2,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 15,
+          "percent": 50
+        },
+        {
+          "attack": 2,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 18,
+          "percent": 200
+        },
+        {
+          "attack": 2,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 3,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 3,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 4,
+          "defense": 9,
+          "percent": 0
+        },
+        {
+          "attack": 4,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 4,
+          "defense": 19,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 3,
+          "percent": 0
+        },
+        {
+          "attack": 5,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 5,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 5,
+          "defense": 14,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 5,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 6,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 6,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 8,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 7,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 18,
+          "percent": 200
+        },
+        {
+          "attack": 7,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 8,
+          "defense": 1,
+          "percent": 0
+        },
+        {
+          "attack": 8,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 8,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 9,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 9,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 9,
+          "defense": 19,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 6,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 7,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 9,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 11,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 16,
+          "percent": 200
+        },
+        {
+          "attack": 11,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 11,
+          "percent": 200
+        },
+        {
+          "attack": 12,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 12,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 3,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 6,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 7,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 13,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 13,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 14,
+          "defense": 5,
+          "percent": 0
+        },
+        {
+          "attack": 14,
+          "defense": 12,
+          "percent": 200
+        },
+        {
+          "attack": 14,
+          "defense": 13,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 14,
+          "percent": 50
+        },
+        {
+          "attack": 14,
+          "defense": 17,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 4,
+          "percent": 200
+        },
+        {
+          "attack": 15,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 15,
+          "percent": 50
+        },
+        {
+          "attack": 15,
+          "defense": 18,
+          "percent": 0
+        },
+        {
+          "attack": 16,
+          "defense": 3,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 5,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 12,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 13,
+          "percent": 200
+        },
+        {
+          "attack": 16,
+          "defense": 16,
+          "percent": 50
+        },
+        {
+          "attack": 16,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 17,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 17,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 17,
+          "defense": 19,
+          "percent": 0
+        },
+        {
+          "attack": 18,
+          "defense": 2,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 8,
+          "percent": 200
+        },
+        {
+          "attack": 18,
+          "defense": 15,
+          "percent": 200
+        },
+        {
+          "attack": 18,
+          "defense": 18,
+          "percent": 50
+        },
+        {
+          "attack": 18,
+          "defense": 19,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 2,
+          "percent": 200
+        },
+        {
+          "attack": 19,
+          "defense": 4,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 9,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 11,
+          "percent": 50
+        },
+        {
+          "attack": 19,
+          "defense": 17,
+          "percent": 200
+        },
+        {
+          "attack": 19,
+          "defense": 18,
           "percent": 200
         }
       ]

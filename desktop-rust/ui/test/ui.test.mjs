@@ -132,14 +132,15 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   assert.equal(await page.getByText('Generación 9',{exact:true}).isVisible(),true);
   await page.getByRole('button',{name:'Analizar efectividad de Pecharunt',exact:true}).click();
   assert.equal(await page.getByText('Contexto del Dex: Pecharunt (#1025). Especie Gen 9; la tabla es Gen III. Confirma tipos y reglas en la ROM o el hack.',{exact:true}).isVisible(),true);
-  await page.getByLabel('Generación de la tabla').selectOption('2');
+  await page.getByLabel('Generación de la tabla').selectOption('pokemon-gen2-crystal-type-chart');
   await page.getByLabel('Ataque').selectOption('20');
   await page.getByLabel('Defensa 1').selectOption('22');
   await page.getByLabel('Defensa 2').selectOption('9');
+  assert.equal(await page.getByLabel('Generación de la tabla').locator('option').count(),14);
   await page.getByRole('button',{name:'Calcular',exact:true}).click();
   assert.equal(await page.getByText('FIRE contra GRASS / STEEL',{exact:true}).isVisible(),true);
   assert.equal(await page.getByText('4×',{exact:true}).isVisible(),true);
-  await page.getByLabel('Generación de la tabla').selectOption('6-glazed');
+  await page.getByLabel('Generación de la tabla').selectOption('pokemon-gen6-glazed-type-chart');
   assert.equal(await page.getByText('Contexto del Dex: Pecharunt (#1025). Especie Gen 9; la tabla es Gen VI. Confirma tipos y reglas en la ROM o el hack.',{exact:true}).isVisible(),true);
   assert.equal(await page.getByText('Pokémon Glazed 9.2.0 · GPL-3.0-only',{exact:true}).isVisible(),true);
   await page.getByLabel('Ataque').selectOption('9');
@@ -148,7 +149,7 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.getByRole('button',{name:'Calcular',exact:true}).click();
   assert.equal(await page.getByText('Fairy contra Dragon',{exact:true}).isVisible(),true);
   assert.equal(await page.getByText('2×',{exact:true}).isVisible(),true);
-  await page.getByLabel('Generación de la tabla').selectOption('6-rowe');
+  await page.getByLabel('Generación de la tabla').selectOption('pokemon-gen6-rowe-type-chart');
   assert.equal(await page.getByText('Pokémon R.O.W.E. v2.1.9.1 Experimental · GPL-3.0-only',{exact:true}).isVisible(),true);
   await page.getByLabel('Ataque').selectOption('18');
   await page.getByLabel('Defensa 1').selectOption('1');

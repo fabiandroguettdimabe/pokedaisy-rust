@@ -13,9 +13,11 @@ CHART_PATH = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeCh
 OUTPUT = ROOT / "desktop-rust/assets/reference/type-chart-gen3.json"
 UI_DATASET_OUTPUT = ROOT / "desktop-rust/ui/src/data/type-charts-reference.json"
 GEN1_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartYellow.kt"
+GEN1_LEGACY = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartYellowLegacy.kt"
 GEN2_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartCrystal.kt"
 GEN6_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartGlazed.kt"
 ROWE_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartRowe.kt"
+HACK_CHARTS = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data"
 
 
 def kotlin_map(source: str, variable: str) -> str:
@@ -77,9 +79,18 @@ def render_dataset() -> str:
 def render_additional_datasets() -> str:
     definitions = [
         (1, "yellow", GEN1_NAMES, "typeNamesYellow", "typeEffectivenessYellow"),
+        (1, "yellow-legacy", GEN1_LEGACY, "typeNamesYellowLegacy", "typeEffectivenessYellowLegacy"),
         (2, "crystal", GEN2_NAMES, "typeNamesCrystal", "typeEffectivenessCrystal"),
         (6, "glazed", GEN6_NAMES, "typeNamesGlazed", "typeEffectivenessGlazed"),
         (6, "rowe", ROWE_NAMES, "typeNamesRowe", "typeEffectivenessRowe"),
+        (6, "wishes", HACK_CHARTS / "TypeChartWishes.kt", "typeNamesWishes", "typeEffectivenessWishes"),
+        (6, "team-rocket", HACK_CHARTS / "TypeChartTeamRocketV3.kt", "typeNamesTeamRocketV3", "typeEffectivenessTeamRocketV3"),
+        (6, "soul-gold", HACK_CHARTS / "TypeChartSoulGold.kt", "typeNamesSoulGold", "typeEffectivenessSoulGold"),
+        (6, "rogue", HACK_CHARTS / "TypeChartRogue.kt", "typeNamesRogue", "typeEffectivenessRogue"),
+        (6, "quetzal", HACK_CHARTS / "TypeChartQuetzal.kt", "typeNamesQuetzal", "typeEffectivenessQuetzal"),
+        (6, "lazarus", HACK_CHARTS / "TypeChartLazarus.kt", "typeNamesLazarus", "typeEffectivenessLazarus"),
+        (6, "imperium", HACK_CHARTS / "TypeChartImperium.kt", "typeNamesImperium", "typeEffectivenessImperium"),
+        (6, "hns", HACK_CHARTS / "TypeChartHns.kt", "typeNamesHns", "typeEffectivenessHns"),
     ]
     datasets = []
     for generation, game, source_path, names_var, chart_var in definitions:
@@ -90,9 +101,18 @@ def render_additional_datasets() -> str:
             "generation": generation,
             "reference_game": {
                 "yellow": "Pokémon Yellow",
+                "yellow-legacy": "Pokémon Yellow Legacy v1.0.10",
                 "crystal": "Pokémon Crystal",
                 "glazed": "Pokémon Glazed 9.2.0",
                 "rowe": "Pokémon R.O.W.E. v2.1.9.1 Experimental",
+                "wishes": "Pokémon Wishes of Tomorrow v1.2.6",
+                "team-rocket": "Pokémon Team Rocket Edition 2026 (ES) v3.0.9",
+                "soul-gold": "Pokémon SoulGold v1.1.4",
+                "rogue": "Emerald Rogue v2.2.1-EX",
+                "quetzal": "Pokémon Quetzal English Alpha 9 v0",
+                "lazarus": "Pokémon Lazarus v2.0",
+                "imperium": "Pokémon Emerald Imperium v1.3.1",
+                "hns": "Pokémon Heart and Soul v2.0.6",
             }[game],
             "source_files": [source_path.relative_to(ROOT).as_posix()],
             "source_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
