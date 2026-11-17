@@ -789,6 +789,63 @@ mod tests {
         let _ = fs::remove_dir_all(root);
     }
 
+    #[cfg(windows)]
+    #[test]
+    fn folder_scan_counts_a_windows_read_denial_without_aborting_other_roots() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-import-denied-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let denied = root.join("denied");
+        let readable = root.join("readable");
+        fs::create_dir_all(&denied).unwrap();
+        fs::create_dir_all(&readable).unwrap();
+        let rom = readable.join("fixture.gba");
+        fs::write(&rom, valid_gba()).unwrap();
+        let expected_rom = rom.canonicalize().unwrap();
+
+        let identity = std::process::Command::new("whoami")
+            .args(["/user", "/fo", "csv", "/nh"])
+            .output()
+            .unwrap();
+        assert!(identity.status.success());
+        let identity = String::from_utf8(identity.stdout).unwrap();
+        let sid = identity
+            .lines()
+            .next()
+            .and_then(|line| line.split(',').nth(1))
+            .map(|value| value.trim().trim_matches('"'))
+            .filter(|value| value.starts_with("S-1-"))
+            .expect("whoami returns the current Windows SID");
+        let deny = format!("{sid}:(OI)(CI)(RX)");
+        let denied_acl = std::process::Command::new("icacls")
+            .arg(&denied)
+            .arg("/deny")
+            .arg(&deny)
+            .output()
+            .unwrap();
+        if !denied_acl.status.success() {
+            eprintln!("Skipping denied-folder assertion: icacls could not set the temporary ACL");
+            let _ = fs::remove_dir_all(&root);
+            return;
+        }
+
+        let (paths, rejected) = collect_rom_paths(&[denied.clone(), readable], 16);
+        let restore_acl = std::process::Command::new("icacls")
+            .arg(&denied)
+            .arg("/remove:d")
+            .arg(sid)
+            .output()
+            .unwrap();
+        let _ = fs::remove_dir_all(&root);
+
+        assert!(
+            restore_acl.status.success(),
+            "temporary ACL must be restored"
+        );
+        assert_eq!(paths, vec![expected_rom]);
+        assert_eq!(rejected, 1);
+    }
+
     #[test]
     fn import_skips_nonexistent_rom_paths() {
         let mut entries: Vec<LibraryEntry> = Vec::new();
