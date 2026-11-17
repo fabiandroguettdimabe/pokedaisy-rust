@@ -5,7 +5,7 @@ Actualizado: 2026-11-17. Este documento inicia la ejecución del plan técnico (
 ## Convenciones
 
 - **Detectado / presente:** el artefacto, código o ruta existe en el checkout o fue observado.
-- **Probado / verificado:** existe evidencia de ejecución reproducible para un `build/commit/coreHash/ROM identity o fixtureId/testId/fecha` concretos. Sin esa evidencia, el estado es **no verificado** o **pendiente**.
+- **Probado / verificado:** existe evidencia de ejecución reproducible para un `build/commit/coreHash/ROM identity o fixtureId/testId/fecha` concretos. Para declarar Ready/Listo/Disponible en una celda, el verificador exige `cell`, `testId`, `build`, commit y `coreHash` SHA-256 en el mismo registro. Suite web: `npm.cmd test` 87/87 (2026-11-17, commit `1cf194a`). Sin esa evidencia, el estado es **no verificado** o **pendiente**.
 - **Fuente:** referencia a E01–E18 del plan técnico, rutas de código o resultado de comando registrado.
 - Una capacidad de emulación estándar, una extensión propia y un adaptador Companion son dimensiones distintas y no se infieren entre sí.
 
