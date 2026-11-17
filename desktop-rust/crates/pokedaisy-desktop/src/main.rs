@@ -2849,6 +2849,33 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "smoke manual de ROM homebrew/core local; requiere VYNTRA_CORE_GAME_SMOKE_PATH y VYNTRA_CORE_GAME_SMOKE_ROM"]
+    fn configured_core_opens_the_homebrew_gba_diagnostic_rom() {
+        let core_path = std::path::PathBuf::from(
+            std::env::var_os("VYNTRA_CORE_GAME_SMOKE_PATH")
+                .expect("define VYNTRA_CORE_GAME_SMOKE_PATH"),
+        );
+        let rom_path = std::path::PathBuf::from(
+            std::env::var_os("VYNTRA_CORE_GAME_SMOKE_ROM")
+                .expect("define VYNTRA_CORE_GAME_SMOKE_ROM"),
+        );
+        let root =
+            std::env::temp_dir().join(format!("vyntra-homebrew-smoke-{}", std::process::id()));
+        let saves = root.join("saves");
+        let system = root.join("system");
+        std::fs::create_dir_all(&saves).unwrap();
+        std::fs::create_dir_all(&system).unwrap();
+        let mut config = super::Settings::default();
+        config.cores[1] = Some(core_path);
+        let game = super::game_from_path(rom_path);
+        let core = super::open_game(&game, std::slice::from_ref(&game), &saves, &system, &config)
+            .expect("mGBA must load the homebrew ROM through the production open_game path");
+        assert_eq!(core.system_info().library_name.as_deref(), Some("mGBA"));
+        drop(core);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn cancelled_library_scan_discards_partial_results() {
         let dir = std::env::temp_dir().join(format!("vyntra-cancel-scan-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
