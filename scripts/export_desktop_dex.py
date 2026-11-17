@@ -113,9 +113,10 @@ def parse_regional_dexes(
         name = " ".join(word.capitalize() if word not in {"of", "the"} else word for word in identifier.split("-"))
         if identifier == "letsgo-kanto":
             name = "Let's Go Kanto"
-        generation = group_generation_by_name.get(
-            REGIONAL_DEX_VERSION_GROUPS.get(identifier, ""), regional_generations[region_id]
-        )
+        version_group = REGIONAL_DEX_VERSION_GROUPS.get(identifier)
+        if version_group and version_group not in group_generation_by_name:
+            raise ValueError(f"regional dex {dex_id} refers to unknown version group {version_group}")
+        generation = group_generation_by_name.get(version_group, regional_generations[region_id])
         dexes[dex_id] = {
             "dataset_id": f"pokeapi-pokedex-{dex_id}",
             "identifier": identifier,
@@ -123,6 +124,8 @@ def parse_regional_dexes(
             "generation": generation,
             "species": [],
         }
+        if version_group:
+            dexes[dex_id]["version_group"] = version_group
 
     national_by_number = {item["number"]: item for item in national_species}
     seen: dict[int, set[int]] = {dex_id: set() for dex_id in dexes}

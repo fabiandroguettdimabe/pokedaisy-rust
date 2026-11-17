@@ -15329,6 +15329,7 @@
           "generation": 2
         }
       ],
+      "version_group": "heartgold-soulsilver",
       "species_count": 256,
       "species_source_sha256": "76836524a5c90887e3ed5f757bc823b25c7c8a0a52b02507e1997e94b86af628",
       "species_source_commit": "7764ee08de86ac11031ae2b883b598599af2b960",
@@ -22157,6 +22158,7 @@
           "generation": 3
         }
       ],
+      "version_group": "omega-ruby-alpha-sapphire",
       "species_count": 211,
       "species_source_sha256": "76836524a5c90887e3ed5f757bc823b25c7c8a0a52b02507e1997e94b86af628",
       "species_source_commit": "7764ee08de86ac11031ae2b883b598599af2b960",
@@ -33950,6 +33952,7 @@
           "generation": 7
         }
       ],
+      "version_group": "lets-go-pikachu-lets-go-eevee",
       "species_count": 153,
       "species_source_sha256": "76836524a5c90887e3ed5f757bc823b25c7c8a0a52b02507e1997e94b86af628",
       "species_source_commit": "7764ee08de86ac11031ae2b883b598599af2b960",
@@ -46898,6 +46901,7 @@
           "generation": 1
         }
       ],
+      "version_group": "legends-za",
       "species_count": 232,
       "species_source_sha256": "76836524a5c90887e3ed5f757bc823b25c7c8a0a52b02507e1997e94b86af628",
       "species_source_commit": "7764ee08de86ac11031ae2b883b598599af2b960",
@@ -47705,6 +47709,7 @@
           "generation": 7
         }
       ],
+      "version_group": "mega-dimension",
       "species_count": 132,
       "species_source_sha256": "76836524a5c90887e3ed5f757bc823b25c7c8a0a52b02507e1997e94b86af628",
       "species_source_commit": "7764ee08de86ac11031ae2b883b598599af2b960",

@@ -10,6 +10,32 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 class ExportDesktopDexTests(unittest.TestCase):
+    def test_regional_dex_pins_explicit_version_group_overrides(self):
+        dexes = "id,region_id,identifier,is_main_series\n8,2,updated-johto,1\n"
+        dex_numbers = "species_id,pokedex_id,pokedex_number\n25,8,1\n"
+        version_regions = "version_group_id,region_id\n8,2\n"
+        version_groups = "id,identifier,generation_id,order\n8,heartgold-soulsilver,4,8\n"
+        regions = "id,identifier\n2,johto\n"
+        species = [{"number": 25, "name": "Pikachu", "generation": 1}]
+
+        result = MODULE.parse_regional_dexes(
+            dexes, dex_numbers, version_regions, version_groups, regions, species
+        )
+
+        self.assertEqual(result[0]["version_group"], "heartgold-soulsilver")
+        self.assertEqual(result[0]["generation"], 4)
+
+    def test_regional_dex_rejects_missing_explicit_version_group_source(self):
+        with self.assertRaisesRegex(ValueError, "unknown version group heartgold-soulsilver"):
+            MODULE.parse_regional_dexes(
+                "id,region_id,identifier,is_main_series\n8,2,updated-johto,1\n",
+                "species_id,pokedex_id,pokedex_number\n25,8,1\n",
+                "version_group_id,region_id\n7,2\n8,2\n",
+                "id,identifier,generation_id,order\n7,gold-silver,2,7\n",
+                "id,identifier\n2,johto\n",
+                [{"number": 25, "name": "Pikachu", "generation": 1}],
+            )
+
     def test_pinned_regional_pokedex_export_preserves_both_numbering_systems_and_generation(self):
         species = [
             {"number": 25, "name": "Pikachu", "generation": 1},

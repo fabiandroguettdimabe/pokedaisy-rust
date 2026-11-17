@@ -14,6 +14,10 @@ do not assert that a form appears in every title or hack containing that species
 Each list generation follows its version group where a later regional update
 shares an earlier region (for example, Updated Hoenn uses Omega Ruby/Alpha
 Sapphire and Let's Go Kanto uses Let's Go Pikachu/Eevee).
+Five regional lists with an explicit PokeAPI mapping also retain their `version_group`
+identifier in the exported dataset. Other regional lists do not currently carry
+a game-group mapping, so the field is omitted instead of inferred from region
+or generation.
 
 To refresh intentionally, select a new upstream commit, replace these CSVs and
 `SOURCE_COMMIT.txt` together, inspect the license, then regenerate and review
