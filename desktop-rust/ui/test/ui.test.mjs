@@ -123,6 +123,11 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.getByLabel('Generación del Dex').selectOption('2');
   assert.equal(await page.getByRole('listbox',{name:'Resultados del Dex'}).getByRole('option').count(),1);
   assert.equal(await page.getByRole('heading',{name:'Chikorita',exact:true}).isVisible(),true);
+  await page.getByLabel('Buscar Pokémon').fill('#1025');
+  await page.getByLabel('Generación del Dex').selectOption('9');
+  assert.equal(await page.getByRole('listbox',{name:'Resultados del Dex'}).getByRole('option').count(),1);
+  assert.equal(await page.getByRole('heading',{name:'Pecharunt',exact:true}).isVisible(),true);
+  assert.equal(await page.getByText('Generación 9',{exact:true}).isVisible(),true);
   await page.evaluate(()=>window.vyntraImportProgress({phase:'scan',member:'Revisando carpetas',completed_bytes:256,total_bytes:100000}));
   assert.equal(await page.locator('.toast strong').getByText('Revisando carpetas',{exact:true}).isVisible(),true);
   await page.evaluate(()=>window.vyntraImportProgress({phase:'import',member:'Pokemon.gba',completed_bytes:512,total_bytes:1024,batch_item:2,batch_total:5}));

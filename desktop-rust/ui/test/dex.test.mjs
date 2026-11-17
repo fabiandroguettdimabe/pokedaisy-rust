@@ -7,11 +7,13 @@ const entries=[
  {number:2,name:'Ivysaur',generation:1},
  {number:152,name:'Chikorita',generation:2},
  {number:252,name:'Treecko',generation:3},
+ {number:906,name:'Sprigatito',generation:9},
 ];
 
 test('Dex search matches names without case or accent sensitivity and narrows by generation',()=>{
  assert.deepEqual(filterDexEntries(entries,'CHIKO',2).map(entry=>entry.number),[152]);
  assert.deepEqual(filterDexEntries(entries,'treecko',2),[]);
+ assert.deepEqual(filterDexEntries(entries,'sprig',9).map(entry=>entry.number),[906]);
  assert.deepEqual(filterDexEntries(entries,'bulba','all').map(entry=>entry.number),[1]);
 });
 

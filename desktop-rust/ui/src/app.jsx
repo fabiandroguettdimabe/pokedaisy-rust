@@ -1,6 +1,6 @@
 import {render} from 'preact';
 import {useState,useEffect,useLayoutEffect} from 'preact/hooks';
-import dexData from './data/pokedex-gen3.json';
+import dexData from './data/pokedex-gen9.json';
 import {filterDexEntries} from './dex.js';
 import {Library,Gamepad2,Download,Settings,FolderOpen,Search,Grid2X2,List,Play,ChevronRight,RefreshCw,HardDrive,Save,Link,ShieldCheck,Volume2,Monitor,Keyboard,SlidersHorizontal,ChevronDown,Check,Info,AlertCircle,X,Users,Swords,Map,BookOpen,Package,ExternalLink,FileDown,Activity,Boxes,Folder,RotateCcw,Star} from 'lucide-preact';
 
@@ -18,12 +18,12 @@ function DexPanel(){
  const [query,setQuery]=useState(''),[generation,setGeneration]=useState('all'),[selected,setSelected]=useState(1);
  const matches=filterDexEntries(dexData.species,query,generation);
  const current=matches.find(species=>species.number===selected)||matches[0]||null;
- return <Panel title="Dex nacional · Gen I–III" icon={BookOpen} className="dex-panel col-span-full" aside={<span className="text-[11px] muted">{dexData.species_count} especies · {dexData.license}</span>}>
+ return <Panel title="Dex nacional · Gen I–IX" icon={BookOpen} className="dex-panel col-span-full" aside={<span className="text-[11px] muted">{dexData.species_count} especies · {dexData.license}</span>}>
   <div className="dex-layout p-4">
    <div className="dex-list-column">
     <div className="dex-controls">
      <label className="text-xs muted">Buscar Pokémon<input aria-label="Buscar Pokémon" type="search" value={query} onInput={event=>setQuery(event.currentTarget.value)} placeholder="Nombre o número, por ejemplo 025" className="block w-full mt-2"/></label>
-     <label className="text-xs muted">Generación<select aria-label="Generación del Dex" value={generation} onChange={event=>setGeneration(event.currentTarget.value)} className="block w-full mt-2"><option value="all">Todas (1–3)</option><option value="1">Gen I · 001–151</option><option value="2">Gen II · 152–251</option><option value="3">Gen III · 252–386</option></select></label>
+     <label className="text-xs muted">Generación<select aria-label="Generación del Dex" value={generation} onChange={event=>setGeneration(event.currentTarget.value)} className="block w-full mt-2"><option value="all">Todas (1–{dexData.max_generation})</option>{dexData.generations.map(({generation:number,first,last})=><option value={number} key={number}>Gen {['I','II','III','IV','V','VI','VII','VIII','IX'][number-1]} · {String(first).padStart(3,'0')}–{last}</option>)}</select></label>
     </div>
     <p className="dex-count" role="status">{matches.length} {matches.length===1?'especie':'especies'} encontradas</p>
     <div className="dex-results" role="listbox" aria-label="Resultados del Dex">

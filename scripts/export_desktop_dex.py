@@ -8,12 +8,13 @@ import re
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/SpeciesNamesNationalDex.kt"
-OUTPUT = ROOT / "desktop-rust/ui/src/data/pokedex-gen3.json"
+OUTPUT = ROOT / "desktop-rust/ui/src/data/pokedex-gen9.json"
+GENERATION_ENDS = (151, 251, 386, 493, 649, 721, 809, 905, 1025)
 
 
 def parse_species_names(source: str, max_dex: int = 386) -> list[dict]:
-    if not 1 <= max_dex <= 1025:
-        raise ValueError("max_dex must be between 1 and 1025")
+    if not 1 <= max_dex <= GENERATION_ENDS[-1]:
+        raise ValueError(f"max_dex must be between 1 and {GENERATION_ENDS[-1]}")
     entries = {}
     for match in re.finditer(r'(\d+)\s+to\s+("(?:\\.|[^"\\])*")', source):
         number = int(match.group(1))
@@ -31,26 +32,29 @@ def parse_species_names(source: str, max_dex: int = 386) -> list[dict]:
     if missing:
         raise ValueError(f"missing National Dex numbers: {sorted(missing)[:8]}")
 
-    def generation(number: int) -> int:
-        if number <= 151:
-            return 1
-        if number <= 251:
-            return 2
-        return 3
-
     return [
-        {"number": number, "name": entries[number], "generation": generation(number)}
+        {
+            "number": number,
+            "name": entries[number],
+            "generation": next(i for i, last in enumerate(GENERATION_ENDS, 1) if number <= last),
+        }
         for number in range(1, max_dex + 1)
     ]
 
 
 def build_dataset(source_bytes: bytes) -> dict:
     source = source_bytes.decode("utf-8")
-    species = parse_species_names(source)
+    species = parse_species_names(source, max_dex=GENERATION_ENDS[-1])
+    generations = []
+    first = 1
+    for number, last in enumerate(GENERATION_ENDS, 1):
+        generations.append({"generation": number, "first": first, "last": last})
+        first = last + 1
     return {
         "schema_version": 1,
-        "dataset_id": "pokemon-national-dex-gen3",
-        "max_generation": 3,
+        "dataset_id": "pokemon-national-dex-gen9",
+        "max_generation": len(GENERATION_ENDS),
+        "generations": generations,
         "species_count": len(species),
         "source_sha256": hashlib.sha256(source_bytes).hexdigest(),
         "license": "BSD-3-Clause",
