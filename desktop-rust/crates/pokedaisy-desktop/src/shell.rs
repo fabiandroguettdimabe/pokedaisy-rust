@@ -112,6 +112,7 @@ pub fn run() -> Result<(), String> {
     let mut session: Option<domain::SessionIdentity> = None;
     let mut session_epoch: u64 = 0;
     let mut player_commands: Option<crate::transport::PlayerCommandSender> = None;
+    let mut player_command_generation = 0u64;
     let mut import_generation = 0u64;
     let mut active_import: Option<Arc<AtomicBool>> = None;
     let mut vault_generation = 0u64;
@@ -230,6 +231,15 @@ pub fn run() -> Result<(), String> {
                         crate::player_pipe::PipeEventKind::Snapshot(snapshot) => {
                             if let Ok(value) = serde_json::to_string(&snapshot) {
                                 let _ = webview.evaluate_script(&format!("window.vyntraPlayerSnapshot({value});"));
+                            }
+                        },
+                        crate::player_pipe::PipeEventKind::CommandResult { request_id, command, result } => {
+                            let response = match result {
+                                Ok(()) => json!({"ok":true,"result":{"player_command":{"id":request_id,"command":command,"ok":true}}}),
+                                Err(error) => json!({"ok":true,"result":{"player_command":{"id":request_id,"command":command,"ok":false,"error":error}}}),
+                            };
+                            if let Ok(value) = serde_json::to_string(&response) {
+                                let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({value});"));
                             }
                         },
                         crate::player_pipe::PipeEventKind::Disconnected => {
@@ -571,6 +581,19 @@ pub fn run() -> Result<(), String> {
                             player_commands.as_ref().ok_or("No hay una partida conectada")?
                                 .send(crate::transport::PlayerCommand::Pause(paused))
                                 .map_err(|error| format!("No se pudo cambiar la pausa de Player: {error:?}"))?;
+                        },
+                        "save_player_state" | "load_player_state" => {
+                            player_command_generation = player_command_generation.saturating_add(1);
+                            if player_command_generation == 0 { player_command_generation = 1; }
+                            let command = if name == "save_player_state" {
+                                crate::transport::PlayerCommand::SaveState(player_command_generation)
+                            } else {
+                                crate::transport::PlayerCommand::LoadState(player_command_generation)
+                            };
+                            player_commands.as_ref().ok_or("No hay una partida conectada")?
+                                .send(command)
+                                .map_err(|error| format!("No se pudo enviar la operación a Player: {error:?}"))?;
+                            command_result = Some(json!({"player_command":{"started":true,"id":player_command_generation,"command":name}}));
                         },
                         "open_folder"=> {
                             let field=action["field"].as_str().unwrap_or("");

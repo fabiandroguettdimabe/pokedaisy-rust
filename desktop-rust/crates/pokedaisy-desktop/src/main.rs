@@ -472,24 +472,46 @@ fn sdl_main() -> Result<(), String> {
         if let Some(pipe) = player_pipe.as_ref() {
             match pipe.try_command() {
                 Ok(Some(transport::PlayerCommand::Stop)) => break 'app,
-                Ok(Some(transport::PlayerCommand::SaveState)) => {
-                    if let (Some(c), Some(g)) = (core.as_mut(), session_save_owner(&active_game)) {
-                        if let Ok(bytes) = c.serialize() {
-                            let path = preferred_state_path(g, &state_dir);
-                            if let Some(parent) = path.parent() {
-                                let _ = fs::create_dir_all(parent);
-                            }
-                            let _ = atomic_write(&path, &bytes);
-                        }
+                Ok(Some(transport::PlayerCommand::SaveState(request_id))) => {
+                    let result = (|| -> Result<(), String> {
+                        let c = core.as_mut().ok_or("No hay un juego activo")?;
+                        let g = session_save_owner(&active_game)
+                            .ok_or("La sesión no tiene una ROM activa")?;
+                        let core_hash = active_core_hash
+                            .as_deref()
+                            .ok_or("No se pudo verificar el núcleo activo")?;
+                        let bytes = c.serialize().map_err(|error| {
+                            format!("No se pudo serializar el estado: {error:?}")
+                        })?;
+                        backup_verified_state(g, &state_dir, Some(core_hash))?;
+                        let path = preferred_state_path(g, &state_dir);
+                        atomic_write(&path, &bytes)?;
+                        write_save_manifest_checked(
+                            g,
+                            &state_dir,
+                            domain::SaveKind::SaveState,
+                            &bytes,
+                            Some(1),
+                            Some(core_hash),
+                            "committed",
+                        )
+                    })();
+                    if let Some(pipe) = player_pipe.as_mut() {
+                        let _ = pipe.send_command_result(request_id, "save_state", result);
                     }
                 }
-                Ok(Some(transport::PlayerCommand::LoadState)) => {
-                    if let (Some(c), Some(g)) = (core.as_mut(), session_save_owner(&active_game)) {
-                        if let Ok(bytes) =
-                            load_compatible_state(g, &state_dir, active_core_hash.as_deref())
-                        {
-                            let _ = c.unserialize(&bytes);
-                        }
+                Ok(Some(transport::PlayerCommand::LoadState(request_id))) => {
+                    let result = (|| -> Result<(), String> {
+                        let c = core.as_mut().ok_or("No hay un juego activo")?;
+                        let g = session_save_owner(&active_game)
+                            .ok_or("La sesión no tiene una ROM activa")?;
+                        let bytes =
+                            load_compatible_state(g, &state_dir, active_core_hash.as_deref())?;
+                        c.unserialize(&bytes)
+                            .map_err(|error| format!("El núcleo rechazó el estado: {error:?}"))
+                    })();
+                    if let Some(pipe) = player_pipe.as_mut() {
+                        let _ = pipe.send_command_result(request_id, "load_state", result);
                     }
                 }
                 Ok(Some(transport::PlayerCommand::Pause(paused))) => {
@@ -1455,6 +1477,21 @@ fn write_save_manifest(
     core_hash: Option<&str>,
     status: &str,
 ) {
+    if let Err(error) = write_save_manifest_checked(game, dir, kind, bytes, slot, core_hash, status)
+    {
+        eprintln!("No se pudo escribir manifiesto de guardado: {error}");
+    }
+}
+
+fn write_save_manifest_checked(
+    game: &Game,
+    dir: &Path,
+    kind: domain::SaveKind,
+    bytes: &[u8],
+    slot: Option<u32>,
+    core_hash: Option<&str>,
+    status: &str,
+) -> Result<(), String> {
     let key = game_storage_key(game);
     let manifest = domain::SaveManifest {
         save_id: format!("{key}-{:?}", kind).to_lowercase(),
@@ -1477,14 +1514,8 @@ fn write_save_manifest(
         "manifest.json"
     };
     let path = dir.join("by-id").join(key).join(file);
-    match serde_json::to_vec_pretty(&manifest) {
-        Ok(json) => {
-            if let Err(e) = atomic_write(&path, &json) {
-                eprintln!("No se pudo escribir manifiesto en {}: {e}", path.display());
-            }
-        }
-        Err(e) => eprintln!("No se pudo serializar manifiesto de guardado: {e}"),
-    }
+    let json = serde_json::to_vec_pretty(&manifest).map_err(|e| e.to_string())?;
+    atomic_write(&path, &json)
 }
 
 fn save_battery(core: &mut LibretroCore, game: &Game, dir: &Path, core_hash: Option<&str>) {

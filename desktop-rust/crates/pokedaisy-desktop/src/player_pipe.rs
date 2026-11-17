@@ -27,6 +27,11 @@ const MAX_REJECTED_PIPE_CLIENTS: usize = 8;
 pub enum PipeEventKind {
     Authenticated,
     Snapshot(Value),
+    CommandResult {
+        request_id: u64,
+        command: String,
+        result: Result<(), String>,
+    },
     Disconnected,
     Failed(String),
 }
@@ -72,6 +77,33 @@ impl PlayerPipeClient {
         };
         write_frame(&mut self.send, &frame)
             .map_err(|error| format!("No se pudo enviar snapshot Player: {error:?}"))
+    }
+
+    pub fn send_command_result(
+        &mut self,
+        request_id: u64,
+        command: &str,
+        result: Result<(), String>,
+    ) -> Result<(), String> {
+        self.sequence = self.sequence.saturating_add(1);
+        let payload = match result {
+            Ok(()) => {
+                json!({"kind":"command_result","request_id":request_id,"command":command,"ok":true})
+            }
+            Err(error) => {
+                json!({"kind":"command_result","request_id":request_id,"command":command,"ok":false,"error":error})
+            }
+        };
+        let frame = TransportFrame {
+            protocol_version: crate::domain::CONTRACT_VERSION,
+            session_id: self.session_id.clone(),
+            epoch: self.epoch,
+            nonce: self.nonce.clone(),
+            sequence: self.sequence,
+            payload,
+        };
+        write_frame(&mut self.send, &frame)
+            .map_err(|error| format!("No se pudo confirmar comando Player: {error:?}"))
     }
 }
 
@@ -194,19 +226,7 @@ pub fn connect(
                 {
                     break;
                 }
-                let command = match frame.payload["command"].as_str() {
-                    Some("stop") if frame.payload["kind"] == "command" => Some(PlayerCommand::Stop),
-                    Some("save_state") if frame.payload["kind"] == "command" => {
-                        Some(PlayerCommand::SaveState)
-                    }
-                    Some("load_state") if frame.payload["kind"] == "command" => {
-                        Some(PlayerCommand::LoadState)
-                    }
-                    Some("pause") if frame.payload["kind"] == "command" => {
-                        frame.payload["value"].as_bool().map(PlayerCommand::Pause)
-                    }
-                    _ => None,
-                };
+                let command = parse_player_command(&frame.payload);
                 let Some(command) = command else {
                     break;
                 };
@@ -338,6 +358,34 @@ fn serve_session(
                                 kind: PipeEventKind::Snapshot(payload.clone()),
                             });
                         }
+                    } else if frame.payload["kind"] == "command_result" {
+                        let (Some(request_id), Some(command), Some(ok)) = (
+                            frame.payload["request_id"].as_u64(),
+                            frame.payload["command"].as_str(),
+                            frame.payload["ok"].as_bool(),
+                        ) else {
+                            break;
+                        };
+                        if request_id == 0 || !matches!(command, "save_state" | "load_state") {
+                            break;
+                        }
+                        let result = if ok {
+                            Ok(())
+                        } else {
+                            Err(frame.payload["error"]
+                                .as_str()
+                                .unwrap_or("Player rechazó la operación")
+                                .to_owned())
+                        };
+                        on_event(PipeEvent {
+                            session_id: session_id.clone(),
+                            epoch,
+                            kind: PipeEventKind::CommandResult {
+                                request_id,
+                                command: command.to_owned(),
+                                result,
+                            },
+                        });
                     } else {
                         break;
                     }
@@ -363,11 +411,34 @@ fn serve_session(
     });
 }
 
+fn parse_player_command(payload: &Value) -> Option<PlayerCommand> {
+    if payload["kind"] != "command" {
+        return None;
+    }
+    match payload["command"].as_str()? {
+        "stop" => Some(PlayerCommand::Stop),
+        "pause" => payload["value"].as_bool().map(PlayerCommand::Pause),
+        "save_state" => payload["request_id"]
+            .as_u64()
+            .filter(|id| *id > 0)
+            .map(PlayerCommand::SaveState),
+        "load_state" => payload["request_id"]
+            .as_u64()
+            .filter(|id| *id > 0)
+            .map(PlayerCommand::LoadState),
+        _ => None,
+    }
+}
+
 fn command_payload(command: PlayerCommand) -> Value {
     match command {
         PlayerCommand::Pause(value) => json!({"kind":"command","command":"pause","value":value}),
-        PlayerCommand::SaveState => json!({"kind":"command","command":"save_state"}),
-        PlayerCommand::LoadState => json!({"kind":"command","command":"load_state"}),
+        PlayerCommand::SaveState(request_id) => {
+            json!({"kind":"command","command":"save_state","request_id":request_id})
+        }
+        PlayerCommand::LoadState(request_id) => {
+            json!({"kind":"command","command":"load_state","request_id":request_id})
+        }
         PlayerCommand::Stop => json!({"kind":"command","command":"stop"}),
     }
 }
@@ -423,7 +494,7 @@ fn encode_hex(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{PipeEventKind, connect, start, start_with_timeout};
+    use super::{PipeEventKind, connect, parse_player_command, start, start_with_timeout};
     use crate::transport::PlayerCommand;
     use interprocess::local_socket::{ConnectOptions, GenericNamespaced, prelude::*};
     use serde_json::json;
@@ -457,6 +528,18 @@ mod tests {
             snapshot.kind,
             PipeEventKind::Snapshot(json!({"title":"test"}))
         );
+        stream
+            .send_command_result(17, "save_state", Err("No hay espacio".into()))
+            .unwrap();
+        let result = receiver.recv_timeout(Duration::from_secs(2)).unwrap();
+        assert_eq!(
+            result.kind,
+            PipeEventKind::CommandResult {
+                request_id: 17,
+                command: "save_state".into(),
+                result: Err("No hay espacio".into()),
+            }
+        );
         drop(stream);
     }
 
@@ -480,5 +563,17 @@ mod tests {
         client.write_all(&[0x20, 0x00]).unwrap();
         let event = receiver.recv_timeout(Duration::from_secs(2)).unwrap();
         assert!(matches!(event.kind, PipeEventKind::Failed(_)));
+    }
+
+    #[test]
+    fn state_commands_require_a_positive_request_id() {
+        assert_eq!(
+            parse_player_command(&json!({"kind":"command","command":"save_state","request_id":17})),
+            Some(PlayerCommand::SaveState(17))
+        );
+        assert_eq!(
+            parse_player_command(&json!({"kind":"command","command":"load_state","request_id":0})),
+            None
+        );
     }
 }

@@ -80,6 +80,14 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.evaluate(()=>{window.testState={...window.testState,session:{session_id:'test-session',epoch:2},command_revision:7};window.vyntraState(window.testState);window.vyntraPlayerSnapshot({title:'Synthetic GBA fixture',system:'GBA',screen:'playing',paused:false});});
   await page.getByRole('button',{name:'Pausar',exact:true}).click();
   assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'pause_player',value:true,session_id:'test-session',epoch:2,expected_revision:7});
+  await page.getByRole('button',{name:'Guardar estado',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'save_player_state',session_id:'test-session',epoch:2,expected_revision:7});
+  await page.evaluate(()=>window.vyntraAck({ok:true,result:{player_command:{started:true,id:1,command:'save_player_state'}}}));
+  assert.equal(await page.getByText('Player está procesando el estado…').isVisible(),true);
+  await page.evaluate(()=>window.vyntraAck({ok:true,result:{player_command:{id:1,command:'save_state',ok:false,error:'Disco sin espacio'}}}));
+  assert.equal(await page.getByText('Falló la operación de Player: Disco sin espacio').isVisible(),true);
+  await page.getByRole('button',{name:'Cargar estado',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'load_player_state',session_id:'test-session',epoch:2,expected_revision:7});
   assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 });

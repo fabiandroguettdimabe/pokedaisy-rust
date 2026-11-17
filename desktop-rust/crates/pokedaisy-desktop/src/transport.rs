@@ -187,8 +187,8 @@ impl LatestSnapshot {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlayerCommand {
     Pause(bool),
-    SaveState,
-    LoadState,
+    SaveState(u64),
+    LoadState(u64),
     Stop,
 }
 
@@ -316,11 +316,14 @@ mod tests {
     fn command_queue_is_bounded_and_stop_bypasses_pending_commands() {
         let queue = PlayerCommandQueue::new(1);
         let sender = queue.sender();
-        sender.send(PlayerCommand::SaveState).unwrap();
-        assert_eq!(sender.send(PlayerCommand::LoadState), Err(QueueError::Full));
+        sender.send(PlayerCommand::SaveState(1)).unwrap();
+        assert_eq!(
+            sender.send(PlayerCommand::LoadState(2)),
+            Err(QueueError::Full)
+        );
         sender.send(PlayerCommand::Stop).unwrap();
         assert_eq!(queue.try_next().unwrap(), Some(PlayerCommand::Stop));
-        assert_eq!(queue.try_next().unwrap(), Some(PlayerCommand::SaveState));
+        assert_eq!(queue.try_next().unwrap(), Some(PlayerCommand::SaveState(1)));
         assert_eq!(queue.try_next().unwrap(), None);
     }
 
