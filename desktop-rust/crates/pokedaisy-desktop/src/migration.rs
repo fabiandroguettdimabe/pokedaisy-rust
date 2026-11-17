@@ -318,7 +318,20 @@ mod tests {
 
         fs::create_dir_all(destination.parent().unwrap()).unwrap();
         let staging = destination.with_extension("migration-tmp");
-        fs::write(&staging, b"partial bytes before process interruption").unwrap();
+        const INTERRUPT_PATH_ENV: &str = "VYNTRA_MIGRATION_STAGING_INTERRUPT_PATH";
+        let child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "migration::tests::terminate_during_migration_copy_staging",
+            ])
+            .env(INTERRUPT_PATH_ENV, &staging)
+            .status()
+            .unwrap();
+        assert_eq!(child.code(), Some(75));
+        assert_eq!(
+            fs::read(&staging).unwrap(),
+            b"partial bytes before process interruption"
+        );
 
         apply(&journal_path, &report).unwrap();
 
@@ -328,6 +341,19 @@ mod tests {
         let recovered = load_journal(&journal_path).unwrap().unwrap();
         assert_eq!(recovered.items[0].status, MigrationStatus::Committed);
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn terminate_during_migration_copy_staging() {
+        const INTERRUPT_PATH_ENV: &str = "VYNTRA_MIGRATION_STAGING_INTERRUPT_PATH";
+        let Some(path) = std::env::var_os(INTERRUPT_PATH_ENV) else {
+            return;
+        };
+        let mut staging = fs::File::create(path).unwrap();
+        staging
+            .write_all(b"partial bytes before process interruption")
+            .unwrap();
+        std::process::exit(75);
     }
 }
 
