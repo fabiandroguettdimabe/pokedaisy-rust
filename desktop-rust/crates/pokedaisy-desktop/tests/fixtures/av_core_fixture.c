@@ -95,7 +95,7 @@ EXPORT void retro_get_system_info(struct retro_system_info *info) {
     info->block_extract = false;
 }
 EXPORT bool retro_load_game(const struct retro_game_info *info) {
-    if (environment_cb) environment_cb(32804, (void *)&map);
+    if (environment_cb) environment_cb(65572, (void *)&map);
     return info && info->data && info->size;
 }
 EXPORT void retro_unload_game(void) {}

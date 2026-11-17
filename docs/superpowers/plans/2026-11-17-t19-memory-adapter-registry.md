@@ -34,6 +34,7 @@
 - [x] Add a bounded Gen III live-party decoder that validates captured Pokémon checksums, party count, level, and HP using synthetic bytes only.
 - [x] Bind the party-count and party ranges to an exact-identity Gen III adapter; test the capture-to-decoder path and reject mismatched identity or missing segments.
 - [x] Add a session/epoch/revision `MemoryPoller` that resolves only registered exact identities and emits decoded snapshots; test registered and unsupported identities.
+- [x] Align the Libretro environment command with `36 | RETRO_ENVIRONMENT_EXPERIMENTAL`; the AV fixture calls the official value and proves mapped reads work.
 - [ ] Wire the exact-identity adapter into runtime Player polling and the pipe; verify with a legally redistributable fixture for one concrete revision before advertising live data.
 
 
