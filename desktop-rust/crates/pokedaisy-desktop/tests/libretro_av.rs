@@ -59,6 +59,8 @@ fn synthetic_core_runs_video_audio_and_runtime_av_through_libretro_api() {
     assert_eq!(initial.sample_rate, 32_000.0);
 
     let frame = core.run_frame(Default::default()).unwrap();
+    let owned_ram = core.read_system_ram().expect("fixture exposes system RAM");
+    assert_eq!(owned_ram, [1, 2, 3, 4]);
     let video = frame.video.expect("fixture emits a video frame");
     assert_eq!((video.width, video.height, video.pitch), (2, 1, 4));
     assert_eq!(video.format, PixelFormat::Rgb1555);
@@ -73,6 +75,12 @@ fn synthetic_core_runs_video_audio_and_runtime_av_through_libretro_api() {
         .video
         .expect("fixture emits a frame after input");
     assert_eq!(pressed.pixels, [0xe0, 0x03, 0x00, 0x7c]);
+    assert_eq!(
+        owned_ram,
+        [1, 2, 3, 4],
+        "the capture owns its bytes after the core advances"
+    );
+    assert_eq!(core.read_system_ram().unwrap(), [2, 2, 3, 4]);
 
     let updated = core.av_info();
     assert_eq!(

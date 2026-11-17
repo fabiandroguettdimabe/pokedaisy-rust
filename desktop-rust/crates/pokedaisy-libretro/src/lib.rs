@@ -33,6 +33,8 @@ const RETRO_DEVICE_JOYPAD: u32 = 1;
 const RETRO_DEVICE_MASK: u32 = 0xff;
 const RETRO_DEVICE_ID_JOYPAD_MASK: u32 = 256;
 const RETRO_MEMORY_SAVE_RAM: u32 = 0;
+const RETRO_MEMORY_SYSTEM_RAM: u32 = 2;
+const MAX_SYSTEM_RAM_BYTES: usize = 64 * 1024 * 1024;
 const RETRO_PIXEL_FORMAT_0RGB1555: u32 = 0;
 const RETRO_PIXEL_FORMAT_XRGB8888: u32 = 1;
 const RETRO_PIXEL_FORMAT_RGB565: u32 = 2;
@@ -209,6 +211,8 @@ pub enum CoreError {
     StateSaveFailed,
     StateLoadFailed,
     SaveRamUnavailable,
+    SystemRamUnavailable,
+    SystemRamTooLarge { actual: usize, max: usize },
     SaveRamSize { expected: usize, actual: usize },
     InvalidFrame,
     ContextBusy,
@@ -243,6 +247,11 @@ impl std::fmt::Display for CoreError {
             Self::StateSaveFailed => f.write_str("The core could not save its state"),
             Self::StateLoadFailed => f.write_str("The core could not load that state"),
             Self::SaveRamUnavailable => f.write_str("The core does not expose battery save RAM"),
+            Self::SystemRamUnavailable => f.write_str("The core does not expose system RAM"),
+            Self::SystemRamTooLarge { actual, max } => write!(
+                f,
+                "System RAM size {actual} exceeds the safe capture limit {max}"
+            ),
             Self::SaveRamSize { expected, actual } => write!(
                 f,
                 "Save RAM size mismatch: expected {expected}, got {actual}"
@@ -803,6 +812,25 @@ impl LibretroCore {
         let size = unsafe { (self.api.get_memory_size)(RETRO_MEMORY_SAVE_RAM) };
         if ptr.is_null() || size == 0 || size > MAX_FRAME_BYTES {
             return Err(CoreError::SaveRamUnavailable);
+        }
+        Ok(unsafe { std::slice::from_raw_parts(ptr, size) }.to_vec())
+    }
+
+    /// Copy libretro System RAM while the owning core is live; never expose its raw pointer.
+    pub fn read_system_ram(&mut self) -> Result<Vec<u8>, CoreError> {
+        if self.loaded_rom.is_none() {
+            return Err(CoreError::NoGameLoaded);
+        }
+        let ptr = unsafe { (self.api.get_memory_data)(RETRO_MEMORY_SYSTEM_RAM) }.cast::<u8>();
+        let size = unsafe { (self.api.get_memory_size)(RETRO_MEMORY_SYSTEM_RAM) };
+        if ptr.is_null() || size == 0 {
+            return Err(CoreError::SystemRamUnavailable);
+        }
+        if size > MAX_SYSTEM_RAM_BYTES {
+            return Err(CoreError::SystemRamTooLarge {
+                actual: size,
+                max: MAX_SYSTEM_RAM_BYTES,
+            });
         }
         Ok(unsafe { std::slice::from_raw_parts(ptr, size) }.to_vec())
     }

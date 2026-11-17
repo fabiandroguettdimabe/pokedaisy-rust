@@ -50,6 +50,7 @@ static retro_audio_sample_t audio_cb;
 static retro_audio_sample_batch_t audio_batch_cb;
 static retro_input_poll_t input_poll_cb;
 static retro_input_state_t input_state_cb;
+static uint8_t system_ram[4] = {0, 2, 3, 4};
 
 EXPORT unsigned retro_api_version(void) { return 1; }
 EXPORT void retro_set_environment(retro_environment_t callback) { environment_cb = callback; }
@@ -79,6 +80,7 @@ EXPORT void retro_get_system_av_info(struct retro_system_av_info *info) {
     };
 }
 EXPORT void retro_run(void) {
+    system_ram[0]++;
     static uint16_t pixels[2];
     static const int16_t samples[] = {1000, -1000, 2000, -2000};
     if (input_poll_cb) input_poll_cb();
@@ -98,6 +100,6 @@ EXPORT void retro_run(void) {
 EXPORT size_t retro_serialize_size(void) { return 0; }
 EXPORT bool retro_serialize(void *data, size_t size) { (void)data; (void)size; return false; }
 EXPORT bool retro_unserialize(const void *data, size_t size) { (void)data; (void)size; return false; }
-EXPORT void *retro_get_memory_data(unsigned id) { (void)id; return NULL; }
-EXPORT size_t retro_get_memory_size(unsigned id) { (void)id; return 0; }
+EXPORT void *retro_get_memory_data(unsigned id) { return id == 2 ? system_ram : NULL; }
+EXPORT size_t retro_get_memory_size(unsigned id) { return id == 2 ? sizeof(system_ram) : 0; }
 EXPORT void retro_set_controller_port_device(unsigned port, unsigned device) { (void)port; (void)device; }
