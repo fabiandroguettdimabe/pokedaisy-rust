@@ -212,6 +212,43 @@ mod tests {
     use std::io::Write;
 
     #[test]
+    fn migration_refuses_a_source_changed_after_preview() {
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-migration-source-changed-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("legacy.sav");
+        let destination = root.join("by-id/game/battery.sav");
+        let journal = root.join("migration.json");
+        fs::write(&source, b"save at preview").unwrap();
+        let report = preview(&[MigrationItem::new(
+            source.clone(),
+            destination.clone(),
+            "game".into(),
+            "battery".into(),
+        )])
+        .unwrap();
+        assert_eq!(report.items[0].status, MigrationStatus::Ready);
+
+        fs::write(&source, b"save changed after preview").unwrap();
+        apply(&journal, &report).unwrap();
+        apply(&journal, &report).unwrap();
+
+        let recovered: MigrationReport =
+            serde_json::from_slice(&fs::read(&journal).unwrap()).unwrap();
+        assert_eq!(recovered.items[0].status, MigrationStatus::Conflict);
+        assert_eq!(
+            recovered.items[0].reason.as_deref(),
+            Some("El origen cambió después de la vista previa")
+        );
+        assert_eq!(fs::read(&source).unwrap(), b"save changed after preview");
+        assert!(!destination.exists());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn storage_full_during_journal_staging_preserves_previous_journal() {
         let root =
             std::env::temp_dir().join(format!("vyntra-migration-full-{}", std::process::id()));
