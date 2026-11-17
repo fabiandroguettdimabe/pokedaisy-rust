@@ -244,14 +244,18 @@ mod tests {
         nds[0x20..0x24].copy_from_slice(&0x200u32.to_le_bytes());
         nds[0x2c..0x30].copy_from_slice(&0x100u32.to_le_bytes());
         nds[0x84..0x88].copy_from_slice(&0x160u32.to_le_bytes());
+        nds[0..4].copy_from_slice(b"HOME");
         nds[0x0c..0x10].copy_from_slice(b"ABCD");
-        assert_eq!(
-            inspect_bytes("fixture.nds", &nds)
-                .unwrap()
-                .game_code
-                .as_deref(),
-            Some("ABCD")
-        );
+        let inspection = inspect_bytes("fixture.nds", &nds).unwrap();
+        assert_eq!(inspection.system, "DS");
+        assert_eq!(inspection.title.as_deref(), Some("HOME"));
+        assert_eq!(inspection.game_code.as_deref(), Some("ABCD"));
+        assert_eq!(inspection.header_checksum_valid, None);
+
+        nds[0x0c..0x10].copy_from_slice(b"A?CD");
+        let inspection = inspect_bytes("fixture.nds", &nds).unwrap();
+        assert_eq!(inspection.system, "DS");
+        assert_eq!(inspection.game_code, None);
 
         nds[0x2c..0x30].copy_from_slice(&u32::MAX.to_le_bytes());
         assert!(inspect_bytes("truncated.nds", &nds).is_none());
