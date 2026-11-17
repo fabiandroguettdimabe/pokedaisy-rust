@@ -368,6 +368,12 @@ pub fn parse_ui_command(body: &str) -> Result<UiCommandEnvelope, AppError> {
     let payload: Value = serde_json::from_str(body)
         .map_err(|e| AppError::new("invalid_json", format!("JSON inválido: {e}")))?;
     if payload.get("protocol_version").is_some() || payload.get("command_id").is_some() {
+        if payload.get("command_id").is_some() && payload.get("protocol_version").is_none() {
+            return Err(AppError::new(
+                "missing_protocol_version",
+                "Falta la versión del protocolo",
+            ));
+        }
         let command: UiCommandEnvelope = serde_json::from_value(payload.clone())
             .map_err(|e| AppError::new("invalid_envelope", format!("Envelope inválido: {e}")))?;
         if command.protocol_version != CONTRACT_VERSION {
@@ -470,6 +476,10 @@ mod tests {
             (
                 r#"{"protocol_version":2,"command_id":"x","action":"scan"}"#,
                 "unsupported_protocol_version",
+            ),
+            (
+                r#"{"command_id":"x","action":"scan","payload":{}}"#,
+                "missing_protocol_version",
             ),
             (
                 r#"{"protocol_version":1,"command_id":" ","action":"scan"}"#,
