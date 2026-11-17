@@ -167,6 +167,70 @@ pub struct Snapshot {
     pub sha256: String,
 }
 
+/// Exact-identity adapter for the party and party-count regions in Gen III GBA RAM.
+/// Addresses are supplied only by a verified profile; unknown identities stay unresolved.
+pub struct Gen3PartyMemoryAdapter {
+    identity: crate::memory_adapter::GameIdentity,
+    ranges: [crate::memory_adapter::MemoryRange; 2],
+}
+
+impl Gen3PartyMemoryAdapter {
+    pub fn new(
+        identity: crate::memory_adapter::GameIdentity,
+        party_count_address: usize,
+        party_address: usize,
+    ) -> Self {
+        Self {
+            identity,
+            ranges: [
+                crate::memory_adapter::MemoryRange {
+                    name: "party_count".into(),
+                    offset: party_count_address,
+                    length: 1,
+                },
+                crate::memory_adapter::MemoryRange {
+                    name: "party".into(),
+                    offset: party_address,
+                    length: 600,
+                },
+            ],
+        }
+    }
+
+    pub fn decode(
+        &self,
+        capture: &crate::memory_adapter::MemoryCapture,
+    ) -> Result<Vec<PartyMember>, String> {
+        if capture.identity != self.identity {
+            return Err("memory capture identity does not match the Gen 3 profile".into());
+        }
+        let count = capture
+            .segments
+            .iter()
+            .find(|segment| segment.name == "party_count")
+            .filter(|segment| segment.bytes.len() == 1)
+            .ok_or_else(|| "party count capture is missing or truncated".to_string())?
+            .bytes[0] as usize;
+        let party = capture
+            .segments
+            .iter()
+            .find(|segment| segment.name == "party")
+            .filter(|segment| segment.bytes.len() == 600)
+            .ok_or_else(|| "party capture is missing or truncated".to_string())?;
+        decode_party_ram(count, &party.bytes)
+    }
+}
+
+impl crate::memory_adapter::MemoryAdapter for Gen3PartyMemoryAdapter {
+    fn identity(&self) -> &crate::memory_adapter::GameIdentity {
+        &self.identity
+    }
+
+    fn ranges(&self) -> &[crate::memory_adapter::MemoryRange] {
+        &self.ranges
+    }
+}
+
 pub fn read(bytes: &[u8], format: Gen3Format) -> Result<Snapshot, String> {
     if bytes.len() < SECTOR * SECTORS * 2 {
         return Err("save menor que los dos slots Gen 3".into());
@@ -430,6 +494,66 @@ mod tests {
                 .unwrap_err()
                 .contains("checksum")
         );
+    }
+
+    #[test]
+    fn exact_identity_party_adapter_decodes_only_its_own_complete_capture() {
+        use crate::memory_adapter::{GameIdentity, MemoryCapture, MemoryReader, OwnedSegment};
+
+        let identity = GameIdentity {
+            system: "GBA".into(),
+            rom_sha256: "rom-sha256".into(),
+            core_sha256: "core-sha256".into(),
+            game_revision: "BPEE-rev0".into(),
+        };
+        let adapter = Gen3PartyMemoryAdapter::new(identity.clone(), 0x0200_1000, 0x0200_2000);
+        struct FixtureReader(Vec<u8>);
+        impl MemoryReader for FixtureReader {
+            fn read(
+                &mut self,
+                address: usize,
+                length: usize,
+            ) -> Result<Vec<u8>, crate::memory_adapter::CaptureError> {
+                let offset = address
+                    .checked_sub(0x0200_1000)
+                    .ok_or(crate::memory_adapter::CaptureError::OutOfBounds)?;
+                let end = offset
+                    .checked_add(length)
+                    .ok_or(crate::memory_adapter::CaptureError::OutOfBounds)?;
+                self.0
+                    .get(offset..end)
+                    .map(|bytes| bytes.to_vec())
+                    .ok_or(crate::memory_adapter::CaptureError::OutOfBounds)
+            }
+        }
+        let mut memory = vec![0; 0x1000 + 600];
+        memory[0x1000] = 0;
+        let mut reader = FixtureReader(memory);
+        let captured = crate::memory_adapter::capture(&adapter, &mut reader, 2, 8).unwrap();
+        assert!(adapter.decode(&captured).unwrap().is_empty());
+
+        let mut capture = MemoryCapture {
+            identity,
+            epoch: 2,
+            revision: 8,
+            segments: vec![
+                OwnedSegment {
+                    name: "party_count".into(),
+                    bytes: vec![0],
+                },
+                OwnedSegment {
+                    name: "party".into(),
+                    bytes: vec![0; 600],
+                },
+            ],
+        };
+        assert!(adapter.decode(&capture).unwrap().is_empty());
+
+        capture.identity.rom_sha256 = "different-rom".into();
+        assert!(adapter.decode(&capture).unwrap_err().contains("identity"));
+        capture.identity = adapter.identity.clone();
+        capture.segments.pop();
+        assert!(adapter.decode(&capture).unwrap_err().contains("party"));
     }
 
     fn fixture() -> Vec<u8> {
