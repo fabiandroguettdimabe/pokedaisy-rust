@@ -1,5 +1,10 @@
 const MATRIX_HEADER = '| Plataforma | Sistema | Núcleo/ruta observada |';
-const STATUS_COLUMNS = [3, 4, 5, 6];
+const STATUS_COLUMNS = new Map([
+  [3, 'av'],
+  [4, 'sram'],
+  [5, 'companion'],
+  [6, 'link'],
+]);
 
 function cells(line) {
   return line
@@ -14,10 +19,13 @@ function isReady(status) {
   return /^\[?(?:ready|listo|lista|disponible)\b/i.test(status);
 }
 
-function hasReproducibleEvidence(evidence) {
-  const testId = /(?:^|\s)testId=[A-Za-z0-9_.:-]+(?:\s|$)/i.test(evidence);
-  const commit = /(?:^|\s)commit=[a-f0-9]{7,40}(?:\s|$)/i.test(evidence);
-  return testId && commit;
+function hasReproducibleEvidence(evidence, capability) {
+  return evidence.split(';').some((record) => {
+    const cell = new RegExp(`(?:^|\\s)cell=${capability}(?:\\s|$)`, 'i').test(record);
+    const testId = /(?:^|\s)testId=[A-Za-z0-9_.:-]+(?:\s|$)/i.test(record);
+    const commit = /(?:^|\s)commit=[a-f0-9]{7,40}(?:\s|$)/i.test(record);
+    return cell && testId && commit;
+  });
 }
 
 export function readyCapabilitiesMissingEvidence(markdown) {
@@ -38,9 +46,9 @@ export function readyCapabilitiesMissingEvidence(markdown) {
       });
       continue;
     }
-    for (const column of STATUS_COLUMNS) {
+    for (const [column, capabilityId] of STATUS_COLUMNS) {
       if (!isReady(row[column])) continue;
-      if (hasReproducibleEvidence(row[7])) continue;
+      if (hasReproducibleEvidence(row[7], capabilityId)) continue;
       findings.push({
         line: index + 1,
         system: row[1],
