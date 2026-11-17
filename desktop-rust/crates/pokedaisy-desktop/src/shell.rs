@@ -1322,6 +1322,14 @@ fn save_files_in(roots: &[&Path]) -> Vec<PathBuf> {
     }
     files
 }
+fn game_identity_for_ui(entry: Option<&library::LibraryEntry>) -> serde_json::Value {
+    json!({
+        "game_code": entry.and_then(|value| value.game_code.as_deref()),
+        "revision": entry.and_then(|value| value.revision),
+        "confidence": entry.and_then(|value| value.confidence),
+    })
+}
+
 fn publish(
     webview: &wry::WebView,
     config: &Settings,
@@ -1333,7 +1341,7 @@ fn publish(
     command_revision: u64,
     core_probe: &Option<serde_json::Value>,
 ) {
-    let games:Vec<_>=games.iter().enumerate().map(|(id,g)|{let storage_id=game_storage_key(g);let metadata=imported.iter().find(|entry|entry.id==storage_id);json!({"id":id,"storage_id":storage_id,"title":g.title,"system":g.system,"path":g.path,"missing":!g.path.is_file(),"core":config.core(g.system).is_ok_and(|p|p.is_file()),"favorite":metadata.is_some_and(|entry|entry.favorite),"last_played_unix":metadata.and_then(|entry|entry.last_played_unix),"note":metadata.and_then(|entry|entry.note.clone()).unwrap_or_default()})}).collect();
+    let games:Vec<_>=games.iter().enumerate().map(|(id,g)|{let storage_id=game_storage_key(g);let metadata=imported.iter().find(|entry|entry.id==storage_id);json!({"id":id,"storage_id":storage_id,"title":g.title,"system":g.system,"path":g.path,"missing":!g.path.is_file(),"core":config.core(g.system).is_ok_and(|p|p.is_file()),"favorite":metadata.is_some_and(|entry|entry.favorite),"last_played_unix":metadata.and_then(|entry|entry.last_played_unix),"note":metadata.and_then(|entry|entry.note.clone()).unwrap_or_default(),"identity":game_identity_for_ui(metadata)})}).collect();
     let cores:Vec<_>=["GBC","GBA","DS"].iter().enumerate().map(|(id,s)| {let path=config.core(s).ok();json!({"id":id,"system":s,"path":path,"installed":path.as_ref().is_some_and(|p|p.is_file())})}).collect();
     let saves:Vec<_>=save_files(config).iter().enumerate().map(|(id,p)|{let meta=p.metadata().ok();json!({"id":id,"path":p,"name":p.file_name().unwrap_or_default().to_string_lossy(),"bytes":meta.as_ref().map(|m|m.len()),"date":meta.and_then(|m|m.modified().ok()).and_then(|t|t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d|d.as_secs()),"state":p.starts_with(&config.states)})}).collect();
     let value = json!({
@@ -1481,6 +1489,32 @@ mod tests {
             std::thread::sleep(std::time::Duration::from_millis(5));
         }
         assert!(stop.exists(), "parent did not send graceful Stop");
+    }
+
+    #[test]
+    fn library_ui_identity_contains_catalog_code_revision_and_confidence_only() {
+        let entry = library::LibraryEntry {
+            id: "stable-id".into(),
+            path: std::path::PathBuf::from("private/game.gba"),
+            sources: Vec::new(),
+            content_hash: None,
+            title: None,
+            system: Some("GBA".into()),
+            game_code: Some("ABCD".into()),
+            revision: Some(1),
+            confidence: Some(domain::IdentityConfidence::Partial),
+            last_seen_unix: None,
+            favorite: false,
+            last_played_unix: None,
+            note: None,
+        };
+        let identity = game_identity_for_ui(Some(&entry));
+
+        assert_eq!(identity["game_code"], "ABCD");
+        assert_eq!(identity["revision"], 1);
+        assert_eq!(identity["confidence"], "partial");
+        assert!(identity.get("path").is_none());
+        assert!(identity.get("content_hash").is_none());
     }
 
     fn cmd(action: &str) -> protocol::UiCommandEnvelope {
