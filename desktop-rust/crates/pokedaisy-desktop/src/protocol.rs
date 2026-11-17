@@ -259,6 +259,7 @@ impl AppError {
 
 /// Versioned command envelope (UI/shell -> application service).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UiCommandEnvelope {
     #[serde(default = "default_protocol_version")]
     pub protocol_version: u32,
@@ -492,6 +493,10 @@ mod tests {
             (
                 r#"{"protocol_version":1,"command_id":"x","action":" scan ","payload":{}}"#,
                 "invalid_action",
+            ),
+            (
+                r#"{"protocol_version":1,"command_id":"x","action":"scan","payload":{},"debug_path":"C:/private"}"#,
+                "invalid_envelope",
             ),
         ] {
             assert_eq!(parse_ui_command(body).unwrap_err().code, code);
