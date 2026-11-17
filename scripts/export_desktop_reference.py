@@ -15,6 +15,7 @@ UI_DATASET_OUTPUT = ROOT / "desktop-rust/ui/src/data/type-charts-reference.json"
 GEN1_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartYellow.kt"
 GEN2_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartCrystal.kt"
 GEN6_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartGlazed.kt"
+ROWE_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartRowe.kt"
 
 
 def kotlin_map(source: str, variable: str) -> str:
@@ -78,6 +79,7 @@ def render_additional_datasets() -> str:
         (1, "yellow", GEN1_NAMES, "typeNamesYellow", "typeEffectivenessYellow"),
         (2, "crystal", GEN2_NAMES, "typeNamesCrystal", "typeEffectivenessCrystal"),
         (6, "glazed", GEN6_NAMES, "typeNamesGlazed", "typeEffectivenessGlazed"),
+        (6, "rowe", ROWE_NAMES, "typeNamesRowe", "typeEffectivenessRowe"),
     ]
     datasets = []
     for generation, game, source_path, names_var, chart_var in definitions:
@@ -86,7 +88,12 @@ def render_additional_datasets() -> str:
         datasets.append({
             "dataset_id": f"pokemon-gen{generation}-{game}-type-chart",
             "generation": generation,
-            "reference_game": {1: "Pokémon Yellow", 2: "Pokémon Crystal", 6: "Pokémon Glazed 9.2.0"}[generation],
+            "reference_game": {
+                "yellow": "Pokémon Yellow",
+                "crystal": "Pokémon Crystal",
+                "glazed": "Pokémon Glazed 9.2.0",
+                "rowe": "Pokémon R.O.W.E. v2.1.9.1 Experimental",
+            }[game],
             "source_files": [source_path.relative_to(ROOT).as_posix()],
             "source_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
             "license": "GPL-3.0-only",

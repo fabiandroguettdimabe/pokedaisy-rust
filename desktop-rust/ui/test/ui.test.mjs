@@ -139,7 +139,7 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.getByRole('button',{name:'Calcular',exact:true}).click();
   assert.equal(await page.getByText('FIRE contra GRASS / STEEL',{exact:true}).isVisible(),true);
   assert.equal(await page.getByText('4×',{exact:true}).isVisible(),true);
-  await page.getByLabel('Generación de la tabla').selectOption('6');
+  await page.getByLabel('Generación de la tabla').selectOption('6-glazed');
   assert.equal(await page.getByText('Contexto del Dex: Pecharunt (#1025). Especie Gen 9; la tabla es Gen VI. Confirma tipos y reglas en la ROM o el hack.',{exact:true}).isVisible(),true);
   assert.equal(await page.getByText('Pokémon Glazed 9.2.0 · GPL-3.0-only',{exact:true}).isVisible(),true);
   await page.getByLabel('Ataque').selectOption('9');
@@ -147,6 +147,13 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.getByLabel('Defensa 2').selectOption('');
   await page.getByRole('button',{name:'Calcular',exact:true}).click();
   assert.equal(await page.getByText('Fairy contra Dragon',{exact:true}).isVisible(),true);
+  assert.equal(await page.getByText('2×',{exact:true}).isVisible(),true);
+  await page.getByLabel('Generación de la tabla').selectOption('6-rowe');
+  assert.equal(await page.getByText('Pokémon R.O.W.E. v2.1.9.1 Experimental · GPL-3.0-only',{exact:true}).isVisible(),true);
+  await page.getByLabel('Ataque').selectOption('18');
+  await page.getByLabel('Defensa 1').selectOption('1');
+  await page.getByRole('button',{name:'Calcular',exact:true}).click();
+  assert.equal(await page.getByText('Fairy contra Fighting',{exact:true}).isVisible(),true);
   assert.equal(await page.getByText('2×',{exact:true}).isVisible(),true);
   await page.evaluate(()=>window.vyntraImportProgress({phase:'scan',member:'Revisando carpetas',completed_bytes:256,total_bytes:100000}));
   assert.equal(await page.locator('.toast strong').getByText('Revisando carpetas',{exact:true}).isVisible(),true);
