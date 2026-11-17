@@ -1815,7 +1815,13 @@ fn load_compatible_battery(
             backups
                 .into_iter()
                 .filter(|backup| {
-                    backup.join("battery.sav").is_file() && backup.join("manifest.json").is_file()
+                    validate_battery_files(
+                        &backup.join("battery.sav"),
+                        &backup.join("manifest.json"),
+                        &rom_hash,
+                        &core_hash,
+                    )
+                    .is_ok()
                 })
                 .take(32)
                 .map(|backup| (backup.join("battery.sav"), backup.join("manifest.json"))),
@@ -2154,8 +2160,13 @@ fn load_compatible_state(
             backups
                 .into_iter()
                 .filter(|backup| {
-                    backup.join("slot1.ss").is_file()
-                        && backup.join("state.manifest.json").is_file()
+                    validate_state_files(
+                        &backup.join("slot1.ss"),
+                        &backup.join("state.manifest.json"),
+                        &rom_hash,
+                        core_hash,
+                    )
+                    .is_ok()
                 })
                 .take(32)
                 .map(|backup| (backup.join("slot1.ss"), backup.join("state.manifest.json"))),
@@ -3583,7 +3594,7 @@ mod tests {
     }
 
     #[test]
-    fn save_manifest_is_written_atomically() {
+    fn save_manifests_and_recovery_rejects_corrupt_candidates_before_limit() {
         let dir = std::env::temp_dir().join(format!("vyntra-manifest-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         let rom = dir.join("game.gb");
@@ -3653,6 +3664,17 @@ mod tests {
                 .unwrap()
                 .join(format!("zz-incomplete-battery-{index:02}"));
             fs::create_dir(incomplete).unwrap();
+            let corrupt = partial_battery
+                .parent()
+                .unwrap()
+                .join(format!("zz-corrupt-battery-{index:02}"));
+            fs::create_dir(&corrupt).unwrap();
+            fs::write(corrupt.join("battery.sav"), b"corrupt newer backup").unwrap();
+            fs::copy(
+                battery_backup.join("manifest.json"),
+                corrupt.join("manifest.json"),
+            )
+            .unwrap();
         }
         fs::write(super::preferred_battery_path(&game, &dir), b"damaged").unwrap();
         assert_eq!(
@@ -3706,6 +3728,17 @@ mod tests {
                 .unwrap()
                 .join(format!("zz-incomplete-state-{index:02}"));
             fs::create_dir(incomplete).unwrap();
+            let corrupt = partial_state
+                .parent()
+                .unwrap()
+                .join(format!("zz-corrupt-state-{index:02}"));
+            fs::create_dir(&corrupt).unwrap();
+            fs::write(corrupt.join("slot1.ss"), b"corrupt newer state").unwrap();
+            fs::copy(
+                backup.join("state.manifest.json"),
+                corrupt.join("state.manifest.json"),
+            )
+            .unwrap();
         }
         const INTERRUPT_PATH_ENV: &str = "VYNTRA_STATE_PAYLOAD_INTERRUPT_PATH";
         let child = std::process::Command::new(std::env::current_exe().unwrap())
