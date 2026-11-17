@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::Path;
 use std::process::Command;
-use vyntra_libretro::{CorePaths, LibretroCore, PixelFormat};
+use vyntra_libretro::{CorePaths, JoypadButton, JoypadState, LibretroCore, PixelFormat};
 
 #[test]
 fn synthetic_core_runs_video_audio_and_runtime_av_through_libretro_api() {
@@ -60,6 +60,15 @@ fn synthetic_core_runs_video_audio_and_runtime_av_through_libretro_api() {
     assert_eq!(video.format, PixelFormat::Rgb1555);
     assert_eq!(video.pixels, [0x1f, 0x00, 0x00, 0x7c]);
     assert_eq!(frame.audio, [3000, -3000, 1000, -1000, 2000, -2000]);
+
+    let mut input = JoypadState::default();
+    input.set(JoypadButton::A, true);
+    let pressed = core
+        .run_frame(input)
+        .unwrap()
+        .video
+        .expect("fixture emits a frame after input");
+    assert_eq!(pressed.pixels, [0xe0, 0x03, 0x00, 0x7c]);
 
     let updated = core.av_info();
     assert_eq!(

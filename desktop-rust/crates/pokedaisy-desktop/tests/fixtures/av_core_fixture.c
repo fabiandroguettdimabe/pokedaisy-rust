@@ -48,14 +48,16 @@ static retro_environment_t environment_cb;
 static retro_video_refresh_t video_cb;
 static retro_audio_sample_t audio_cb;
 static retro_audio_sample_batch_t audio_batch_cb;
+static retro_input_poll_t input_poll_cb;
+static retro_input_state_t input_state_cb;
 
 EXPORT unsigned retro_api_version(void) { return 1; }
 EXPORT void retro_set_environment(retro_environment_t callback) { environment_cb = callback; }
 EXPORT void retro_set_video_refresh(retro_video_refresh_t callback) { video_cb = callback; }
 EXPORT void retro_set_audio_sample(retro_audio_sample_t callback) { audio_cb = callback; }
 EXPORT void retro_set_audio_sample_batch(retro_audio_sample_batch_t callback) { audio_batch_cb = callback; }
-EXPORT void retro_set_input_poll(retro_input_poll_t callback) { (void)callback; }
-EXPORT void retro_set_input_state(retro_input_state_t callback) { (void)callback; }
+EXPORT void retro_set_input_poll(retro_input_poll_t callback) { input_poll_cb = callback; }
+EXPORT void retro_set_input_state(retro_input_state_t callback) { input_state_cb = callback; }
 EXPORT void retro_init(void) {
     const unsigned pixel_format_rgb1555 = 0;
     if (environment_cb) environment_cb(10, (void *)&pixel_format_rgb1555);
@@ -77,8 +79,11 @@ EXPORT void retro_get_system_av_info(struct retro_system_av_info *info) {
     };
 }
 EXPORT void retro_run(void) {
-    static const uint16_t pixels[] = {0x001f, 0x7c00};
+    static uint16_t pixels[2];
     static const int16_t samples[] = {1000, -1000, 2000, -2000};
+    if (input_poll_cb) input_poll_cb();
+    pixels[0] = input_state_cb && input_state_cb(0, 1, 0, 8) ? 0x03e0 : 0x001f;
+    pixels[1] = 0x7c00;
     if (video_cb) video_cb(pixels, 2, 1, sizeof(pixels));
     if (audio_cb) audio_cb(3000, -3000);
     if (audio_batch_cb) audio_batch_cb(samples, 2);
