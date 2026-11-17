@@ -106,7 +106,7 @@ Los DLL estándar de RetroArch no se renombran ni se anuncian como compatibles. 
 
 ## Seguimiento QA-02 / T01 (2026-11-17)
 
-- `website/src/lib/capabilities.js` inspecciona la tabla principal de `docs/vyntra-capabilities.md` y señala estados Ready/Listo/Disponible si la evidencia no contiene, en el mismo registro de celda, `cell=<capacidad>`, `testId`, `build`, commit hexadecimal y `coreHash` SHA-256. `website/test/capability-evidence.test.js` prueba todos los campos requeridos, ausencia de build/hash, celda incorrecta, fila malformada, las cuatro capacidades y el archivo real. `npm.cmd test` en `website/` pasó 87/87 (2026-11-17). T01 sigue parcial: falta evidencia independiente por cada celda de capacidad y la segunda imagen de referencia.
+- `website/src/lib/capabilities.js` inspecciona la tabla principal de `docs/vyntra-capabilities.md` y señala estados Ready/Listo/Disponible si la evidencia no contiene, en el mismo registro de celda, `cell=<capacidad>`, `testId`, `build`, commit hexadecimal y `coreHash` SHA-256. `website/test/capability-evidence.test.js` prueba todos los campos requeridos, ausencia de build/hash, celda incorrecta, evidencia repartida entre registros, fila malformada, las cuatro capacidades y el archivo real. `npm.cmd test` en `website/` pasó 88/88 (2026-11-17, commit `cffaf01`). T01 sigue parcial: falta evidencia independiente por cada celda de capacidad y la segunda imagen de referencia.
 
 ## T18: Companion desconectado y liberación de teclado al perder foco (2026-11-17)
 
