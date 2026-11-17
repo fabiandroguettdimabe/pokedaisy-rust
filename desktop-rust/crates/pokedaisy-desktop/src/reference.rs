@@ -124,6 +124,25 @@ mod tests {
     }
 
     #[test]
+    fn gen3_chart_matches_independent_single_and_dual_type_golden_vectors() {
+        let chart = gen3_type_chart().unwrap();
+        // Hand-authored Gen 3 rules facts, independent of the generated Kotlin rows.
+        let single_type_vectors = [
+            (13, 4, 0),    // Electric -> Ground immunity.
+            (0, 7, 0),     // Normal -> Ghost immunity.
+            (10, 12, 200), // Fire -> Grass.
+            (10, 11, 50),  // Fire -> Water.
+            (15, 16, 200), // Ice -> Dragon.
+            (14, 17, 0),   // Psychic -> Dark immunity.
+        ];
+        for (attack, defense, expected) in single_type_vectors {
+            assert_eq!(chart.multiplier(attack, defense), expected);
+        }
+        assert_eq!(chart.combined_multiplier(10, &[12, 15]), 400); // Grass / Ice.
+        assert_eq!(chart.combined_multiplier(10, &[12, 11]), 100); // Grass / Water.
+    }
+
+    #[test]
     fn matchup_result_rejects_ids_outside_this_dataset() {
         let chart = gen3_type_chart().unwrap();
         assert!(resolve_matchup(&chart, 10, &[99]).is_err());
