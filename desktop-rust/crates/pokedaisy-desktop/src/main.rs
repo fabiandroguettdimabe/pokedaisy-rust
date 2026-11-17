@@ -2809,3 +2809,45 @@ mod tests {
         let _ = std::fs::remove_dir_all(&root);
     }
 }
+
+#[cfg(all(test, target_os = "windows"))]
+mod core_probe_fixture_tests {
+    use std::process::Command;
+
+    #[test]
+    fn generated_libretro_dll_passes_isolated_core_probe() {
+        let compiler = "x86_64-w64-mingw32-gcc";
+        if Command::new(compiler).arg("--version").output().is_err() {
+            eprintln!("Skipping loadable DLL fixture: MinGW compiler is unavailable");
+            return;
+        }
+        let root = std::env::temp_dir().join(format!("vyntra-core-fixture-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let source = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/core_probe_fixture.c");
+        let dll = root.join("vyntra-probe-fixture.dll");
+        let built = Command::new(compiler)
+            .arg("-shared")
+            .arg("-O2")
+            .arg("-o")
+            .arg(&dll)
+            .arg(&source)
+            .output()
+            .unwrap();
+        assert!(
+            built.status.success(),
+            "{}",
+            String::from_utf8_lossy(&built.stderr)
+        );
+
+        let report = super::probe::run_probe(&dll, "GBA");
+        assert_eq!(report.status, "loadable", "{:?}", report.reason);
+        assert_eq!(report.library_name.as_deref(), Some("Vyntra Probe Fixture"));
+        assert_eq!(report.system_match, Some(true));
+        let wrong_system = super::probe::run_probe(&dll, "DS");
+        assert_eq!(wrong_system.status, "load_failed");
+        assert_eq!(wrong_system.system_match, Some(false));
+        let _ = std::fs::remove_dir_all(root);
+    }
+}
