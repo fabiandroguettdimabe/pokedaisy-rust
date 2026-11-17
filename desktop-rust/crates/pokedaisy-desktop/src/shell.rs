@@ -267,6 +267,9 @@ pub fn run() -> Result<(), String> {
                 let name = cmd.action.as_str();
                 let mut refresh = false;
                 let mut command_result: Option<serde_json::Value> = None;
+                let stale_revision = cmd
+                    .expected_revision
+                    .is_some_and(|revision| revision != command_revision);
                 let result = (|| -> Result<(), String> {
                     validate_command_revision(cmd.expected_revision, command_revision)?;
                     validate_command_session(&session, session_epoch, &cmd)?;
@@ -724,17 +727,23 @@ pub fn run() -> Result<(), String> {
                         ack
                     }
                     Err(error) => {
-                        let mut ack = protocol::UiAck::failure(
-                            cmd.command_id.clone(),
-                            protocol::AppError::new("command_failed", error.clone()),
-                        );
+                        let app_error = if stale_revision {
+                            protocol::AppError::new("stale_revision", error.clone()).retryable()
+                        } else {
+                            protocol::AppError::new("command_failed", error.clone())
+                        };
+                        let mut ack = protocol::UiAck::failure(cmd.command_id.clone(), app_error);
                         ack.request_id = cmd.request_id.clone();
                         ack.revision = Some(command_revision);
                         ack
                     }
                 };
                 let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
-                if let Err(error)=result { let _=webview.evaluate_script(&format!("window.vyntraError({});",json!(error))); }
+                if let Err(error)=result {
+                    if !stale_revision {
+                        let _=webview.evaluate_script(&format!("window.vyntraError({});",json!(error)));
+                    }
+                }
                 if refresh {
                     if let Some(previous) = active_scan.take() { previous.store(true, Ordering::Release); }
                     generation = generation.saturating_add(1);

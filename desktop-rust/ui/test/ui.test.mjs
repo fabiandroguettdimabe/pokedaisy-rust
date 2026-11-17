@@ -88,6 +88,8 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   assert.equal(await page.getByText('Falló la operación de Player: Disco sin espacio').isVisible(),true);
   await page.getByRole('button',{name:'Cargar estado',exact:true}).click();
   assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'load_player_state',session_id:'test-session',epoch:2,expected_revision:7});
+  await page.evaluate(()=>window.vyntraAck({ok:false,revision:8,error:{code:'stale_revision',reason:'La configuración cambió en otra ventana.'}}));
+  assert.equal(await page.getByText('La configuración cambió en otra ventana. Se actualizó el estado; revisa los valores y vuelve a aplicar.').isVisible(),true);
   assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 });
