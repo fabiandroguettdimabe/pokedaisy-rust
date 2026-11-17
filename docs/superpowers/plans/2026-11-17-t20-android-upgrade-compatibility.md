@@ -33,6 +33,7 @@
 - [x] Recheck current package/version/manifest and storage recovery flow.
 - [x] Prepare a temporary JDK 17, Gradle 8.10.2, and checksum-verified Android command-line tools outside the repository.
 - [ ] Obtain authorization for the NDK 28.2.13676358 SDK license, install required SDK packages, and run Android tests; `:app:testDebugUnitTest` currently stops at `LicenceNotAcceptedException`.
-- [ ] Validate upgrade/signature, SAF permission revocation/recovery, and lifecycle with an Android device or emulator.
+- [ ] Obtain the previous signed APK and matching release signer, plus an Android device/emulator with adb; the local repo has no APK/keystore and GitHub has no published releases.
+- [ ] Validate upgrade/signature, SAF permission revocation/recovery, and lifecycle with that device or emulator.
 - [x] Mark T20 partial if device/signature/SAF validation remains unavailable; commit and push.
 
