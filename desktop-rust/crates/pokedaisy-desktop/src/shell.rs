@@ -45,6 +45,36 @@ fn action_source_is_current(source: ActionSource, companion_generation: Option<u
     }
 }
 
+fn companion_position(
+    desired: tao::dpi::PhysicalPosition<i32>,
+    monitor_origin: tao::dpi::PhysicalPosition<i32>,
+    monitor_size: tao::dpi::PhysicalSize<u32>,
+    window_size: tao::dpi::PhysicalSize<u32>,
+) -> tao::dpi::PhysicalPosition<i32> {
+    let clamp_axis = |desired: i32, origin: i32, monitor_extent: u32, window_extent: u32| {
+        let origin = i64::from(origin);
+        let max_position = origin + i64::from(monitor_extent.saturating_sub(window_extent));
+        i64::from(desired)
+            .clamp(origin, max_position.max(origin))
+            .clamp(i64::from(i32::MIN), i64::from(i32::MAX)) as i32
+    };
+
+    tao::dpi::PhysicalPosition::new(
+        clamp_axis(
+            desired.x,
+            monitor_origin.x,
+            monitor_size.width,
+            window_size.width,
+        ),
+        clamp_axis(
+            desired.y,
+            monitor_origin.y,
+            monitor_size.height,
+            window_size.height,
+        ),
+    )
+}
+
 enum ImportSource {
     Loose(PathBuf),
     Archive(PathBuf, Vec<String>),
@@ -415,7 +445,23 @@ pub fn run() -> Result<(), String> {
                                     .ok_or("No se pudo asignar una nueva sesión a Companion")?;
                                 let generation = next_companion_generation;
                                 let mut builder=WindowBuilder::new().with_title("Vyntra Companion").with_inner_size(tao::dpi::LogicalSize::new(1120.0,820.0)).with_min_inner_size(tao::dpi::LogicalSize::new(760.0,600.0));
-                                if let Ok(position)=window.outer_position(){builder=builder.with_position(tao::dpi::PhysicalPosition::new(position.x+80,position.y+60));}
+                                if let (Ok(position), Some(monitor)) = (window.outer_position(), window.current_monitor()) {
+                                    let scale = monitor.scale_factor();
+                                    let requested_size = tao::dpi::PhysicalSize::new(
+                                        (1120.0 * scale).round() as u32,
+                                        (820.0 * scale).round() as u32,
+                                    );
+                                    let desired = tao::dpi::PhysicalPosition::new(
+                                        position.x.saturating_add(80),
+                                        position.y.saturating_add(60),
+                                    );
+                                    builder = builder.with_position(companion_position(
+                                        desired,
+                                        monitor.position(),
+                                        monitor.size(),
+                                        requested_size,
+                                    ));
+                                }
                                 let new_window=builder.build(target).map_err(|error|format!("No se pudo abrir Companion: {error}"))?;
                                 let companion_proxy=proxy.clone();
                                 let new_webview=WebViewBuilder::new().with_html(include_str!("../../../ui/dist/index.html")).with_initialization_script("window.vyntraCompanionOnly=true;").with_ipc_handler(move |request|{
@@ -1650,6 +1696,32 @@ fn publish(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn companion_position_stays_inside_monitor_with_negative_origin() {
+        let monitor_origin = tao::dpi::PhysicalPosition::new(-1920, 0);
+        let monitor_size = tao::dpi::PhysicalSize::new(1920, 1080);
+        let companion_size = tao::dpi::PhysicalSize::new(1120, 820);
+
+        assert_eq!(
+            companion_position(
+                tao::dpi::PhysicalPosition::new(-1850, 80),
+                monitor_origin,
+                monitor_size,
+                companion_size,
+            ),
+            tao::dpi::PhysicalPosition::new(-1850, 80)
+        );
+        assert_eq!(
+            companion_position(
+                tao::dpi::PhysicalPosition::new(-20, 900),
+                monitor_origin,
+                monitor_size,
+                companion_size,
+            ),
+            tao::dpi::PhysicalPosition::new(-1120, 260)
+        );
+    }
 
     #[test]
     fn queued_actions_from_a_closed_companion_generation_are_rejected() {
