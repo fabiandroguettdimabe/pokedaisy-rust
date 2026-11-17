@@ -209,6 +209,27 @@ pub fn run() -> Result<(), String> {
                     validate_command_session(&session, session_epoch, &cmd)?;
                     match name {
                         "ready" | "scan" => refresh=true,
+                        "reset_settings_section" => {
+                            let section = action["section"].as_str().ok_or("Sección inválida")?;
+                            let previous = config.clone();
+                            config.reset_section(section, &root)?;
+                            if section == "folders" {
+                                let directories = [config.library.clone(), config.saves.clone(), config.states.clone(), config.system.clone()];
+                                for path in directories {
+                                    if let Err(error) = fs::create_dir_all(path) {
+                                        config = previous;
+                                        return Err(error.to_string());
+                                    }
+                                }
+                            }
+                            if let Err(error) = config.save(&config_path) {
+                                config = previous;
+                                return Err(error);
+                            }
+                            if section == "folders" {
+                                refresh = true;
+                            }
+                        },
                         "favorite" => {
                             let id = action["storage_id"].as_str().ok_or("Juego inválido")?;
                             let favorite = action["value"].as_bool().ok_or("Favorito inválido")?;

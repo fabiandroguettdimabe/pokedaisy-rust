@@ -33,6 +33,8 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.getByRole('button',{name:'Configuración',exact:true}).click();
   await page.getByRole('switch',{name:'Reducir animaciones'}).click();
   assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'set',field:'reduced_motion',value:true});
+  await page.getByRole('button',{name:'Restablecer sección'}).click();
+  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'reset_settings_section',section:'general'});
   await page.getByRole('button',{name:'Carpetas',exact:true}).click();
   await page.getByRole('button',{name:'Cambiar…',exact:true}).first().click();
   assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'choose',field:'library'});

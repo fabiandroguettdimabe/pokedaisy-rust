@@ -66,6 +66,31 @@ mod tests {
         assert_eq!(loaded.library_selection.as_deref(), Some("content-id-123"));
         let _ = fs::remove_dir_all(dir);
     }
+
+    #[test]
+    fn section_reset_changes_only_its_fields_and_preserves_library_files() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-reset-section-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let keep = root.join("keep.sav");
+        fs::write(&keep, b"save").unwrap();
+        let mut settings = Settings::default();
+        settings.reduced_motion = true;
+        settings.volume = 25;
+        settings.library = root.join("custom-roms");
+
+        settings.reset_section("general", &root).unwrap();
+        assert!(!settings.reduced_motion);
+        assert_eq!(settings.volume, 25);
+        assert_eq!(settings.library, root.join("custom-roms"));
+        settings.reset_section("av", &root).unwrap();
+        assert_eq!(settings.volume, 80);
+        assert_eq!(settings.library, root.join("custom-roms"));
+        assert!(settings.reset_section("unknown", &root).is_err());
+        assert_eq!(fs::read(&keep).unwrap(), b"save");
+        let _ = fs::remove_dir_all(root);
+    }
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -108,6 +133,31 @@ impl Default for Settings {
     }
 }
 impl Settings {
+    pub fn reset_section(&mut self, section: &str, root: &Path) -> Result<(), String> {
+        let defaults = Self::default();
+        match section {
+            "general" => self.reduced_motion = defaults.reduced_motion,
+            "folders" => {
+                self.library = root.join(defaults.library);
+                self.saves = root.join(defaults.saves);
+                self.states = root.join(defaults.states);
+                self.system = root.join(defaults.system);
+                self.recursive = defaults.recursive;
+            }
+            "cores" => self.cores = defaults.cores,
+            "av" => {
+                self.volume = defaults.volume;
+                self.smooth = defaults.smooth;
+                self.fullscreen = defaults.fullscreen;
+                self.fast_forward = defaults.fast_forward;
+                self.autosave = defaults.autosave;
+            }
+            "input" => self.keys = defaults.keys,
+            _ => return Err("Sección de configuración no válida".into()),
+        }
+        Ok(())
+    }
+
     pub fn load(path: &Path, root: &Path) -> Result<Self, String> {
         let mut value = match fs::read(path) {
             Ok(bytes) => serde_json::from_slice::<Self>(&bytes)
