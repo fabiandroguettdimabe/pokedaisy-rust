@@ -107,3 +107,7 @@ Los DLL estándar de RetroArch no se renombran ni se anuncian como compatibles. 
 ## Seguimiento QA-02 / T01 (2026-11-17)
 
 - `website/src/lib/capabilities.js` inspecciona la tabla principal de `docs/vyntra-capabilities.md` y señala estados Ready/Listo/Disponible si la evidencia no contiene `cell=<capacidad>`, un `testId` y commit hexadecimal para esa celda. `website/test/capability-evidence.test.js` prueba una fila válida, una inválida y el archivo real. `node --test test/*.test.js` en `website/` pasó 86/86, incluidas las cuatro claves de capacidad y una fila malformada. T01 sigue parcial: la matriz todavía no lleva evidencia independiente por cada celda de capacidad y falta la segunda imagen de referencia.
+
+## T18: descarte de eventos de Companion desconectado (2026-11-17)
+
+- Cada ventana Companion recibe una generación propia. Al cerrarla se invalida esa generación; las acciones que quedaron en cola se descartan antes de parsear el envelope o ejecutar el handler. `queued_actions_from_a_closed_companion_generation_are_rejected` prueba la generación activa, una obsoleta, la ventana cerrada y que Launcher siga aceptado. `cargo fmt --manifest-path desktop-rust/Cargo.toml --all -- --check` y la suite workspace Windows GNU pasaron: Desktop 172/172, cuatro ignorados; `core_probe` 5/5, uno ignorado; Libretro A/V 1/1; `vyntra-libretro` 4/4. El smoke de dos monitores, DPI mixto y lease de foco sigue pendiente.
