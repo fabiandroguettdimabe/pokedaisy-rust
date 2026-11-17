@@ -17,6 +17,24 @@ VERIFY_SPEC.loader.exec_module(VERIFY_MODULE)
 
 
 class ExportDesktopReferenceTests(unittest.TestCase):
+    def test_pokeapi_species_parser_uses_generation_historical_types_and_default_forms(self):
+        pokemon = "id,identifier,species_id,is_default\n1,alpha,1,1\n2,alpha-alt,1,0\n3,beta,2,1\n"
+        current_types = "pokemon_id,type_id,slot\n1,1,1\n1,18,2\n2,4,1\n3,9,1\n"
+        past_types = "pokemon_id,generation_id,type_id,slot\n1,5,1,1\n1,5,13,2\n"
+        species = "id,identifier,generation_id\n1,alpha,1\n2,beta,9\n"
+        pokeapi_type_ids = {1: 0, 9: 8, 13: 3, 18: 9}
+        gen5 = MODULE.parse_pokeapi_species_types(
+            5, {1: "Alpha", 2: "Beta"}, pokeapi_type_ids, pokemon, current_types, past_types, species
+        )
+        self.assertEqual(gen5, [{"number": 1, "name": "Alpha", "types": [0, 3]}])
+        gen9 = MODULE.parse_pokeapi_species_types(
+            9, {1: "Alpha", 2: "Beta"}, pokeapi_type_ids, pokemon, current_types, past_types, species
+        )
+        self.assertEqual(gen9, [
+            {"number": 1, "name": "Alpha", "types": [0, 9]},
+            {"number": 2, "name": "Beta", "types": [8]},
+        ])
+
     def test_parses_official_standard_chart_symbols(self):
         html = '''<table class="pIXJrq_typeChartTable"><thead><tr>
           <th></th><th><img alt="NORMAL"/></th><th><img alt="GHOST"/></tr></thead><tbody>
@@ -87,6 +105,27 @@ class ExportDesktopReferenceTests(unittest.TestCase):
         modern_gen7 = by_id["pokemon-gen7-standard-type-chart"]
         modern_gen8 = by_id["pokemon-gen8-standard-type-chart"]
         modern_gen9 = by_id["pokemon-gen9-standard-type-chart"]
+        for chart, expected_count in zip(
+            (classic_gen4, classic_gen5, modern_gen6, modern_gen7, modern_gen8, modern_gen9),
+            (493, 649, 721, 809, 905, 1025),
+        ):
+            self.assertEqual(chart["species_count"], expected_count)
+            self.assertEqual(len(chart["species"]), expected_count)
+            self.assertEqual(len(chart["species_source_sha256"]), 64)
+            self.assertEqual(chart["species_source_commit"], MODULE.POKEAPI_COMMIT)
+            self.assertEqual(chart["species_license"], "BSD-3-Clause")
+            self.assertEqual(chart["species_attribution"], "PokeAPI contributors")
+            self.assertIn("formas predeterminadas", chart["species_scope"])
+        clefairy_gen5 = next(species for species in classic_gen5["species"] if species["number"] == 35)
+        clefairy_gen6 = next(species for species in modern_gen6["species"] if species["number"] == 35)
+        self.assertEqual(clefairy_gen5["types"], [0])
+        self.assertEqual(clefairy_gen6["types"], [9])
+        magnemite_gen5 = next(species for species in classic_gen5["species"] if species["number"] == 81)
+        mawile_gen5 = next(species for species in classic_gen5["species"] if species["number"] == 303)
+        mawile_gen6 = next(species for species in modern_gen6["species"] if species["number"] == 303)
+        self.assertEqual(magnemite_gen5["types"], [13, 8])
+        self.assertEqual(mawile_gen5["types"], [8])
+        self.assertEqual(mawile_gen6["types"], [8, 9])
         self.assertEqual(classic_gen4["generation"], 4)
         self.assertEqual(classic_gen5["generation"], 5)
         self.assertEqual(classic_gen4["types"], classic_gen5["types"])

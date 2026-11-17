@@ -2,9 +2,11 @@
 """Export the shared Gen 3 type chart from Kotlin source as a versioned JSON dataset."""
 
 import argparse
+import csv
 import hashlib
 import json
 import re
+from io import StringIO
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +20,10 @@ GEN2_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeCh
 GEN6_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartGlazed.kt"
 ROWE_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartRowe.kt"
 HACK_CHARTS = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data"
+NATIONAL_SPECIES_PATH = HACK_CHARTS / "SpeciesNamesNationalDex.kt"
+POKEAPI_DATA = ROOT / "scripts/data/pokeapi"
+POKEAPI_FILES = ("pokemon.csv", "pokemon_types.csv", "pokemon_types_past.csv", "pokemon_species.csv", "types.csv")
+POKEAPI_COMMIT = (POKEAPI_DATA / "SOURCE_COMMIT.txt").read_text(encoding="utf-8").strip()
 SPECIES_SOURCES = {
     "yellow": ("SpeciesNamesYellow.kt", "speciesNamesYellow", "SpeciesTypesYellow.kt", "speciesTypeDataYellow"),
     "yellow-legacy": ("SpeciesNamesYellow.kt", "speciesNamesYellow", "SpeciesTypesYellow.kt", "speciesTypeDataYellow"),
@@ -132,6 +138,64 @@ def parse_species_reference(names_source: str, names_variable: str, types_source
     return entries
 
 
+def parse_pokeapi_species_types(generation: int, names_by_number: dict[int, str], pokeapi_to_chart_type: dict[int, int], pokemon_csv: str, current_types_csv: str, past_types_csv: str, species_csv: str) -> list[dict]:
+    """Join default forms to National Dex names and resolve historical typing for a generation."""
+    if generation < 1 or generation > 9:
+        raise ValueError("generation must be between 1 and 9")
+
+    def rows(source: str) -> list[dict[str, str]]:
+        return list(csv.DictReader(StringIO(source)))
+
+    pokemon_rows = rows(pokemon_csv)
+    current_rows = rows(current_types_csv)
+    past_rows = rows(past_types_csv)
+    species_rows = rows(species_csv)
+    defaults: dict[int, int] = {}
+    for row in pokemon_rows:
+        if row.get("is_default") != "1":
+            continue
+        pokemon_id, species_id = int(row["id"]), int(row["species_id"])
+        if species_id in defaults:
+            raise ValueError(f"duplicate default Pokémon record for species {species_id}")
+        defaults[species_id] = pokemon_id
+
+    current_by_pokemon: dict[int, list[tuple[int, int]]] = {}
+    for row in current_rows:
+        current_by_pokemon.setdefault(int(row["pokemon_id"]), []).append((int(row["slot"]), int(row["type_id"])))
+    past_by_pokemon: dict[int, dict[int, list[tuple[int, int]]]] = {}
+    for row in past_rows:
+        past_by_pokemon.setdefault(int(row["pokemon_id"]), {}).setdefault(int(row["generation_id"]), []).append(
+            (int(row["slot"]), int(row["type_id"]))
+        )
+
+    output = []
+    for row in species_rows:
+        species_id, introduced_generation = int(row["id"]), int(row["generation_id"])
+        if introduced_generation > generation:
+            continue
+        name = names_by_number.get(species_id)
+        if not name:
+            raise ValueError(f"missing National Dex name for species {species_id}")
+        pokemon_id = defaults.get(species_id)
+        if pokemon_id is None:
+            raise ValueError(f"missing default Pokémon record for species {species_id}")
+        history = past_by_pokemon.get(pokemon_id, {})
+        historical_versions = [changed_generation for changed_generation in history if changed_generation >= generation]
+        source_types = history[min(historical_versions)] if historical_versions else current_by_pokemon.get(pokemon_id, [])
+        ordered_types = [type_id for _, type_id in sorted(source_types)]
+        mapped_types = []
+        for type_id in ordered_types:
+            if type_id not in pokeapi_to_chart_type:
+                raise ValueError(f"unmapped PokeAPI type {type_id} for species {species_id}")
+            mapped_types.append(pokeapi_to_chart_type[type_id])
+        if not 1 <= len(mapped_types) <= 2:
+            raise ValueError(f"invalid type count for species {species_id}: {len(mapped_types)}")
+        output.append({"number": species_id, "name": name, "types": list(dict.fromkeys(mapped_types))})
+    if not output:
+        raise ValueError(f"no PokeAPI species available through generation {generation}")
+    return output
+
+
 def render_dataset() -> str:
     names_source = NAMES_PATH.read_text(encoding="utf-8")
     chart_source = CHART_PATH.read_text(encoding="utf-8")
@@ -215,7 +279,39 @@ def render_additional_datasets() -> str:
     classic_chart_source = CHART_PATH.read_text(encoding="utf-8")
     classic_types, classic_matchups = parse_type_chart(classic_names_source, classic_chart_source)
     classic_hash = hashlib.sha256((classic_names_source + "\0" + classic_chart_source).encode("utf-8")).hexdigest()
+    national_source = NATIONAL_SPECIES_PATH.read_text(encoding="utf-8")
+    national_body = kotlin_map(national_source, "speciesNamesNationalDex")
+    national_names = {int(number): json.loads(raw_name) for number, raw_name in re.findall(r'(\d+)\s+to\s+("(?:\\.|[^"\\])*")', national_body)}
+    if len(national_names) != 1025:
+        raise ValueError(f"expected 1025 National Dex names; found {len(national_names)}")
+    pokeapi_sources = {name: (POKEAPI_DATA / name).read_bytes() for name in POKEAPI_FILES}
+    pokeapi_csv = {name: content.decode("utf-8") for name, content in pokeapi_sources.items()}
+    pokeapi_type_names = {int(row["id"]): row["identifier"] for row in csv.DictReader(StringIO(pokeapi_csv["types.csv"]))}
+    license_bytes = (POKEAPI_DATA / "LICENSE.md").read_bytes()
+    species_source_files = [NATIONAL_SPECIES_PATH.relative_to(ROOT).as_posix(), *(POKEAPI_DATA.joinpath(name).relative_to(ROOT).as_posix() for name in POKEAPI_FILES), (POKEAPI_DATA / "LICENSE.md").relative_to(ROOT).as_posix(), (POKEAPI_DATA / "SOURCE_COMMIT.txt").relative_to(ROOT).as_posix()]
+    species_source_hash = hashlib.sha256(
+        POKEAPI_COMMIT.encode("ascii") + b"\0" + national_source.encode("utf-8") + b"\0" + b"\0".join([*(pokeapi_sources[name] for name in POKEAPI_FILES), license_bytes])
+    ).hexdigest()
+
+    def generation_species(generation: int, types: list[dict]) -> list[dict]:
+        chart_type_names = {entry["name"].lower(): entry["id"] for entry in types}
+        pokeapi_to_chart = {
+            pokeapi_id: chart_type_names[name.lower()]
+            for pokeapi_id, name in pokeapi_type_names.items()
+            if name.lower() in chart_type_names
+        }
+        return parse_pokeapi_species_types(
+            generation,
+            national_names,
+            pokeapi_to_chart,
+            pokeapi_csv["pokemon.csv"],
+            pokeapi_csv["pokemon_types.csv"],
+            pokeapi_csv["pokemon_types_past.csv"],
+            pokeapi_csv["pokemon_species.csv"],
+        )
+
     for generation in (4, 5):
+        species = generation_species(generation, classic_types)
         datasets.append({
             "dataset_id": f"pokemon-gen{generation}-standard-type-chart",
             "generation": generation,
@@ -226,6 +322,15 @@ def render_additional_datasets() -> str:
             "default_percent": 100,
             "types": classic_types,
             "matchups": classic_matchups,
+            "species_count": len(species),
+            "species": species,
+            "species_source_files": species_source_files,
+            "species_source_sha256": species_source_hash,
+            "species_source_commit": POKEAPI_COMMIT,
+            "species_license": "BSD-3-Clause",
+            "species_attribution": "PokeAPI contributors",
+            "species_source_url": f"https://github.com/PokeAPI/pokeapi/tree/{POKEAPI_COMMIT}/data/v2/csv",
+            "species_scope": "National Dex hasta la generación indicada; formas predeterminadas, no disponibilidad regional ni formas alternativas.",
         })
 
     modern_source = GEN6_NAMES.read_text(encoding="utf-8")
@@ -234,6 +339,7 @@ def render_additional_datasets() -> str:
     )
     modern_hash = hashlib.sha256(modern_source.encode("utf-8")).hexdigest()
     for generation in (6, 7, 8, 9):
+        species = generation_species(generation, modern_types)
         datasets.append({
             "dataset_id": f"pokemon-gen{generation}-standard-type-chart",
             "generation": generation,
@@ -245,6 +351,15 @@ def render_additional_datasets() -> str:
             "default_percent": 100,
             "types": modern_types,
             "matchups": modern_matchups,
+            "species_count": len(species),
+            "species": species,
+            "species_source_files": species_source_files,
+            "species_source_sha256": species_source_hash,
+            "species_source_commit": POKEAPI_COMMIT,
+            "species_license": "BSD-3-Clause",
+            "species_attribution": "PokeAPI contributors",
+            "species_source_url": f"https://github.com/PokeAPI/pokeapi/tree/{POKEAPI_COMMIT}/data/v2/csv",
+            "species_scope": "National Dex hasta la generación indicada; formas predeterminadas, no disponibilidad regional ni formas alternativas.",
         })
     return json.dumps({"schema_version": 1, "datasets": datasets}, ensure_ascii=False, indent=2) + "\n"
 

@@ -7,5 +7,5 @@ mGBA's bundled libraries do: `third_party/mgba`, `third_party/rcheevos`). `app/b
 - `mGBA-shaders-MIT.txt`: the MIT notice of mGBA's LCD and Scanlines shaders, which ScreenShaders.kt ports.
 - `libretro-shaders.txt`: the notices of the xBR, xBRZ and ScaleFX shaders in `app/src/main/assets/shaders/`
   (SHADERS > SMOOTHING; xBRZ's own part is GPL 3.0, like the app).
-- `PokeAPI-BSD-3-Clause.txt`: PokeAPI's data (the National Dex species list).
+- `PokeAPI-BSD-3-Clause.txt`: PokeAPI's National Dex names and generation type-profile data used by Android and Desktop.
 - `XZ-Java-0BSD.txt`: XZ for Java (.7z archives).
