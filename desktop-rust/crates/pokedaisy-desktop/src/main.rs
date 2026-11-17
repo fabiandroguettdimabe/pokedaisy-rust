@@ -3074,6 +3074,10 @@ mod tests {
             core.read_memory_range(None, 0x0400_00ff, 2),
             Err(vyntra_libretro::CoreError::SystemRamRangeOutOfBounds { .. })
         ));
+        assert!(matches!(
+            core.read_memory_range(None, 0x0600_00ff, 2),
+            Err(vyntra_libretro::CoreError::SystemRamRangeOutOfBounds { .. })
+        ));
         assert_eq!(
             core.read_memory_range(Some("BIOS"), 0x0500_0000, 1)
                 .unwrap(),
