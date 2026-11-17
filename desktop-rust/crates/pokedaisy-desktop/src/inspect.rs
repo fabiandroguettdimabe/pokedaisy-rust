@@ -170,4 +170,38 @@ mod tests {
             Some(false)
         );
     }
+
+    #[test]
+    fn bounded_inspection_rejects_truncated_headers_and_bad_gba_signature() {
+        assert!(inspect_bytes("short.gba", &[0; 0xbf]).is_none());
+        let mut gba = vec![0; 0xc0];
+        gba[0xac..0xb0].copy_from_slice(b"ABCE");
+        gba[0xb2] = 0x96;
+        assert!(inspect_bytes("fixture.gba", &gba).is_some());
+        gba[0xb2] = 0;
+        assert!(inspect_bytes("fixture.gba", &gba).is_none());
+
+        assert!(inspect_bytes("short.gb", &[0; 0x14f]).is_none());
+        assert!(inspect_bytes("short.gbc", &[0; 0x14f]).is_none());
+        assert!(inspect_bytes("unknown.bin", &[0; 0x400]).is_none());
+    }
+
+    #[test]
+    fn ds_header_requires_arm9_region_to_fit_file() {
+        let mut nds = vec![0; 0x300];
+        nds[0x20..0x24].copy_from_slice(&0x200u32.to_le_bytes());
+        nds[0x2c..0x30].copy_from_slice(&0x100u32.to_le_bytes());
+        nds[0x84..0x88].copy_from_slice(&0x160u32.to_le_bytes());
+        nds[0x0c..0x10].copy_from_slice(b"ABCD");
+        assert_eq!(
+            inspect_bytes("fixture.nds", &nds)
+                .unwrap()
+                .game_code
+                .as_deref(),
+            Some("ABCD")
+        );
+
+        nds[0x2c..0x30].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert!(inspect_bytes("truncated.nds", &nds).is_none());
+    }
 }
