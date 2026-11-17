@@ -179,3 +179,66 @@ fn configured_local_gbc_core_runs_generated_diagnostic_rom() {
     drop(core);
     fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+#[ignore = "local GBA core smoke: set VYNTRA_GBA_CORE_SMOKE_PATH and VYNTRA_GBA_CORE_SMOKE_ROM"]
+fn configured_local_core_runs_generated_gba_diagnostic_rom() {
+    let core_path =
+        std::env::var_os("VYNTRA_GBA_CORE_SMOKE_PATH").expect("VYNTRA_GBA_CORE_SMOKE_PATH");
+    let rom_path =
+        std::env::var_os("VYNTRA_GBA_CORE_SMOKE_ROM").expect("VYNTRA_GBA_CORE_SMOKE_ROM");
+    let core_path = Path::new(&core_path);
+    let rom_path = Path::new(&rom_path);
+    let root = std::env::temp_dir().join(format!("vyntra-gba-core-smoke-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    let save_dir = root.join("saves");
+    let system_dir = root.join("system");
+    fs::create_dir_all(&save_dir).unwrap();
+    fs::create_dir_all(&system_dir).unwrap();
+    println!(
+        "gba_core_hash={:x}",
+        sha2::Sha256::digest(fs::read(core_path).unwrap())
+    );
+    println!(
+        "gba_rom_hash={:x}",
+        sha2::Sha256::digest(fs::read(rom_path).unwrap())
+    );
+
+    let mut core = LibretroCore::load(
+        core_path,
+        CorePaths {
+            save_dir,
+            system_dir,
+            panel_width: 640,
+            panel_height: 480,
+        },
+    )
+    .expect("the Windows core DLL loads");
+    let info = core.system_info();
+    assert!(
+        info.valid_extensions
+            .as_deref()
+            .unwrap_or_default()
+            .split('|')
+            .any(|extension| extension.eq_ignore_ascii_case("gba")),
+        "the core must advertise GBA ROMs"
+    );
+    let av = core
+        .load_game(rom_path)
+        .expect("the generated GBA diagnostic ROM loads");
+    assert!(av.geometry.base_width >= 240);
+    assert!(av.geometry.base_height >= 160);
+
+    let mut saw_video = false;
+    for _ in 0..120 {
+        let frame = core.run_frame(Default::default()).unwrap();
+        saw_video |= frame.video.is_some();
+    }
+    assert!(saw_video, "the GBA core did not emit video");
+    let state = core.serialize().expect("the GBA core serializes state");
+    assert!(!state.is_empty());
+    core.unserialize(&state)
+        .expect("the GBA core restores serialized state");
+    drop(core);
+    fs::remove_dir_all(root).unwrap();
+}
