@@ -3070,6 +3070,10 @@ mod tests {
         assert_eq!(snapshot["party"][0]["species_id"], 25);
         assert_eq!(snapshot["party"][0]["level"], 12);
         assert_eq!(snapshot["party"][0]["moves"][0]["move_id"], 33);
+        assert!(matches!(
+            core.read_memory_range(0x0400_00ff, 2),
+            Err(vyntra_libretro::CoreError::SystemRamRangeOutOfBounds { .. })
+        ));
         drop(core);
         fs::remove_dir_all(root).unwrap();
     }

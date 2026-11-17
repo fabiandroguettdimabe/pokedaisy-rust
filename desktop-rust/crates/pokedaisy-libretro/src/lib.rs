@@ -932,6 +932,44 @@ impl LibretroCore {
             let Some(relative) = disconnected.checked_sub(region.start) else {
                 continue;
             };
+            if length > 0 {
+                let last_address = address.checked_add(length - 1).ok_or(
+                    CoreError::SystemRamRangeOutOfBounds {
+                        offset: region.offset,
+                        length,
+                        size: region.len,
+                    },
+                )?;
+                if (last_address & region.select) != (region.start & region.select) {
+                    return Err(CoreError::SystemRamRangeOutOfBounds {
+                        offset: region.offset,
+                        length,
+                        size: region.len,
+                    });
+                }
+                let last_disconnected = last_address & !region.disconnect;
+                let Some(last_relative) = last_disconnected.checked_sub(region.start) else {
+                    return Err(CoreError::SystemRamRangeOutOfBounds {
+                        offset: region.offset,
+                        length,
+                        size: region.len,
+                    });
+                };
+                let Some(expected_last_relative) = relative.checked_add(length - 1) else {
+                    return Err(CoreError::SystemRamRangeOutOfBounds {
+                        offset: region.offset,
+                        length,
+                        size: region.len,
+                    });
+                };
+                if last_relative != expected_last_relative {
+                    return Err(CoreError::SystemRamRangeOutOfBounds {
+                        offset: region.offset,
+                        length,
+                        size: region.len,
+                    });
+                }
+            }
             let Some(offset) = region.offset.checked_add(relative) else {
                 continue;
             };

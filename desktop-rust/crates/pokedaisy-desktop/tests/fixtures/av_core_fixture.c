@@ -79,11 +79,16 @@ static uint8_t ewram[0x2000] = {
     [0x1058] = 10,
 };
 static uint8_t iwram[8] = {7, 8, 9, 10};
+static uint8_t mirrored_ram[0x200] = {
+    [0xff] = 0xaa,
+    [0x100] = 0xbb,
+};
 static const struct retro_memory_descriptor regions[] = {
     { .flags = 1u << 2, .ptr = ewram, .start = 0x02000000, .select = 0xff000000, .len = sizeof(ewram) },
     { .flags = 1u << 2, .ptr = iwram, .start = 0x03000000, .select = 0xff000000, .len = sizeof(iwram) },
+    { .flags = 1u << 2, .ptr = mirrored_ram, .start = 0x04000000, .select = 0xff000000, .disconnect = 0x100, .len = sizeof(mirrored_ram) },
 };
-static const struct retro_memory_map map = { regions, 2 };
+static const struct retro_memory_map map = { regions, 3 };
 
 EXPORT unsigned retro_api_version(void) { return 1; }
 EXPORT void retro_set_environment(retro_environment_t callback) { environment_cb = callback; }
