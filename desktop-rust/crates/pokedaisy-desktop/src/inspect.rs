@@ -196,7 +196,12 @@ mod tests {
         let mut gba = vec![0; 0xc0];
         gba[0xac..0xb0].copy_from_slice(b"ABCE");
         gba[0xb2] = 0x96;
-        assert!(inspect_bytes("fixture.gba", &gba).is_some());
+        assert_eq!(
+            inspect_bytes("fixture.gba", &gba)
+                .unwrap()
+                .header_checksum_valid,
+            Some(false)
+        );
         gba[0xb2] = 0;
         assert!(inspect_bytes("fixture.gba", &gba).is_none());
 
