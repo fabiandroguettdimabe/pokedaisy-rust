@@ -674,14 +674,14 @@ pub fn run() -> Result<(), String> {
                         "game_volume" => {
                             let id = action["storage_id"].as_str().ok_or("Juego inválido")?;
                             if !games.iter().any(|game| game_storage_key(game) == id) { return Err("El juego ya no está en la biblioteca".into()); }
-                            let value = action["value"].as_u64().map(|value| value as u8);
+                            let value = optional_setting_u8(&action["value"], "Volumen inválido")?;
                             let previous = config.clone();
                             config.set_game_volume(id, value)?;
                             if let Err(error) = config.save(&config_path) { config = previous; return Err(error); }
                         },
                         "system_volume" => {
                             let system = action["system"].as_str().ok_or("Sistema inválido")?;
-                            let value = action["value"].as_u64().map(|value| value as u8);
+                            let value = optional_setting_u8(&action["value"], "Volumen inválido")?;
                             let previous = config.clone();
                             config.set_system_volume(system, value)?;
                             if let Err(error) = config.save(&config_path) { config = previous; return Err(error); }
@@ -689,14 +689,14 @@ pub fn run() -> Result<(), String> {
                         "game_fast_forward" => {
                             let id = action["storage_id"].as_str().ok_or("Juego inválido")?;
                             if !games.iter().any(|game| game_storage_key(game) == id) { return Err("El juego ya no está en la biblioteca".into()); }
-                            let value = action["value"].as_u64().map(|value| value as u32);
+                            let value = optional_setting_u32(&action["value"], "Velocidad inválida")?;
                             let previous = config.clone();
                             config.set_game_fast_forward(id, value)?;
                             if let Err(error) = config.save(&config_path) { config = previous; return Err(error); }
                         },
                         "system_fast_forward" => {
                             let system = action["system"].as_str().ok_or("Sistema inválido")?;
-                            let value = action["value"].as_u64().map(|value| value as u32);
+                            let value = optional_setting_u32(&action["value"], "Velocidad inválida")?;
                             let previous = config.clone();
                             config.set_system_fast_forward(system, value)?;
                             if let Err(error) = config.save(&config_path) { config = previous; return Err(error); }
@@ -1412,6 +1412,28 @@ fn is_settings_mutation(action: &str) -> bool {
     )
 }
 
+fn optional_setting_u8(value: &serde_json::Value, error: &str) -> Result<Option<u8>, String> {
+    if value.is_null() {
+        return Ok(None);
+    }
+    value
+        .as_u64()
+        .and_then(|number| u8::try_from(number).ok())
+        .map(Some)
+        .ok_or_else(|| error.to_owned())
+}
+
+fn optional_setting_u32(value: &serde_json::Value, error: &str) -> Result<Option<u32>, String> {
+    if value.is_null() {
+        return Ok(None);
+    }
+    value
+        .as_u64()
+        .and_then(|number| u32::try_from(number).ok())
+        .map(Some)
+        .ok_or_else(|| error.to_owned())
+}
+
 fn settings_fingerprint(path: &Path) -> Result<Option<String>, String> {
     match fs::read(path) {
         Ok(bytes) => Ok(Some(crate::identity::sha256_bytes(&bytes))),
@@ -2019,6 +2041,22 @@ fn publish(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scoped_settings_numbers_reject_values_that_would_wrap() {
+        let wrapped_volume = serde_json::json!(256);
+        let wrapped_speed = serde_json::json!(4_294_967_298u64);
+        assert!(optional_setting_u8(&wrapped_volume, "Volumen inválido").is_err());
+        assert!(optional_setting_u32(&wrapped_speed, "Velocidad inválida").is_err());
+        assert_eq!(
+            optional_setting_u8(&serde_json::Value::Null, "Volumen inválido").unwrap(),
+            None
+        );
+        assert_eq!(
+            optional_setting_u32(&serde_json::json!(4), "Velocidad inválida").unwrap(),
+            Some(4)
+        );
+    }
 
     #[test]
     fn companion_position_stays_inside_monitor_with_negative_origin() {
