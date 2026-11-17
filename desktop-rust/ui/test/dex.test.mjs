@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {filterDexEntries} from '../src/dex.js';
+import {calculateTypeEffectiveness,filterDexEntries} from '../src/dex.js';
 
 const entries=[
  {number:1,name:'Bulbasaur',generation:1},
@@ -21,4 +21,15 @@ test('numeric Dex lookup accepts a hash and leading zeroes as an exact number',(
  assert.deepEqual(filterDexEntries(entries,'#001','all').map(entry=>entry.number),[1]);
  assert.deepEqual(filterDexEntries(entries,'152',1),[]);
  assert.deepEqual(filterDexEntries(entries,'386','all'),[]);
+});
+
+test('type effectiveness combines dual types and preserves immunity',()=>{
+ const chart={default_percent:100,matchups:[
+  {attack:1,defense:2,percent:200},
+  {attack:1,defense:3,percent:50},
+  {attack:1,defense:4,percent:0},
+ ]};
+ assert.equal(calculateTypeEffectiveness(chart,1,[2,3]),100);
+ assert.equal(calculateTypeEffectiveness(chart,1,[2,4]),0);
+ assert.equal(calculateTypeEffectiveness(chart,1,[2]),200);
 });

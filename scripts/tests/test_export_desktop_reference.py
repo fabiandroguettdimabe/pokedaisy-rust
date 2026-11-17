@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import pathlib
 import unittest
 
@@ -28,6 +29,26 @@ class ExportDesktopReferenceTests(unittest.TestCase):
                 'val typeNames = mapOf(0 to "Normal")',
                 "val typeEffectiveness: Map<Int, Int> = mapOf(101 to 200)",
             )
+
+    def test_parses_versioned_generation_chart_variable_names(self):
+        types, matchups = MODULE.parse_type_chart(
+            'val typeNamesYellow = mapOf(0 to "NORMAL", 8 to "GHOST")',
+            'val typeEffectivenessYellow = mapOf(8 to 0)',
+            names_variable="typeNamesYellow",
+            chart_variable="typeEffectivenessYellow",
+        )
+        self.assertEqual(types, [{"id": 0, "name": "NORMAL"}, {"id": 8, "name": "GHOST"}])
+        self.assertEqual(matchups, [{"attack": 0, "defense": 8, "percent": 0}])
+
+    def test_exports_yellow_and_crystal_charts_with_distinct_generation_rules(self):
+        data = json.loads(MODULE.render_earlier_generation_datasets())
+        yellow, crystal = data["datasets"]
+        self.assertEqual((yellow["generation"], yellow["reference_game"]), (1, "Pokémon Yellow"))
+        self.assertEqual((crystal["generation"], crystal["reference_game"]), (2, "Pokémon Crystal"))
+        self.assertEqual(yellow["license"], "GPL-3.0-only")
+        self.assertIn({"attack": 8, "defense": 24, "percent": 0}, yellow["matchups"])
+        self.assertIn({"attack": 27, "defense": 24, "percent": 200}, crystal["matchups"])
+        self.assertIn({"id": 9, "name": "STEEL"}, crystal["types"])
 
 
 if __name__ == "__main__":

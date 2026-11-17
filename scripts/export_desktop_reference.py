@@ -11,6 +11,9 @@ ROOT = Path(__file__).resolve().parents[1]
 NAMES_PATH = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartUtil.kt"
 CHART_PATH = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChart.kt"
 OUTPUT = ROOT / "desktop-rust/assets/reference/type-chart-gen3.json"
+UI_DATASET_OUTPUT = ROOT / "desktop-rust/ui/src/data/type-charts-gen1-2.json"
+GEN1_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartYellow.kt"
+GEN2_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartCrystal.kt"
 
 
 def kotlin_map(source: str, variable: str) -> str:
@@ -20,9 +23,9 @@ def kotlin_map(source: str, variable: str) -> str:
     return match.group(1)
 
 
-def parse_type_chart(names_source: str, chart_source: str):
-    names_body = kotlin_map(names_source, "typeNames")
-    chart_body = kotlin_map(chart_source, "typeEffectiveness")
+def parse_type_chart(names_source: str, chart_source: str, names_variable="typeNames", chart_variable="typeEffectiveness"):
+    names_body = kotlin_map(names_source, names_variable)
+    chart_body = kotlin_map(chart_source, chart_variable)
     names = [(int(key), value) for key, value in re.findall(r'(\d+)\s+to\s+"([^"\\]*)"', names_body)]
     if not names or len({key for key, _ in names}) != len(names):
         raise ValueError("type names are empty or contain duplicate IDs")
@@ -69,20 +72,49 @@ def render_dataset() -> str:
     return json.dumps(dataset, ensure_ascii=False, indent=2) + "\n"
 
 
+def render_earlier_generation_datasets() -> str:
+    definitions = [
+        (1, "yellow", GEN1_NAMES, "typeNamesYellow", "typeEffectivenessYellow"),
+        (2, "crystal", GEN2_NAMES, "typeNamesCrystal", "typeEffectivenessCrystal"),
+    ]
+    datasets = []
+    for generation, game, source_path, names_var, chart_var in definitions:
+        source = source_path.read_text(encoding="utf-8")
+        types, matchups = parse_type_chart(source, source, names_var, chart_var)
+        datasets.append({
+            "dataset_id": f"pokemon-gen{generation}-{game}-type-chart",
+            "generation": generation,
+            "reference_game": "Pokémon Yellow" if generation == 1 else "Pokémon Crystal",
+            "source_files": [source_path.relative_to(ROOT).as_posix()],
+            "source_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
+            "license": "GPL-3.0-only",
+            "default_percent": 100,
+            "types": types,
+            "matchups": matchups,
+        })
+    return json.dumps({"schema_version": 1, "datasets": datasets}, ensure_ascii=False, indent=2) + "\n"
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     generated = render_dataset()
+    earlier = render_earlier_generation_datasets()
     if args.check:
         actual = OUTPUT.read_text(encoding="utf-8") if OUTPUT.exists() else ""
         if actual != generated:
             raise SystemExit("Desktop type-chart dataset is stale; run python scripts/export_desktop_reference.py")
-        print("desktop reference: type chart matches Kotlin source")
+        ui_actual = UI_DATASET_OUTPUT.read_text(encoding="utf-8") if UI_DATASET_OUTPUT.exists() else ""
+        if ui_actual != earlier:
+            raise SystemExit("Desktop Gen I/II type charts are stale; run python scripts/export_desktop_reference.py")
+        print("desktop reference: type charts match Kotlin sources")
         return
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(generated, encoding="utf-8", newline="\n")
-    print(f"desktop reference: wrote {OUTPUT.relative_to(ROOT)}")
+    UI_DATASET_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    UI_DATASET_OUTPUT.write_text(earlier, encoding="utf-8", newline="\n")
+    print(f"desktop reference: wrote Gen I–III charts, including {UI_DATASET_OUTPUT.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":
