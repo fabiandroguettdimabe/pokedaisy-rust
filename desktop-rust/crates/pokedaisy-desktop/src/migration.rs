@@ -349,6 +349,44 @@ mod tests {
             .collect()
     }
 
+    #[cfg(windows)]
+    fn current_windows_user_sid() -> String {
+        let identity = std::process::Command::new("whoami")
+            .args(["/user", "/fo", "csv", "/nh"])
+            .output()
+            .unwrap();
+        assert!(identity.status.success());
+        String::from_utf8(identity.stdout)
+            .unwrap()
+            .lines()
+            .next()
+            .and_then(|line| line.split(',').nth(1))
+            .map(|value| value.trim().trim_matches('"'))
+            .filter(|value| value.starts_with("S-1-"))
+            .expect("whoami returns the current Windows SID")
+            .to_owned()
+    }
+
+    #[cfg(windows)]
+    fn deny_windows_write(path: &Path, sid: &str) -> std::process::Output {
+        std::process::Command::new("icacls")
+            .arg(path)
+            .arg("/deny")
+            .arg(format!("*{sid}:(WD)"))
+            .output()
+            .unwrap()
+    }
+
+    #[cfg(windows)]
+    fn restore_windows_write(path: &Path, sid: &str) -> std::process::Output {
+        std::process::Command::new("icacls")
+            .arg(path)
+            .arg("/remove:d")
+            .arg(format!("*{sid}"))
+            .output()
+            .unwrap()
+    }
+
     #[test]
     fn migration_refuses_a_source_changed_after_preview() {
         let root = std::env::temp_dir().join(format!(
@@ -608,26 +646,8 @@ mod tests {
         )])
         .unwrap();
 
-        let identity = std::process::Command::new("whoami")
-            .args(["/user", "/fo", "csv", "/nh"])
-            .output()
-            .unwrap();
-        assert!(identity.status.success());
-        let identity = String::from_utf8(identity.stdout).unwrap();
-        let sid = identity
-            .lines()
-            .next()
-            .and_then(|line| line.split(',').nth(1))
-            .map(|value| value.trim().trim_matches('"'))
-            .filter(|value| value.starts_with("S-1-"))
-            .expect("whoami returns the current Windows SID");
-        let deny = format!("*{sid}:(WD)");
-        let denied_acl = std::process::Command::new("icacls")
-            .arg(&root)
-            .arg("/deny")
-            .arg(&deny)
-            .output()
-            .unwrap();
+        let sid = current_windows_user_sid();
+        let denied_acl = deny_windows_write(&root, &sid);
         if !denied_acl.status.success() {
             eprintln!(
                 "Skipping denied-folder assertion: icacls could not set the temporary ACL: {}",
@@ -638,12 +658,7 @@ mod tests {
         }
 
         let apply_result = apply(&journal, &report);
-        let restore_acl = std::process::Command::new("icacls")
-            .arg(&root)
-            .arg("/remove:d")
-            .arg(format!("*{sid}"))
-            .output()
-            .unwrap();
+        let restore_acl = restore_windows_write(&root, &sid);
         let journal_bytes = fs::read(&journal).unwrap();
         let source_after = fs::read(&source).unwrap();
         let destination_exists = destination.exists();
@@ -657,6 +672,58 @@ mod tests {
         assert_eq!(journal_bytes, serde_json::to_vec_pretty(&previous).unwrap());
         assert_eq!(source_after, source_bytes);
         assert!(!destination_exists);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn migration_payload_acl_denial_keeps_source_and_ready_journal() {
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-migration-payload-acl-denial-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        let source = root.join("legacy.sav");
+        let destination_parent = root.join("destination/game");
+        let destination = destination_parent.join("battery.sav");
+        let journal = root.join("migration.json");
+        let source_bytes = b"legacy battery remains untouched";
+        fs::create_dir_all(&destination_parent).unwrap();
+        fs::write(&source, source_bytes).unwrap();
+        let report = preview(&[MigrationItem::new(
+            source.clone(),
+            destination.clone(),
+            "game".into(),
+            "battery".into(),
+        )])
+        .unwrap();
+        let sid = current_windows_user_sid();
+        let denied_acl = deny_windows_write(&destination_parent, &sid);
+        if !denied_acl.status.success() {
+            eprintln!(
+                "Skipping denied-payload assertion: icacls could not set the temporary ACL: {}",
+                String::from_utf8_lossy(&denied_acl.stderr)
+            );
+            let _ = fs::remove_dir_all(&root);
+            return;
+        }
+
+        let apply_result = apply(&journal, &report);
+        let restore_acl = restore_windows_write(&destination_parent, &sid);
+        let source_after = fs::read(&source).unwrap();
+        let journal_after = load_journal(&journal).unwrap().unwrap();
+        let destination_exists = destination.exists();
+        let staging_files = migration_staging_files(&destination);
+        let _ = fs::remove_dir_all(&root);
+
+        assert!(
+            restore_acl.status.success(),
+            "temporary ACL must be restored"
+        );
+        assert!(apply_result.is_err());
+        assert_eq!(source_after, source_bytes);
+        assert_eq!(journal_after.items[0].status, MigrationStatus::Ready);
+        assert!(!destination_exists);
+        assert!(staging_files.is_empty());
     }
 
     #[test]
