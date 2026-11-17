@@ -1881,6 +1881,12 @@ fn core_names(system: &str) -> &'static [&'static str] {
             "pokedaisy_gba_libretro.dll",
             "vyntra_gba_libretro.so",
             "pokedaisy_gba_libretro.so",
+            // The shared PokeDaisy/mGBA backend also declares and runs GBA.
+            // Keep dedicated GBA cores first when one is installed.
+            "vyntra_gbc_libretro.dll",
+            "pokedaisy_gbc_libretro.dll",
+            "vyntra_gbc_libretro.so",
+            "pokedaisy_gbc_libretro.so",
         ],
         "DS" => &[
             "vyntra_ds_libretro.dll",
@@ -3555,6 +3561,12 @@ mod tests {
             Some(preferred.join("pokedaisy_gba_libretro.dll"))
         );
         assert!(find_core_in_dirs(&[root.clone()], "GBA").is_none());
+
+        let shared_mgba = root.join("shared-mgba");
+        fs::create_dir_all(&shared_mgba).unwrap();
+        let shared_core = shared_mgba.join("pokedaisy_gbc_libretro.dll");
+        fs::write(&shared_core, b"mGBA supports GBA and GBC").unwrap();
+        assert_eq!(find_core_in_dirs(&[shared_mgba], "GBA"), Some(shared_core));
         fs::remove_dir_all(root).unwrap();
     }
 
