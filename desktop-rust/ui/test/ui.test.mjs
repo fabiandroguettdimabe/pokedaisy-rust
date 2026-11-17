@@ -220,6 +220,14 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.getByRole('button',{name:'Calcular',exact:true}).click();
   assert.equal(await page.getByText('Fairy contra Dragon',{exact:true}).isVisible(),true);
   assert.equal(await page.getByText('2×',{exact:true}).isVisible(),true);
+  await page.getByRole('button',{name:'Biblioteca',exact:true}).click();
+  await page.locator('.game-card').filter({hasText:'Synthetic GB fixture'}).click();
+  await page.getByRole('button',{name:'Acompañante',exact:true}).click();
+  assert.equal(await page.getByLabel('Generación de la tabla').inputValue(),'pokemon-gen3-type-chart');
+  await page.getByRole('button',{name:'Biblioteca',exact:true}).click();
+  await page.locator('.game-card').filter({hasText:'Synthetic GBA fixture'}).nth(1).click();
+  await page.getByRole('button',{name:'Acompañante',exact:true}).click();
+  assert.equal(await page.getByLabel('Generación de la tabla').inputValue(),'pokemon-gen9-standard-type-chart');
   await page.getByLabel('Generación de la tabla').selectOption('pokemon-gen6-glazed-type-chart');
   assert.equal(await page.getByText('Contexto del Dex: Pecharunt (#1025). Especie Gen 9; la tabla es Gen VI. Confirma tipos y reglas en la ROM o el hack.',{exact:true}).isVisible(),true);
   assert.equal(await page.getByText('Pokémon Glazed 9.2.0 · GPL-3.0-only',{exact:true}).isVisible(),true);
