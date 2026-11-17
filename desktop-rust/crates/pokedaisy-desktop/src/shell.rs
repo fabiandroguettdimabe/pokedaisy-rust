@@ -128,11 +128,23 @@ pub fn run() -> Result<(), String> {
         *flow=ControlFlow::Wait;
         match event {
             TaoEvent::WindowEvent { event:WindowEvent::CloseRequested,.. } => {
-                if let Some(cancellation) = &player_cancellation { cancellation.cancel(); }
-                if let Some(commands) = &player_commands { let _ = commands.send(crate::transport::PlayerCommand::Stop); }
-                if !player_authenticated {
-                    if let Err(error) = terminate_child_process(&mut child) { eprintln!("No se pudo cerrar Player al salir: {error}"); }
+                if player_authenticated {
+                    let stopped = stop_player_child(
+                        &mut child,
+                        || player_commands.as_ref().is_some_and(|commands| {
+                            commands.send(crate::transport::PlayerCommand::Stop).is_ok()
+                        }),
+                        Duration::from_secs(2),
+                    );
+                    match stopped {
+                        Ok(true) => {}
+                        Ok(false) => eprintln!("Player no cerró después de Stop; se terminó el proceso."),
+                        Err(error) => eprintln!("No se pudo cerrar Player al salir: {error}"),
+                    }
+                } else if let Err(error) = terminate_child_process(&mut child) {
+                    eprintln!("No se pudo cerrar Player al salir: {error}");
                 }
+                if let Some(cancellation) = &player_cancellation { cancellation.cancel(); }
                 *flow=ControlFlow::Exit
             },
             TaoEvent::UserEvent(Message::Scanned(id,mut found)) if id==generation => {
@@ -934,6 +946,47 @@ fn terminate_child_process(child: &mut Option<std::process::Child>) -> Result<()
     }
 }
 
+fn stop_player_child(
+    child: &mut Option<std::process::Child>,
+    request_stop: impl FnOnce() -> bool,
+    timeout: Duration,
+) -> Result<bool, String> {
+    let Some(process) = child.as_mut() else {
+        return Ok(true);
+    };
+    if process
+        .try_wait()
+        .map_err(|error| error.to_string())?
+        .is_some()
+    {
+        *child = None;
+        return Ok(true);
+    }
+    if !request_stop() {
+        terminate_child_process(child)?;
+        return Ok(false);
+    }
+    let deadline = std::time::Instant::now() + timeout;
+    loop {
+        let Some(process) = child.as_mut() else {
+            return Ok(true);
+        };
+        if process
+            .try_wait()
+            .map_err(|error| error.to_string())?
+            .is_some()
+        {
+            *child = None;
+            return Ok(true);
+        }
+        if std::time::Instant::now() >= deadline {
+            terminate_child_process(child)?;
+            return Ok(false);
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
 fn ensure_player_stopped(
     child: &mut Option<std::process::Child>,
     message: &str,
@@ -1343,6 +1396,91 @@ mod tests {
 
         assert!(ensure_player_stopped(&mut child, "player activo").is_ok());
         assert!(child.is_none());
+    }
+
+    #[test]
+    fn authenticated_player_exits_gracefully_after_stop_request() {
+        const READY_ENV: &str = "VYNTRA_TEST_STOP_PLAYER_READY";
+        const STOP_ENV: &str = "VYNTRA_TEST_STOP_PLAYER_FILE";
+        let ready_path =
+            std::env::temp_dir().join(format!("vyntra-stop-ready-{}", std::process::id()));
+        let stop_path =
+            std::env::temp_dir().join(format!("vyntra-stop-signal-{}", std::process::id()));
+        let _ = fs::remove_file(&ready_path);
+        let _ = fs::remove_file(&stop_path);
+        let child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "shell::tests::stop_aware_player_child"])
+            .env(READY_ENV, &ready_path)
+            .env(STOP_ENV, &stop_path)
+            .spawn()
+            .unwrap();
+        for _ in 0..200 {
+            if ready_path.exists() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        assert!(ready_path.exists(), "child Player fixture did not start");
+        let mut child = Some(child);
+        let graceful = stop_player_child(
+            &mut child,
+            || {
+                fs::write(&stop_path, "stop").unwrap();
+                true
+            },
+            std::time::Duration::from_secs(2),
+        )
+        .unwrap();
+        assert!(graceful);
+        assert!(child.is_none());
+        let _ = fs::remove_file(ready_path);
+        let _ = fs::remove_file(stop_path);
+    }
+
+    #[test]
+    fn authenticated_player_that_ignores_stop_is_forcefully_reaped() {
+        const HOLD_ENV: &str = "VYNTRA_TEST_HOLD_PLAYER_CHILD";
+        const READY_ENV: &str = "VYNTRA_TEST_PLAYER_CHILD_READY";
+        let ready_path =
+            std::env::temp_dir().join(format!("vyntra-player-close-ready-{}", std::process::id()));
+        let _ = fs::remove_file(&ready_path);
+        let child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "shell::tests::hold_player_child_until_killed"])
+            .env(HOLD_ENV, "1")
+            .env(READY_ENV, &ready_path)
+            .spawn()
+            .unwrap();
+        for _ in 0..200 {
+            if ready_path.exists() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        assert!(ready_path.exists(), "child Player fixture did not start");
+        let mut child = Some(child);
+        let graceful =
+            stop_player_child(&mut child, || true, std::time::Duration::from_millis(20)).unwrap();
+        assert!(!graceful);
+        assert!(child.is_none());
+        let _ = fs::remove_file(ready_path);
+    }
+
+    #[test]
+    fn stop_aware_player_child() {
+        let (Some(ready), Some(stop)) = (
+            std::env::var_os("VYNTRA_TEST_STOP_PLAYER_READY"),
+            std::env::var_os("VYNTRA_TEST_STOP_PLAYER_FILE"),
+        ) else {
+            return;
+        };
+        let ready = std::path::PathBuf::from(ready);
+        let stop = std::path::PathBuf::from(stop);
+        fs::write(ready, "ready").unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while !stop.exists() && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        assert!(stop.exists(), "parent did not send graceful Stop");
     }
 
     fn cmd(action: &str) -> protocol::UiCommandEnvelope {
