@@ -1264,7 +1264,9 @@ fn sdl_main() -> Result<(), String> {
                         if let Some(frame) = last_frame.as_ref() {
                             let smooth = active_game
                                 .as_ref()
-                                .map(|game| config.smooth_for_game(&game_storage_key(game)))
+                                .map(|game| {
+                                    config.smooth_for_game(&game_storage_key(game), &game.system)
+                                })
                                 .unwrap_or(config.smooth);
                             draw_play(&mut canvas, &texture_creator, frame, w, h, smooth)?;
                         }
@@ -1293,7 +1295,7 @@ fn sdl_main() -> Result<(), String> {
                 } else if let Some(frame) = last_frame.as_ref() {
                     let smooth = active_game
                         .as_ref()
-                        .map(|game| config.smooth_for_game(&game_storage_key(game)))
+                        .map(|game| config.smooth_for_game(&game_storage_key(game), &game.system))
                         .unwrap_or(config.smooth);
                     draw_play(&mut canvas, &texture_creator, frame, w, h, smooth)?;
                 }

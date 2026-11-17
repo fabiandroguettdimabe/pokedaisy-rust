@@ -405,6 +405,16 @@ pub fn run() -> Result<(), String> {
                                 return Err(error);
                             }
                         },
+                        "system_smoothing" => {
+                            let system = action["system"].as_str().ok_or("Sistema inválido")?;
+                            let value = action["value"].as_bool();
+                            let previous = config.clone();
+                            config.set_system_smooth(system, value)?;
+                            if let Err(error) = config.save(&config_path) {
+                                config = previous;
+                                return Err(error);
+                            }
+                        },
                         "library_view" => {
                             let view = action["value"].as_str().ok_or("Vista inválida")?;
                             if !matches!(view, "grid" | "list") { return Err("Vista inválida".into()); }

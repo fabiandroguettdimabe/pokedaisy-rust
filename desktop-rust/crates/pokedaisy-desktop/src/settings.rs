@@ -29,6 +29,7 @@ pub struct Settings {
     pub library_filter: String,
     pub library_selection: Option<String>,
     pub game_overrides: BTreeMap<String, GameSettingsOverride>,
+    pub system_overrides: BTreeMap<String, GameSettingsOverride>,
 }
 
 #[cfg(test)]
@@ -85,17 +86,34 @@ mod tests {
         settings
             .set_game_smooth("a1b2c3d4e5f60718", Some(false))
             .unwrap();
-        assert!(!settings.smooth_for_game("a1b2c3d4e5f60718"));
-        assert!(settings.smooth_for_game("another-game"));
+        assert!(!settings.smooth_for_game("a1b2c3d4e5f60718", "GBA"));
+        assert!(settings.smooth_for_game("another-game", "GBA"));
         settings.save(&path).unwrap();
 
         let mut loaded = Settings::load(&path, &dir).unwrap();
-        assert!(!loaded.smooth_for_game("a1b2c3d4e5f60718"));
-        assert!(loaded.smooth_for_game("another-game"));
+        assert!(!loaded.smooth_for_game("a1b2c3d4e5f60718", "GBA"));
+        assert!(loaded.smooth_for_game("another-game", "GBA"));
         loaded.set_game_smooth("a1b2c3d4e5f60718", None).unwrap();
-        assert!(loaded.smooth_for_game("a1b2c3d4e5f60718"));
+        assert!(loaded.smooth_for_game("a1b2c3d4e5f60718", "GBA"));
         assert!(loaded.set_game_smooth("bad id", Some(false)).is_err());
         let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn per_system_smoothing_is_fallback_between_game_and_global() {
+        let mut settings = Settings::default();
+        settings.smooth = true;
+        settings.set_system_smooth("GBA", Some(false)).unwrap();
+        assert!(!settings.smooth_for_game("game-one", "GBA"));
+        assert!(settings.smooth_for_game("game-two", "GB"));
+        settings.set_game_smooth("game-one", Some(true)).unwrap();
+        assert!(settings.smooth_for_game("game-one", "GBA"));
+        settings.set_game_smooth("game-one", None).unwrap();
+        assert!(!settings.smooth_for_game("game-one", "GBA"));
+        let restored: Settings =
+            serde_json::from_slice(&serde_json::to_vec(&settings).unwrap()).unwrap();
+        assert!(!restored.smooth_for_game("unscoped-game", "GBA"));
+        assert!(settings.set_system_smooth("unknown", Some(false)).is_err());
     }
 
     #[test]
@@ -143,6 +161,7 @@ impl Default for Settings {
             library_filter: "Todos".into(),
             library_selection: None,
             game_overrides: BTreeMap::new(),
+            system_overrides: BTreeMap::new(),
             keys: [
                 "Z",
                 "X",
@@ -234,6 +253,9 @@ impl Settings {
                     .all(|byte| byte.is_ascii_alphanumeric() || b"-_".contains(&byte))
                 && profile.smooth.is_some()
         });
+        value.system_overrides.retain(|system, profile| {
+            matches!(system.as_str(), "GB" | "GBC" | "GBA" | "DS") && profile.smooth.is_some()
+        });
         for dir in [
             &mut value.library,
             &mut value.saves,
@@ -272,11 +294,36 @@ impl Settings {
             .map(Ok)
             .unwrap_or_else(|| find_core(system))
     }
-    pub fn smooth_for_game(&self, storage_id: &str) -> bool {
+    pub fn smooth_for_game(&self, storage_id: &str, system: &str) -> bool {
         self.game_overrides
             .get(storage_id)
             .and_then(|profile| profile.smooth)
+            .or_else(|| {
+                self.system_overrides
+                    .get(system)
+                    .and_then(|profile| profile.smooth)
+            })
             .unwrap_or(self.smooth)
+    }
+
+    pub fn set_system_smooth(&mut self, system: &str, smooth: Option<bool>) -> Result<(), String> {
+        if !matches!(system, "GB" | "GBC" | "GBA" | "DS") {
+            return Err("Sistema no válido para el perfil".into());
+        }
+        match smooth {
+            Some(smooth) => {
+                self.system_overrides.insert(
+                    system.into(),
+                    GameSettingsOverride {
+                        smooth: Some(smooth),
+                    },
+                );
+            }
+            None => {
+                self.system_overrides.remove(system);
+            }
+        }
+        Ok(())
     }
     pub fn set_game_smooth(&mut self, storage_id: &str, value: Option<bool>) -> Result<(), String> {
         if storage_id.is_empty()

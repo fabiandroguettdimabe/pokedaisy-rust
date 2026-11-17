@@ -58,6 +58,12 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.getByRole('textbox',{name:'Buscar juegos'}).fill('Synthetic GBA');
   assert.equal(await page.locator('.game-card').count(),2);
   await page.getByRole('button',{name:'Limpiar búsqueda'}).click();
+  await page.getByRole('button',{name:'Configuración'}).click();
+  await page.getByRole('button',{name:'Audio y vídeo'}).click();
+  await page.getByLabel('Sistema para perfil de suavizado').selectOption('GBA');
+  await page.getByLabel('Suavizado para sistema').selectOption('off');
+  await expectCommand('system_smoothing',{system:'GBA',value:false});
+  await page.getByRole('button',{name:'Biblioteca',exact:true}).click();
   await page.getByRole('textbox',{name:'Buscar juegos'}).fill('ABCD');
   assert.equal(await page.locator('.game-card').count(),1);
   assert.equal(await page.getByText('Coincidencia parcial · ABCD · Rev. 1',{exact:true}).isVisible(),true);

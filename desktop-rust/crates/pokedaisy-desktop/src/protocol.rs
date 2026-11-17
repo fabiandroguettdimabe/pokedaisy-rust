@@ -17,6 +17,7 @@ const SUPPORTED_ACTIONS: &[&str] = &[
     "favorite",
     "game_note",
     "game_smoothing",
+    "system_smoothing",
     "library_view",
     "library_filter",
     "library_selection",
@@ -80,6 +81,13 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
                 ("value", PayloadFieldType::NullableBoolean),
             ],
             &["storage_id", "value"],
+        ),
+        "system_smoothing" => (
+            &[
+                ("system", PayloadFieldType::String),
+                ("value", PayloadFieldType::NullableBoolean),
+            ],
+            &["system", "value"],
         ),
         "library_view" | "library_filter" | "library_selection" => {
             (&[("value", PayloadFieldType::String)], &["value"])
@@ -180,6 +188,9 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
         }
         "game_smoothing" => {
             invalid_storage_id() || !(object["value"].is_boolean() || object["value"].is_null())
+        }
+        "system_smoothing" => {
+            !matches!(object["system"].as_str(), Some("GB" | "GBC" | "GBA" | "DS"))
         }
         "favorite" | "relink" => invalid_storage_id(),
         "play" => {
@@ -681,6 +692,7 @@ mod tests {
                 "favorite" => serde_json::json!({"storage_id":"g1","value":true}),
                 "game_note" => serde_json::json!({"storage_id":"g1","value":"note"}),
                 "game_smoothing" => serde_json::json!({"storage_id":"g1","value":false}),
+                "system_smoothing" => serde_json::json!({"system":"GBA","value":false}),
                 "library_view" => serde_json::json!({"value":"grid"}),
                 "library_filter" => serde_json::json!({"value":"Todos"}),
                 "library_selection" => serde_json::json!({"value":"g1"}),
@@ -728,6 +740,29 @@ mod tests {
             assert!(parse_ui_command(&body).is_ok());
         }
         let invalid = r#"{"protocol_version":1,"command_id":"bad-smoothing","action":"game_smoothing","payload":{"storage_id":"a1b2c3d4e5f60718","value":"yes"}}"#;
+        assert_eq!(
+            parse_ui_command(invalid).unwrap_err().code,
+            "invalid_payload"
+        );
+    }
+
+    #[test]
+    fn system_smoothing_accepts_only_known_systems_and_nullable_booleans() {
+        for value in [
+            serde_json::json!(true),
+            serde_json::json!(false),
+            Value::Null,
+        ] {
+            let body = serde_json::json!({
+                "protocol_version": CONTRACT_VERSION,
+                "command_id": "system-smoothing",
+                "action": "system_smoothing",
+                "payload": {"system":"GBA", "value":value},
+            })
+            .to_string();
+            assert!(parse_ui_command(&body).is_ok());
+        }
+        let invalid = r#"{"protocol_version":1,"command_id":"bad-system-smoothing","action":"system_smoothing","payload":{"system":"PC","value":false}}"#;
         assert_eq!(
             parse_ui_command(invalid).unwrap_err().code,
             "invalid_payload"
