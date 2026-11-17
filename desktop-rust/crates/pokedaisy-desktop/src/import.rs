@@ -852,4 +852,59 @@ mod tests {
         );
         let _ = fs::remove_dir_all(root);
     }
+
+    #[test]
+    fn corrupt_compressed_member_rolls_back_prior_roms_from_archive() {
+        let root = std::env::temp_dir().join(format!("vyntra-zip-corrupt-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let archive_path = root.join("damaged.zip");
+        let file = fs::File::create(&archive_path).unwrap();
+        let mut writer = zip::ZipWriter::new(file);
+        writer
+            .start_file("first.gba", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(&valid_gba()).unwrap();
+        let mut second = valid_gba();
+        second[0xa0] = b'B';
+        writer
+            .start_file("second.gba", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(&second).unwrap();
+        writer.finish().unwrap();
+
+        let mut bytes = fs::read(&archive_path).unwrap();
+        let name = b"second.gba";
+        let name_at = bytes
+            .windows(name.len())
+            .position(|window| window == name)
+            .unwrap();
+        let header = name_at - 30;
+        let name_len =
+            u16::from_le_bytes(bytes[header + 26..header + 28].try_into().unwrap()) as usize;
+        let extra_len =
+            u16::from_le_bytes(bytes[header + 28..header + 30].try_into().unwrap()) as usize;
+        let data_at = header + 30 + name_len + extra_len;
+        bytes[data_at + 8] ^= 0x7f;
+        fs::write(&archive_path, bytes).unwrap();
+        let mut entries = Vec::new();
+
+        let summary = import_archive(
+            &mut entries,
+            &archive_path,
+            &root.join("library"),
+            ArchivePolicy::default(),
+        );
+
+        assert_eq!(summary.rejected, 1);
+        assert_eq!(summary.imported, 0);
+        assert!(entries.is_empty());
+        assert_eq!(
+            fs::read_dir(root.join("library"))
+                .map(|items| items.count())
+                .unwrap_or(0),
+            0
+        );
+        let _ = fs::remove_dir_all(root);
+    }
 }
