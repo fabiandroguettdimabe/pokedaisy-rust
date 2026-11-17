@@ -10,4 +10,4 @@
 
 - [x] Add a UI assertion that fails when a matching storage event does not refresh the active chart.
 - [x] Add a scoped storage listener and clear the previous calculated result.
-- [x] Rebuild and run all UI tests; document that the test simulates the browser event.
+- [x] Run all UI tests with two pages in one browser context; verify the secondary page updates the primary through a same-origin storage event.

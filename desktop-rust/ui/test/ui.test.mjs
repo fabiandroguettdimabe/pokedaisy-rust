@@ -24,7 +24,8 @@ function expectVersionedCommand(page){
 test('offline UI: navigation, filtering, configuration IPC and missing-core state',async()=>{
  const browser=await chromium.launch({channel:'msedge',headless:true});
  try{
-  const page=await browser.newPage({viewport:{width:1360,height:880}});
+  const context=await browser.newContext({viewport:{width:1360,height:880}});
+  const page=await context.newPage();
   const expectCommand=expectVersionedCommand(page);
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{window.commands=[];window.ipc={postMessage:body=>window.commands.push(JSON.parse(body))};});
@@ -230,9 +231,17 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.locator('.game-card').filter({hasText:'Synthetic GBA fixture'}).nth(1).click();
   await page.getByRole('button',{name:'Acompañante',exact:true}).click();
   assert.equal(await page.getByLabel('Generación de la tabla').inputValue(),'pokemon-gen9-standard-type-chart');
-  await page.evaluate(()=>{localStorage.setItem('vyntra.type-chart.v1:gba-fixture','pokemon-gen6-glazed-type-chart');window.dispatchEvent(new StorageEvent('storage',{key:'vyntra.type-chart.v1:gba-fixture',newValue:'pokemon-gen6-glazed-type-chart'}));});
-  await page.waitForTimeout(50);
+  const companionWindow=await page.context().newPage();
+  await companionWindow.addInitScript(()=>{window.ipc={postMessage:()=>{}};});
+  await companionWindow.goto(pathToFileURL(resolve('dist/index.html')).href);
+  await companionWindow.waitForFunction(()=>typeof window.vyntraState==='function');
+  await companionWindow.evaluate(()=>window.vyntraState({config:{library_selection:'gba-fixture'},games:[{id:0,storage_id:'gba-fixture',title:'Synthetic GBA second window',system:'GBA',path:'C:/fixtures/second.gba',missing:false,core:false,identity:{game_code:'BPEE',revision:0,confidence:'strict'}}],cores:[],saves:[],scanning:false,reference_type_chart:{schema_version:1,dataset_id:'pokemon-gen3-type-chart',generation:3,source_sha256:'a'.repeat(64),license:'GPL-3.0-only',default_percent:100,types:[{id:8,name:'Steel'},{id:10,name:'Fire'},{id:12,name:'Grass'}],matchups:[]}}));
+  await companionWindow.getByRole('button',{name:'Acompañante',exact:true}).click();
+  assert.equal(await companionWindow.getByLabel('Generación de la tabla').inputValue(),'pokemon-gen9-standard-type-chart');
+  await companionWindow.getByLabel('Generación de la tabla').selectOption('pokemon-gen6-glazed-type-chart');
+  await page.waitForFunction(()=>document.querySelector('[aria-label="Generación de la tabla"]')?.value==='pokemon-gen6-glazed-type-chart',null,{timeout:5000});
   assert.equal(await page.getByLabel('Generación de la tabla').inputValue(),'pokemon-gen6-glazed-type-chart');
+  await companionWindow.close();
   await page.getByLabel('Generación de la tabla').selectOption('pokemon-gen6-glazed-type-chart');
   assert.equal(await page.getByText('Contexto del Dex: Pecharunt (#1025). Especie Gen 9; la tabla es Gen VI. Confirma tipos y reglas en la ROM o el hack.',{exact:true}).isVisible(),true);
   assert.equal(await page.getByText('Pokémon Glazed 9.2.0 · GPL-3.0-only',{exact:true}).isVisible(),true);
