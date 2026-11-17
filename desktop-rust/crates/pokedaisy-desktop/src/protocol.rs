@@ -56,33 +56,56 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
             "El payload del comando debe ser un objeto JSON",
         ));
     };
-    let schema: &[(&str, PayloadFieldType)] = match action {
-        "reset_settings_section" => &[("section", PayloadFieldType::String)],
-        "favorite" => &[
-            ("storage_id", PayloadFieldType::String),
-            ("value", PayloadFieldType::Boolean),
-        ],
-        "game_note" => &[
-            ("storage_id", PayloadFieldType::String),
-            ("value", PayloadFieldType::String),
-        ],
+    let (schema, allowed_fields): (&[(&str, PayloadFieldType)], &[&str]) = match action {
+        "reset_settings_section" => (&[("section", PayloadFieldType::String)], &["section"]),
+        "favorite" => (
+            &[
+                ("storage_id", PayloadFieldType::String),
+                ("value", PayloadFieldType::Boolean),
+            ],
+            &["storage_id", "value"],
+        ),
+        "game_note" => (
+            &[
+                ("storage_id", PayloadFieldType::String),
+                ("value", PayloadFieldType::String),
+            ],
+            &["storage_id", "value"],
+        ),
         "library_view" | "library_filter" | "library_selection" => {
-            &[("value", PayloadFieldType::String)]
+            (&[("value", PayloadFieldType::String)], &["value"])
         }
-        "relink" | "play" => &[("storage_id", PayloadFieldType::String)],
-        "type_matchup" => &[
-            ("attack", PayloadFieldType::Number),
-            ("defenses", PayloadFieldType::Array),
-        ],
-        "choose" | "open_folder" => &[("field", PayloadFieldType::String)],
-        "set" => &[
-            ("field", PayloadFieldType::String),
-            ("value", PayloadFieldType::Any),
-        ],
-        "pause_player" => &[("value", PayloadFieldType::Boolean)],
-        "export_vault_bundle" | "export_save" => &[("file", PayloadFieldType::String)],
-        _ => &[],
+        "relink" | "play" => (&[("storage_id", PayloadFieldType::String)], &["storage_id"]),
+        "type_matchup" => (
+            &[
+                ("attack", PayloadFieldType::Number),
+                ("defenses", PayloadFieldType::Array),
+            ],
+            &["attack", "defenses"],
+        ),
+        "choose" | "open_folder" => (&[("field", PayloadFieldType::String)], &["field"]),
+        "set" => (
+            &[
+                ("field", PayloadFieldType::String),
+                ("value", PayloadFieldType::Any),
+            ],
+            &["field", "value", "index"],
+        ),
+        "pause_player" => (&[("value", PayloadFieldType::Boolean)], &["value"]),
+        "export_vault_bundle" | "export_save" => (&[("file", PayloadFieldType::String)], &["file"]),
+        "probe_core" => (&[("index", PayloadFieldType::Number)], &["index"]),
+        _ => (&[], &[]),
     };
+
+    if object
+        .keys()
+        .any(|field| !allowed_fields.contains(&field.as_str()))
+    {
+        return Err(AppError::new(
+            "invalid_payload",
+            "El payload contiene campos no permitidos para esta acción",
+        ));
+    }
 
     for (field, field_type) in schema {
         let value = object
@@ -162,9 +185,16 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
                         .any(|value| value.as_u64().is_none_or(|id| id > u8::MAX as u64))
                 })
         }
+        "probe_core" => object["index"].as_u64().is_none_or(|index| index >= 3),
         "set" => {
             let field = object["field"].as_str().unwrap_or_default();
             let value = &object["value"];
+            if field != "key" && object.contains_key("index") {
+                return Err(AppError::new(
+                    "invalid_payload",
+                    "El campo `index` solo se admite al asignar una tecla",
+                ));
+            }
             match field {
                 "volume" => value.as_u64().is_none_or(|number| number > 100),
                 "smooth" | "fullscreen" | "recursive" | "reduced_motion" => !value.is_boolean(),
@@ -558,6 +588,11 @@ mod tests {
             ("open_folder", serde_json::json!({"field":"arbitrary"})),
             ("play", serde_json::json!({"storage_id":"../game"})),
             (
+                "favorite",
+                serde_json::json!({"storage_id":"g1","value":true,"path":"C:/outside"}),
+            ),
+            ("probe_core", serde_json::json!({"index":3})),
+            (
                 "game_note",
                 serde_json::json!({"storage_id":"g1","value":"bad\u{0001}note"}),
             ),
@@ -591,6 +626,7 @@ mod tests {
             ("choose", serde_json::json!({"field":"core2"})),
             ("open_folder", serde_json::json!({"field":"system"})),
             ("play", serde_json::json!({"storage_id":"a1-b2"})),
+            ("probe_core", serde_json::json!({"index":2})),
         ] {
             let body = serde_json::json!({
                 "protocol_version": 1,
