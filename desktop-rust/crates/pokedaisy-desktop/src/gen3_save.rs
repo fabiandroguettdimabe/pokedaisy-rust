@@ -180,16 +180,27 @@ impl Gen3PartyMemoryAdapter {
         party_count_address: usize,
         party_address: usize,
     ) -> Self {
+        Self::new_in_address_space(identity, party_count_address, party_address, None)
+    }
+
+    pub fn new_in_address_space(
+        identity: crate::memory_adapter::GameIdentity,
+        party_count_address: usize,
+        party_address: usize,
+        address_space: Option<String>,
+    ) -> Self {
         Self {
             identity,
             ranges: [
                 crate::memory_adapter::MemoryRange {
                     name: "party_count".into(),
+                    address_space: address_space.clone(),
                     offset: party_count_address,
                     length: 1,
                 },
                 crate::memory_adapter::MemoryRange {
                     name: "party".into(),
+                    address_space,
                     offset: party_address,
                     length: 600,
                 },
@@ -520,6 +531,7 @@ mod tests {
         impl MemoryReader for FixtureReader {
             fn read(
                 &mut self,
+                _address_space: Option<&str>,
                 address: usize,
                 length: usize,
             ) -> Result<Vec<u8>, crate::memory_adapter::CaptureError> {
@@ -583,6 +595,7 @@ mod tests {
         impl MemoryReader for FixtureReader {
             fn read(
                 &mut self,
+                _address_space: Option<&str>,
                 address: usize,
                 length: usize,
             ) -> Result<Vec<u8>, crate::memory_adapter::CaptureError> {

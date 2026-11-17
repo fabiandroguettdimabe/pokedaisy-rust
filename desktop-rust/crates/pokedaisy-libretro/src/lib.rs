@@ -332,7 +332,7 @@ struct RetroMemoryMap {
     num_descriptors: u32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct CoreMemoryRegion {
     ptr: usize,
     offset: usize,
@@ -340,6 +340,7 @@ struct CoreMemoryRegion {
     select: usize,
     disconnect: usize,
     len: usize,
+    addrspace: Option<String>,
 }
 
 #[repr(C)]
@@ -907,6 +908,7 @@ impl LibretroCore {
     /// The core owns the backing pointer for this game's session; callers only receive owned bytes.
     pub fn read_memory_range(
         &mut self,
+        address_space: Option<&str>,
         address: usize,
         length: usize,
     ) -> Result<Vec<u8>, CoreError> {
@@ -923,6 +925,7 @@ impl LibretroCore {
 
         for region in regions {
             if region.ptr == 0
+                || region.addrspace.as_deref() != address_space
                 || (region.select != 0
                     && (address & region.select) != (region.start & region.select))
             {
@@ -1226,6 +1229,21 @@ fn environment_inner(command: u32, data: *mut c_void) -> bool {
                     {
                         continue;
                     }
+                    let addrspace = if descriptor.addrspace.is_null() {
+                        None
+                    } else {
+                        let bytes = CStr::from_ptr(descriptor.addrspace).to_bytes();
+                        if bytes.is_empty()
+                            || bytes.len() > 8
+                            || !bytes.iter().all(|byte| {
+                                byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-')
+                            })
+                        {
+                            state.memory_regions.clear();
+                            return false;
+                        }
+                        Some(String::from_utf8(bytes.to_vec()).unwrap())
+                    };
                     total = match total.checked_add(descriptor.len) {
                         Some(total) if total <= MAX_SYSTEM_RAM_BYTES => total,
                         _ => {
@@ -1240,6 +1258,7 @@ fn environment_inner(command: u32, data: *mut c_void) -> bool {
                         select: descriptor.select,
                         disconnect: descriptor.disconnect,
                         len: descriptor.len,
+                        addrspace,
                     });
                 }
                 state.memory_regions = regions;

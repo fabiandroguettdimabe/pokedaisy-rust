@@ -83,12 +83,16 @@ static uint8_t mirrored_ram[0x200] = {
     [0xff] = 0xaa,
     [0x100] = 0xbb,
 };
+static uint8_t bios_space_ram[4] = {0xb1, 0xb2, 0xb3, 0xb4};
+static uint8_t wram_space_ram[4] = {0xc1, 0xc2, 0xc3, 0xc4};
 static const struct retro_memory_descriptor regions[] = {
     { .flags = 1u << 2, .ptr = ewram, .start = 0x02000000, .select = 0xff000000, .len = sizeof(ewram) },
     { .flags = 1u << 2, .ptr = iwram, .start = 0x03000000, .select = 0xff000000, .len = sizeof(iwram) },
     { .flags = 1u << 2, .ptr = mirrored_ram, .start = 0x04000000, .select = 0xff000000, .disconnect = 0x100, .len = sizeof(mirrored_ram) },
+    { .flags = 1u << 2, .ptr = bios_space_ram, .start = 0x05000000, .select = 0xff000000, .len = sizeof(bios_space_ram), .addrspace = "BIOS" },
+    { .flags = 1u << 2, .ptr = wram_space_ram, .start = 0x05000000, .select = 0xff000000, .len = sizeof(wram_space_ram), .addrspace = "WRAM" },
 };
-static const struct retro_memory_map map = { regions, 3 };
+static const struct retro_memory_map map = { regions, 5 };
 
 EXPORT unsigned retro_api_version(void) { return 1; }
 EXPORT void retro_set_environment(retro_environment_t callback) { environment_cb = callback; }

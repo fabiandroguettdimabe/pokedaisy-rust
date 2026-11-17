@@ -15,6 +15,7 @@ pub struct GameIdentity {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MemoryRange {
     pub name: String,
+    pub address_space: Option<String>,
     pub offset: usize,
     pub length: usize,
 }
@@ -46,7 +47,12 @@ pub enum CaptureError {
 
 /// Owner-scoped read capability. Implementations return copied bytes only.
 pub trait MemoryReader {
-    fn read(&mut self, offset: usize, length: usize) -> Result<Vec<u8>, CaptureError>;
+    fn read(
+        &mut self,
+        address_space: Option<&str>,
+        offset: usize,
+        length: usize,
+    ) -> Result<Vec<u8>, CaptureError>;
 }
 pub struct LibretroMemoryReader<'a> {
     core: &'a mut vyntra_libretro::LibretroCore,
@@ -59,9 +65,14 @@ impl<'a> LibretroMemoryReader<'a> {
 }
 
 impl MemoryReader for LibretroMemoryReader<'_> {
-    fn read(&mut self, offset: usize, length: usize) -> Result<Vec<u8>, CaptureError> {
+    fn read(
+        &mut self,
+        address_space: Option<&str>,
+        offset: usize,
+        length: usize,
+    ) -> Result<Vec<u8>, CaptureError> {
         self.core
-            .read_memory_range(offset, length)
+            .read_memory_range(address_space, offset, length)
             .map_err(|error| match error {
                 vyntra_libretro::CoreError::SystemRamRangeOutOfBounds { .. } => {
                     CaptureError::OutOfBounds
@@ -97,7 +108,7 @@ pub fn capture(
     }
     let mut segments = Vec::with_capacity(adapter.ranges().len());
     for range in adapter.ranges() {
-        let bytes = reader.read(range.offset, range.length)?;
+        let bytes = reader.read(range.address_space.as_deref(), range.offset, range.length)?;
         if bytes.len() != range.length {
             return Err(CaptureError::Truncated);
         }
@@ -237,12 +248,22 @@ mod tests {
     }
     struct ShortReader;
     impl MemoryReader for ShortReader {
-        fn read(&mut self, _offset: usize, _length: usize) -> Result<Vec<u8>, CaptureError> {
+        fn read(
+            &mut self,
+            _address_space: Option<&str>,
+            _offset: usize,
+            _length: usize,
+        ) -> Result<Vec<u8>, CaptureError> {
             Ok(vec![1])
         }
     }
     impl MemoryReader for FixtureReader {
-        fn read(&mut self, offset: usize, length: usize) -> Result<Vec<u8>, CaptureError> {
+        fn read(
+            &mut self,
+            _address_space: Option<&str>,
+            offset: usize,
+            length: usize,
+        ) -> Result<Vec<u8>, CaptureError> {
             let end = offset
                 .checked_add(length)
                 .ok_or(CaptureError::OutOfBounds)?;
@@ -299,6 +320,7 @@ mod tests {
             identity: id.clone(),
             ranges: vec![MemoryRange {
                 name: "party".into(),
+                address_space: None,
                 offset: 2,
                 length: 3,
             }],
@@ -322,6 +344,7 @@ mod tests {
             identity: identity("rom-a"),
             ranges: vec![MemoryRange {
                 name: "bad".into(),
+                address_space: None,
                 offset: usize::MAX,
                 length: 2,
             }],
@@ -334,6 +357,7 @@ mod tests {
             identity: identity("rom-a"),
             ranges: vec![MemoryRange {
                 name: "bad".into(),
+                address_space: None,
                 offset: 0,
                 length: 3,
             }],
@@ -346,6 +370,7 @@ mod tests {
             identity: identity("rom-a"),
             ranges: vec![MemoryRange {
                 name: "large".into(),
+                address_space: None,
                 offset: 0,
                 length: 1_048_577,
             }],

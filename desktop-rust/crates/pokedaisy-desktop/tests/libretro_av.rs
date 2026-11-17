@@ -60,8 +60,14 @@ fn synthetic_core_runs_video_audio_and_runtime_av_through_libretro_api() {
 
     let frame = core.run_frame(Default::default()).unwrap();
     let owned_ram = core.read_system_ram().expect("fixture exposes system RAM");
-    assert_eq!(core.read_memory_range(0x0200_0002, 3).unwrap(), [3, 4, 5]);
-    assert_eq!(core.read_memory_range(0x0300_0001, 2).unwrap(), [8, 9]);
+    assert_eq!(
+        core.read_memory_range(None, 0x0200_0002, 3).unwrap(),
+        [3, 4, 5]
+    );
+    assert_eq!(
+        core.read_memory_range(None, 0x0300_0001, 2).unwrap(),
+        [8, 9]
+    );
     assert_eq!(owned_ram, [1, 2, 3, 4]);
     let video = frame.video.expect("fixture emits a video frame");
     assert_eq!((video.width, video.height, video.pitch), (2, 1, 4));
