@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 static NEXT_STAGING_ID: AtomicU64 = AtomicU64::new(0);
 const MAX_MIGRATION_BYTES: u64 = 512 * 1024 * 1024;
+const MAX_JOURNAL_BYTES: u64 = 64 * 1024 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MigrationItem {
@@ -324,7 +325,7 @@ mod tests {
     use super::{
         MigrationItem, MigrationReport, MigrationStatus, apply, install_payload,
         install_payload_with, load_journal, persist, persist_with, persist_with_backup_and_install,
-        persist_with_install, preview, sha256_file_bounded,
+        persist_with_install, preview, read_file_bounded, sha256_file_bounded,
     };
     use std::fs;
     use std::io::Write;
@@ -600,6 +601,23 @@ mod tests {
 
         assert_eq!(fs::read(&unowned_tmp).unwrap(), contents);
         assert_eq!(load_journal(&path).unwrap(), Some(report));
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn journal_reader_stops_at_its_configured_byte_limit() {
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-migration-journal-read-limit-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join("migration.json");
+        fs::write(&path, b"0123456789abcdef").unwrap();
+
+        assert_eq!(read_file_bounded(&path, 16).unwrap(), b"0123456789abcdef");
+        let error = read_file_bounded(&path, 8).unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
         let _ = fs::remove_dir_all(root);
     }
 
@@ -1013,29 +1031,56 @@ mod tests {
 
 fn load_journal(path: &Path) -> Result<Option<MigrationReport>, String> {
     let backup = path.with_extension("bak");
-    match fs::read(path) {
+    match read_file_bounded(path, MAX_JOURNAL_BYTES) {
         Ok(bytes) => match serde_json::from_slice(&bytes) {
             Ok(report) => Ok(Some(report)),
-            Err(primary_error) => match fs::read(&backup) {
-                Ok(bytes) => serde_json::from_slice(&bytes)
-                    .map(Some)
-                    .map_err(|backup_error| {
-                        format!("Journal y respaldo inválidos ({primary_error}; {backup_error})")
-                    }),
-                Err(backup_error) => Err(format!(
-                    "Journal inválido ({primary_error}); no se pudo leer respaldo ({backup_error})"
-                )),
-            },
+            Err(primary_error) => recover_backup(&backup, Some(&primary_error.to_string())),
         },
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => match fs::read(&backup) {
-            Ok(bytes) => serde_json::from_slice(&bytes)
-                .map(Some)
-                .map_err(|error| error.to_string()),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-            Err(error) => Err(error.to_string()),
-        },
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => recover_backup(&backup, None),
+        Err(error) if error.kind() == std::io::ErrorKind::InvalidData => {
+            recover_backup(&backup, Some(&error.to_string()))
+        }
         Err(error) => Err(error.to_string()),
     }
+}
+
+fn recover_backup(
+    backup: &Path,
+    primary_error: Option<&str>,
+) -> Result<Option<MigrationReport>, String> {
+    match read_file_bounded(backup, MAX_JOURNAL_BYTES) {
+        Ok(bytes) => serde_json::from_slice(&bytes)
+            .map(Some)
+            .map_err(|backup_error| match primary_error {
+                Some(primary_error) => {
+                    format!("Journal y respaldo inválidos ({primary_error}; {backup_error})")
+                }
+                None => backup_error.to_string(),
+            }),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound && primary_error.is_none() => {
+            Ok(None)
+        }
+        Err(error) => match primary_error {
+            Some(primary_error) => Err(format!(
+                "Journal inválido ({primary_error}); no se pudo leer respaldo ({error})"
+            )),
+            None => Err(error.to_string()),
+        },
+    }
+}
+
+fn read_file_bounded(path: &Path, max_bytes: u64) -> std::io::Result<Vec<u8>> {
+    let file = fs::File::open(path)?;
+    let mut bytes = Vec::new();
+    file.take(max_bytes.saturating_add(1))
+        .read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > max_bytes {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "El journal supera el límite de 64 MiB",
+        ));
+    }
+    Ok(bytes)
 }
 
 fn persist(path: &Path, report: &MigrationReport) -> Result<(), String> {
