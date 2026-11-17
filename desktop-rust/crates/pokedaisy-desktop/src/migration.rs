@@ -197,6 +197,44 @@ pub fn apply(journal_path: &Path, report: &MigrationReport) -> Result<(), String
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::{MigrationReport, persist, persist_with};
+    use std::fs;
+    use std::io::Write;
+
+    #[test]
+    fn storage_full_during_journal_staging_preserves_previous_journal() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-migration-full-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join("migration.json");
+        let previous = MigrationReport {
+            schema: 1,
+            items: Vec::new(),
+        };
+        let next = MigrationReport {
+            schema: 2,
+            items: Vec::new(),
+        };
+        persist(&path, &previous).unwrap();
+
+        let error = persist_with(&path, &next, |file, bytes| {
+            file.write_all(&bytes[..bytes.len().min(4)])?;
+            Err(std::io::Error::from(std::io::ErrorKind::StorageFull))
+        });
+
+        assert!(error.is_err());
+        assert_eq!(
+            fs::read(&path).unwrap(),
+            serde_json::to_vec_pretty(&previous).unwrap()
+        );
+        assert!(!path.with_extension("tmp").exists());
+        let _ = fs::remove_dir_all(root);
+    }
+}
+
 fn load_journal(path: &Path) -> Result<Option<MigrationReport>, String> {
     let backup = path.with_extension("bak");
     let bytes = match fs::read(path) {
@@ -214,20 +252,55 @@ fn load_journal(path: &Path) -> Result<Option<MigrationReport>, String> {
 }
 
 fn persist(path: &Path, report: &MigrationReport) -> Result<(), String> {
+    persist_with(path, report, |file, bytes| {
+        file.write_all(bytes)?;
+        file.sync_all()
+    })
+}
+
+fn persist_with(
+    path: &Path,
+    report: &MigrationReport,
+    stage: impl FnOnce(&mut fs::File, &[u8]) -> std::io::Result<()>,
+) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
     let tmp = path.with_extension("tmp");
     let bytes = serde_json::to_vec_pretty(report).map_err(|e| e.to_string())?;
-    let mut file = fs::File::create(&tmp).map_err(|e| e.to_string())?;
-    file.write_all(&bytes).map_err(|e| e.to_string())?;
-    file.sync_all().map_err(|e| e.to_string())?;
-    drop(file);
-    if path.exists() {
-        fs::copy(path, path.with_extension("bak")).map_err(|e| e.to_string())?;
+    let staged = (|| -> Result<(), String> {
+        let mut file = fs::File::create(&tmp).map_err(|e| e.to_string())?;
+        stage(&mut file, &bytes).map_err(|e| e.to_string())
+    })();
+    if let Err(error) = staged {
+        let _ = fs::remove_file(&tmp);
+        return Err(error);
+    }
+    let had_previous = path.is_file();
+    let backup = path.with_extension("bak");
+    if had_previous {
+        if let Err(error) = fs::copy(path, &backup) {
+            let _ = fs::remove_file(&tmp);
+            return Err(error.to_string());
+        }
     }
     if path.exists() {
-        fs::remove_file(path).map_err(|e| e.to_string())?;
+        if let Err(error) = fs::remove_file(path) {
+            let _ = fs::remove_file(&tmp);
+            return Err(error.to_string());
+        }
     }
-    fs::rename(tmp, path).map_err(|e| e.to_string())
+    if let Err(error) = fs::rename(&tmp, path) {
+        let _ = fs::remove_file(&tmp);
+        if had_previous && !path.exists() {
+            if let Err(restore_error) = fs::copy(&backup, path) {
+                return Err(format!(
+                    "No se pudo publicar el journal ({error}); la copia previa permanece en {} ({restore_error})",
+                    backup.display()
+                ));
+            }
+        }
+        return Err(error.to_string());
+    }
+    Ok(())
 }
