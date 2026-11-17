@@ -614,6 +614,7 @@ fn sdl_main() -> Result<(), String> {
     )
     .map_err(|e| e.to_string())?;
     let mut event_pump = sdl.event_pump()?;
+    let mut keyboard_input = KeyboardInputLease::new();
     let mut games = scan_games(&rom_dir, config.recursive);
     let mut selected = 0usize;
     let mut screen = Screen::Library;
@@ -750,6 +751,23 @@ fn sdl_main() -> Result<(), String> {
             .set_logical_size(logical_w, logical_h)
             .map_err(|e| e.to_string())?;
         for event in event_pump.poll_iter() {
+            match &event {
+                Event::KeyDown {
+                    keycode: Some(key), ..
+                } => keyboard_input.key_down(*key),
+                Event::KeyUp {
+                    keycode: Some(key), ..
+                } => keyboard_input.key_up(*key),
+                Event::Window {
+                    win_event: sdl2::event::WindowEvent::FocusLost,
+                    ..
+                } => keyboard_input.focus_lost(),
+                Event::Window {
+                    win_event: sdl2::event::WindowEvent::FocusGained,
+                    ..
+                } => keyboard_input.focus_gained(),
+                _ => {}
+            }
             match event {
                 Event::Quit { .. } => break 'app,
                 Event::DropFile { filename, .. } => {
@@ -1174,9 +1192,7 @@ fn sdl_main() -> Result<(), String> {
                 &settings_message,
             )?,
             Screen::Playing => {
-                let fast_forward = event_pump
-                    .keyboard_state()
-                    .is_scancode_pressed(sdl2::keyboard::Scancode::Space);
+                let fast_forward = keyboard_input.is_pressed(Keycode::Space);
                 let active_fast_forward = active_game
                     .as_ref()
                     .map(|game| config.fast_forward_for_game(&game_storage_key(game), &game.system))
@@ -1191,11 +1207,8 @@ fn sdl_main() -> Result<(), String> {
                 if !companion_paused && last_auto.elapsed() >= frame_interval {
                     if let Some(c) = core.as_mut() {
                         c.set_fast_forward(fast_forward);
-                        let mut input = keyboard_joypad_state(&config, |key| {
-                            event_pump
-                                .keyboard_state()
-                                .is_scancode_pressed(pressed_key(key))
-                        });
+                        let mut input =
+                            keyboard_joypad_state(&config, |key| keyboard_input.is_pressed(key));
                         if let Some(pad) = game_controller.as_ref() {
                             use sdl2::controller::{Axis, Button};
                             for (button, retro) in [
@@ -1406,9 +1419,41 @@ fn sdl_main() -> Result<(), String> {
     Ok(())
 }
 
-// KeyboardState uses the SDL scancode enum; keep the game mapping in one compact helper.
-fn pressed_key(key: Keycode) -> sdl2::keyboard::Scancode {
-    sdl2::keyboard::Scancode::from_keycode(key).unwrap_or(sdl2::keyboard::Scancode::A)
+struct KeyboardInputLease {
+    focused: bool,
+    pressed: std::collections::HashSet<Keycode>,
+}
+
+impl KeyboardInputLease {
+    fn new() -> Self {
+        Self {
+            focused: true,
+            pressed: std::collections::HashSet::new(),
+        }
+    }
+
+    fn key_down(&mut self, key: Keycode) {
+        if self.focused {
+            self.pressed.insert(key);
+        }
+    }
+
+    fn key_up(&mut self, key: Keycode) {
+        self.pressed.remove(&key);
+    }
+
+    fn focus_lost(&mut self) {
+        self.focused = false;
+        self.pressed.clear();
+    }
+
+    fn focus_gained(&mut self) {
+        self.focused = true;
+    }
+
+    fn is_pressed(&self, key: Keycode) -> bool {
+        self.focused && self.pressed.contains(&key)
+    }
 }
 
 fn keyboard_joypad_state(
@@ -2965,6 +3010,23 @@ mod tests {
     use std::fs;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn keyboard_input_lease_clears_held_keys_on_focus_loss() {
+        let mut input = super::KeyboardInputLease::new();
+        input.key_down(super::Keycode::Z);
+        assert!(input.is_pressed(super::Keycode::Z));
+
+        input.focus_lost();
+        assert!(!input.is_pressed(super::Keycode::Z));
+        input.focus_gained();
+        assert!(!input.is_pressed(super::Keycode::Z));
+
+        input.key_down(super::Keycode::Z);
+        assert!(input.is_pressed(super::Keycode::Z));
+        input.key_up(super::Keycode::Z);
+        assert!(!input.is_pressed(super::Keycode::Z));
+    }
 
     #[test]
     fn memory_adapter_identity_uses_rom_core_and_concrete_gba_revision() {
