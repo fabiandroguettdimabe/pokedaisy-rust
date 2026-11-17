@@ -3174,6 +3174,113 @@ mod tests {
         let _ = fs::remove_dir_all(root);
     }
 
+    #[cfg(windows)]
+    #[test]
+    fn vault_restore_acl_denial_keeps_the_committed_state_untouched() {
+        let root = std::env::temp_dir().join(format!("vyntra-vault-acl-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let rom_path = root.join("fixture.gb");
+        let core_path = root.join("fixture-core.dll");
+        fs::write(&rom_path, b"fixture rom").unwrap();
+        fs::write(&core_path, b"fixture core").unwrap();
+        let game = Game {
+            path: rom_path,
+            title: "Fixture".into(),
+            system: "GB",
+            storage_key: std::sync::OnceLock::new(),
+            rom_sha256: std::sync::OnceLock::new(),
+        };
+        let mut config = Settings::default();
+        config.states = root.join("states");
+        config.saves = root.join("saves");
+        config.cores[0] = Some(core_path);
+        let state_path = preferred_state_path(&game, &config.states);
+        let old_payload = b"verified old state";
+        atomic_write(&state_path, old_payload).unwrap();
+        let core_hash = identity::sha256_file(config.cores[0].as_ref().unwrap()).unwrap();
+        super::super::write_save_manifest(
+            &game,
+            &config.states,
+            domain::SaveKind::SaveState,
+            old_payload,
+            Some(1),
+            Some(&core_hash),
+            "committed",
+        );
+        let manifest_path = state_path.parent().unwrap().join("state.manifest.json");
+        let old_manifest = fs::read(&manifest_path).unwrap();
+        let new_payload = b"new state from Vault";
+        let bundle = crate::vault::SaveBundleManifest {
+            schema_version: 1,
+            storage_id: game_storage_key(&game),
+            kind: domain::SaveKind::SaveState,
+            rom_sha256: identity::sha256_file(&game.path).unwrap(),
+            core_hash,
+            state_format: Some("libretro-serialize-v1".into()),
+            bytes: new_payload.len() as u64,
+            sha256: identity::sha256_bytes(new_payload),
+        };
+        let prepared = prepare_bundle_restore(
+            bundle,
+            new_payload.to_vec(),
+            std::slice::from_ref(&game),
+            &config,
+        )
+        .unwrap();
+        let backup_root = state_path.parent().unwrap().join("backups");
+        fs::create_dir_all(&backup_root).unwrap();
+        let identity = std::process::Command::new("whoami")
+            .args(["/user", "/fo", "csv", "/nh"])
+            .output()
+            .unwrap();
+        assert!(identity.status.success());
+        let sid = String::from_utf8(identity.stdout)
+            .unwrap()
+            .lines()
+            .next()
+            .and_then(|line| line.split(',').nth(1))
+            .map(|value| value.trim().trim_matches('"'))
+            .filter(|value| value.starts_with("S-1-"))
+            .expect("whoami returns the current Windows SID")
+            .to_owned();
+        let denied_acl = std::process::Command::new("icacls")
+            .arg(&backup_root)
+            .arg("/deny")
+            .arg(format!("*{sid}:(AD)"))
+            .output()
+            .unwrap();
+        if !denied_acl.status.success() {
+            eprintln!(
+                "Skipping denied-backup assertion: icacls could not set temporary ACL: {}",
+                String::from_utf8_lossy(&denied_acl.stderr)
+            );
+            let _ = fs::remove_dir_all(&root);
+            return;
+        }
+
+        let restore_result = commit_bundle_restore(prepared, &config);
+        let restore_acl = std::process::Command::new("icacls")
+            .arg(&backup_root)
+            .arg("/remove:d")
+            .arg(format!("*{sid}"))
+            .output()
+            .unwrap();
+        let state_after = fs::read(&state_path).unwrap();
+        let manifest_after = fs::read(&manifest_path).unwrap();
+        let backups_after = fs::read_dir(&backup_root).unwrap().count();
+        let _ = fs::remove_dir_all(&root);
+
+        assert!(
+            restore_acl.status.success(),
+            "temporary ACL must be restored"
+        );
+        assert!(restore_result.is_err());
+        assert_eq!(state_after, old_payload);
+        assert_eq!(manifest_after, old_manifest);
+        assert_eq!(backups_after, 0);
+    }
+
     #[test]
     #[ignore = "smoke manual de restauración Vault con core mGBA local; requiere VYNTRA_CORE_GAME_SMOKE_PATH y VYNTRA_CORE_GAME_SMOKE_ROM"]
     fn configured_mgba_roundtrips_a_verified_vault_battery_restore() {
