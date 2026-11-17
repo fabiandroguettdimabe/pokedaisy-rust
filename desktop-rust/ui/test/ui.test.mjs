@@ -81,9 +81,16 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await expectCommand('system_autosave',{system:'GBA',value:60});
   await page.getByLabel('Pantalla completa para sistema').selectOption('off');
   await expectCommand('system_fullscreen',{system:'GBA',value:false});
+  await page.evaluate(()=>window.vyntraState({...window.testState,config:{...window.testState.config,library_selection:'gba-fixture',system_overrides:{GBA:{smooth:false,volume:50,fast_forward:4,autosave:60,fullscreen:false}}}}));
   await page.getByRole('button',{name:'Biblioteca',exact:true}).click();
   await page.getByRole('textbox',{name:'Buscar juegos'}).fill('ABCD');
   assert.equal(await page.locator('.game-card').count(),1);
+  await page.locator('.game-card').click();
+  assert.equal(await page.getByText('Origen actual: sistema GBA (Pixelado).').isVisible(),true);
+  assert.equal(await page.getByText('Origen actual: sistema GBA (50%).').isVisible(),true);
+  assert.equal(await page.getByText('Origen actual: sistema GBA (4×).').isVisible(),true);
+  assert.equal(await page.getByText('Origen actual: sistema GBA (60 segundos).').isVisible(),true);
+  assert.equal(await page.getByText('Origen actual: sistema GBA (Ventana).').isVisible(),true);
   assert.equal(await page.getByText('Coincidencia parcial · ABCD · Rev. 1',{exact:true}).isVisible(),true);
   await page.getByRole('button',{name:'Limpiar búsqueda'}).click();
   await page.locator('.system-row').filter({hasText:'GBA'}).click();
