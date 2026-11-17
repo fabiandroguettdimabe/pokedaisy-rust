@@ -118,6 +118,46 @@ pub struct ItemStack {
     pub item_id: u16,
     pub quantity: u16,
 }
+
+/// Decode the six 100-byte `Pokemon` structs captured from Gen III GBA RAM.
+/// The caller must resolve the game's exact ROM identity before choosing this layout.
+pub fn decode_party_ram(count: usize, bytes: &[u8]) -> Result<Vec<PartyMember>, String> {
+    if count > 6 {
+        return Err(format!("party count inválido: {count}"));
+    }
+    if bytes.len() < 6 * 100 {
+        return Err("captura de party truncada: se requieren seis slots".into());
+    }
+    let mut party = Vec::with_capacity(count);
+    for i in 0..count {
+        let off = i * 100;
+        let record = decode_mon(&bytes[off..off + 80])
+            .map_err(|error| format!("slot de equipo {}: {error}", i + 1))?;
+        let level = bytes[off + 0x54];
+        let hp = u16le(bytes, off + 0x56);
+        let max_hp = u16le(bytes, off + 0x58);
+        if !record.is_egg && !(1..=100).contains(&level) {
+            return Err(format!("nivel inválido en slot de equipo {}", i + 1));
+        }
+        if max_hp == 0 || hp > max_hp {
+            return Err(format!("HP inválido en slot de equipo {}", i + 1));
+        }
+        party.push(PartyMember {
+            species_id: record.species_id,
+            level,
+            is_egg: record.is_egg,
+            hp,
+            max_hp,
+            moves: record
+                .move_ids
+                .iter()
+                .zip(record.move_pp)
+                .map(|(&move_id, pp)| MoveSlot { move_id, pp })
+                .collect(),
+        });
+    }
+    Ok(party)
+}
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct Snapshot {
     pub format: Gen3Format,
@@ -341,6 +381,55 @@ mod tests {
 
     fn put32(bytes: &mut [u8], off: usize, value: u32) {
         bytes[off..off + 4].copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[test]
+    fn live_party_decoder_rejects_bad_count_and_truncated_capture() {
+        assert!(
+            decode_party_ram(7, &[0; 600])
+                .unwrap_err()
+                .contains("count")
+        );
+        assert!(
+            decode_party_ram(1, &[0; 599])
+                .unwrap_err()
+                .contains("truncada")
+        );
+    }
+
+    #[test]
+    fn live_party_decoder_checks_mon_checksum_and_party_stats() {
+        let mut bytes = vec![0; 600];
+        // PID/OTID zero means key zero and canonical G-A-E-M substructure order.
+        put16(&mut bytes, 0x20, 25);
+        put16(&mut bytes, 0x20 + 12, 33);
+        bytes[0x20 + 12 + 8] = 15;
+        let sum = checksum(&bytes[0x20..0x50]);
+        put16(&mut bytes, 0x1C, sum);
+        bytes[0x54] = 12;
+        put16(&mut bytes, 0x56, 5);
+        put16(&mut bytes, 0x58, 10);
+
+        let party = decode_party_ram(1, &bytes).unwrap();
+        assert_eq!(party.len(), 1);
+        assert_eq!(party[0].species_id, 25);
+        assert_eq!(party[0].level, 12);
+        assert_eq!(party[0].hp, 5);
+        assert_eq!(party[0].max_hp, 10);
+        assert_eq!(
+            party[0].moves[0],
+            MoveSlot {
+                move_id: 33,
+                pp: 15
+            }
+        );
+
+        bytes[0x1C] ^= 1;
+        assert!(
+            decode_party_ram(1, &bytes)
+                .unwrap_err()
+                .contains("checksum")
+        );
     }
 
     fn fixture() -> Vec<u8> {

@@ -31,5 +31,7 @@
 - [x] Implement the registry, range contract, owned capture, and epoch gate with minimal public API.
 - [x] Run the focused tests and complete Rust crate suite; format and inspect the diff.
 - [x] Mark T19 partial with the missing legal fixture/runtime memory owner, commit, and push the milestone.
+- [x] Add a bounded Gen III live-party decoder that validates captured Pokémon checksums, party count, level, and HP using synthetic bytes only.
+- [ ] Connect the decoder to an exact-identity adapter and runtime Player poller/pipe; verify against a legally redistributable fixture for one concrete revision before advertising live data.
 
 
