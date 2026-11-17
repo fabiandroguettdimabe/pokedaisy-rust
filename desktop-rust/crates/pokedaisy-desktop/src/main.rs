@@ -154,6 +154,40 @@ mod migration_contract_tests {
     }
 
     #[test]
+    fn homonymous_roms_keep_separate_save_paths_and_session_owner() {
+        let root = std::env::temp_dir().join(format!("vyntra-homonyms-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let first_path = root.join("first/Same.gb");
+        let second_path = root.join("second/Same.gb");
+        std::fs::create_dir_all(first_path.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(second_path.parent().unwrap()).unwrap();
+        std::fs::write(&first_path, b"first ROM content").unwrap();
+        std::fs::write(&second_path, b"second ROM content").unwrap();
+
+        let first = super::game_from_path(first_path.clone());
+        let second = super::game_from_path(second_path.clone());
+        let first_save = super::preferred_battery_path(&first, &root.join("saves"));
+        let second_save = super::preferred_battery_path(&second, &root.join("saves"));
+        assert_ne!(
+            super::game_storage_key(&first),
+            super::game_storage_key(&second)
+        );
+        assert_ne!(first_save, second_save);
+
+        let active_session = Some(first.clone());
+        let library_selection = second;
+        assert_eq!(
+            super::session_save_owner(&active_session).unwrap().path,
+            first_path
+        );
+        assert_ne!(
+            super::session_save_owner(&active_session).unwrap().path,
+            library_selection.path
+        );
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn migration_preview_marks_homonymous_destinations_as_conflicts() {
         let root = std::env::temp_dir().join(format!("vyntra-conflict-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
