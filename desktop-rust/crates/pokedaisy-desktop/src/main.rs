@@ -1405,6 +1405,13 @@ fn safe_log_file_name(path: &Path) -> String {
     }
 }
 
+fn player_file_error(action: &str, path: &Path) -> String {
+    format!(
+        "No se pudo {action} «{}». Comprueba que el archivo exista y sea compatible.",
+        safe_log_file_name(path)
+    )
+}
+
 fn atomic_write_with(
     path: &Path,
     data: &[u8],
@@ -1447,9 +1454,20 @@ fn open_game(
             panel_height: 760,
         },
     )
-    .map_err(|e| format!("No se pudo iniciar {}: {e:?}", core_path.display()))?;
-    core.load_game(&game.path)
-        .map_err(|e| format!("No se pudo abrir {}: {e:?}", game.path.display()))?;
+    .map_err(|error| {
+        eprintln!(
+            "Falló la carga del núcleo {}: {error:?}",
+            safe_log_file_name(&core_path)
+        );
+        player_file_error("iniciar el núcleo", &core_path)
+    })?;
+    core.load_game(&game.path).map_err(|error| {
+        eprintln!(
+            "Falló la apertura de la ROM {}: {error:?}",
+            safe_log_file_name(&game.path)
+        );
+        player_file_error("abrir la ROM", &game.path)
+    })?;
     let preferred = preferred_battery_path(game, saves);
     let save_bytes = if preferred.is_file() {
         match load_compatible_battery(game, saves, &core_path) {
@@ -2818,6 +2836,16 @@ mod tests {
         let long_path =
             std::path::Path::new(&format!("C:\\private\\{}.gba", "R".repeat(200))).to_path_buf();
         assert!(super::safe_log_file_name(&long_path).len() <= 128);
+    }
+
+    #[test]
+    fn player_start_errors_name_the_file_without_exposing_parent_directories() {
+        let path = std::path::Path::new("C:\\Users\\PrivateUser\\cores\\test.dll");
+        let error = super::player_file_error("iniciar el núcleo", path);
+        assert!(error.contains("test.dll"));
+        assert!(error.contains("Comprueba que el archivo exista"));
+        assert!(!error.contains("PrivateUser"));
+        assert!(!error.contains("cores"));
     }
 
     #[test]
