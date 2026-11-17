@@ -75,13 +75,13 @@ Los alias siguientes abrevían rutas en las fichas; no representan módulos nuev
 
 Dependencias declaradas: SDL2 0.38, libloading 0.8.9, fontdue 0.9.3, rfd 0.15, Wry 0.54, Tao 0.34; Preact ^10.29, Tailwind ^4.2, Lucide ^0.577, esbuild ^0.27 y playwright-core ^1.65; versiones resueltas en lockfiles. NOTICE declara mGBA/partes armGBA MPL-2.0, melonDS GPL-3.0, DSperate GPL-3.0-or-later y licencias de dependencias. Verificar composición exacta por artefacto; no borrar avisos ni incluir Gambatte GPL-2-only en el ensamblado excluido por el proyecto. No se acreditó la procedencia de las DLL locales para redistribuirlas.
 
-### 1.5 Estado de ejecución del plan (actualizado 2026-11-16)
+### 1.5 Estado de ejecución del plan (actualizado 2026-11-17)
 
 **[HECHO-PARCIAL]** Esta sección registra lo ya implementado y verificado. El detalle por archivo y las limitaciones viven en `docs/VYNTRA_IMPLEMENTATION_STATUS.md`; la matriz de evidencia, en `docs/vyntra-capabilities.md`. Ninguna fila implica emulación/runtime probado.
 
 | Tarea | Estado | Implementado y verificado | Falta para el DoD del ticket |
 |---|---|---|---|
-| T01 / QA-02 | HECHO-PARCIAL | Matriz de evidencia creada; baselines ejecutados: Rust (`cargo test --workspace`, 19 tests), UI (`npm test` 1/1, build OK), website (`npm run build` 146 páginas; `npm test` 81/82). | Fixtures/testId por celda, imagen de referencia 2 y registro por ROM/core en cada prueba. |
+| T01 / QA-02 | HECHO-PARCIAL | Matriz de evidencia creada. Última verificación local: Rust Windows GNU (84 pruebas Desktop + 1 integración de probe + 4 libretro; formato OK), UI (`npm run build`, `npm test` 1/1 OK). El website conserva el baseline histórico documentado de 146 páginas y 81/82; no se reejecutó en este avance. | Fixtures/testId por celda, imagen de referencia 2 y registro por ROM/core en cada prueba. |
 | T02 / INFRA-01 | HECHO-PARCIAL | `domain.rs`/`protocol.rs` con `UiCommandEnvelope`, `UiAck`, `AppError`; IPC legacy parseado con límite de payload, ACK por `window.vyntraAck` y errores por `window.vyntraError`; tests de payload sobredimensionado, acción legacy y ACK. | Doble envío/ACK perdido, logs saneados y contrato consumido por todas las acciones. |
 | T03 / WIN-LIB-01 | HECHO-PARCIAL | `inspect.rs` valida estructura básica GB/GBC/GBA/DS con lectura acotada y confianza parcial; informa checksum de cabecera GB y GBA como válido/inválido sin rechazar ROMs por checksum para conservar homebrew. El catálogo usa título/código/revisión y Play revalida el hash actual contra el ID publicado. | Corpus de headers por variante/región, deduplicación visible por bytes y ZIP. |
 | T04 / BRAND-02 | HECHO-PARCIAL | `migration.rs` y Vault UI ofrecen vista previa, journal versionado, staging, hash y aplicación de saves no ambiguos; conflictos homónimos y estados legacy de compatibilidad desconocida se conservan. Un test simula cierre después de instalar el destino pero antes de marcar el journal y confirma que reintentar registra Committed sin borrar el original. | Falta descubrimiento de ubicaciones heredadas fuera de las carpetas configuradas y fault injection de fallos en cada escritura/espacio insuficiente. |
@@ -89,7 +89,7 @@ Dependencias declaradas: SDL2 0.38, libloading 0.8.9, fontdue 0.9.3, rfd 0.15, W
 | T06 / WIN-CORE-01 | HECHO-PARCIAL | `probe_pe.rs` valida PE/arquitectura/lista de exports sin ejecutar; `probe.rs` hace carga y lectura de API/system_info en proceso hijo con timeout de 8 s y reporte en Core Manager. Test de integración compila fixture C con MinGW, invoca el launcher hijo y valida el JSON: carga GBA exitosa y mismatch DS rechazado. | Falta fixture de dependencias ausentes y timeout/crash E2E; no hay core comercial/legal de procedencia verificada para smoke real. |
 | T08 / WIN-PLAY-01 | HECHO-PARCIAL | Shell envía `storage_id` estable para Play; el launcher resuelve por ID; SDL conserva ROM y hash del core activos para guardar/cargar SRAM y estados aunque cambie la selección. DropFile conserva la pantalla Playing mientras hay core activo. | Protocolo de sesión end-to-end con player, cierre seguro al importar/solicitar otra partida, supervisor de crash y prueba E2E A/B con cores. |
 
-Verificación común de esta ejecución: `cargo fmt --all --check` OK, `cargo test --workspace` OK (19 tests), UI build/test OK y website build OK. Runtime/emulación, Android y la imagen de referencia 2 siguen **[NO-VERIFICADO]**.
+Verificación local más reciente (2026-11-17): `cargo fmt --all --check` y `cargo test --workspace --target x86_64-pc-windows-gnu` OK (84 Desktop + 1 integración de probe + 4 libretro); `npm run build` y `npm test` OK (1 prueba de UI). Website conserva su resultado histórico; no se volvió a compilar. Emulación con ROM comercial/homebrew real, Android y la imagen de referencia 2 siguen **[NO-VERIFICADO]**.
 
 ## 2. Brechas respecto a las dos referencias visuales
 
