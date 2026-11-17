@@ -294,7 +294,7 @@ pub fn parse_ui_command(body: &str) -> Result<UiCommandEnvelope, AppError> {
             ));
         }
         let action = command.action.trim();
-        if action.is_empty() {
+        if action.is_empty() || action != command.action {
             return Err(AppError::new("invalid_action", "Falta una acción válida"));
         }
         if !SUPPORTED_ACTIONS.contains(&action) {
@@ -371,6 +371,10 @@ mod tests {
             (
                 r#"{"protocol_version":1,"command_id":" ","action":"scan"}"#,
                 "invalid_command_id",
+            ),
+            (
+                r#"{"protocol_version":1,"command_id":"x","action":" scan ","payload":{}}"#,
+                "invalid_action",
             ),
         ] {
             assert_eq!(parse_ui_command(body).unwrap_err().code, code);
