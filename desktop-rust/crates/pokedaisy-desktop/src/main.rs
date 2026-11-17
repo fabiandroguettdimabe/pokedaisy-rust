@@ -323,7 +323,7 @@ fn sdl_main() -> Result<(), String> {
         }
     }
     #[cfg(target_os = "windows")]
-    let _player_pipe = match (pipe_name, pipe_nonce, pipe_session, pipe_epoch) {
+    let mut player_pipe = match (pipe_name, pipe_nonce, pipe_session, pipe_epoch) {
         (Some(name), Some(nonce), Some(session), Some(epoch)) => {
             Some(player_pipe::connect(&name, &nonce, &session, epoch)?)
         }
@@ -432,6 +432,7 @@ fn sdl_main() -> Result<(), String> {
     let mut last_frame = None;
     let mut last_auto = Instant::now();
     let mut last_save = Instant::now();
+    let mut last_pipe_snapshot = Instant::now();
     if let Some(path) = rom_arg {
         if let Some(index) = games.iter().position(|g| g.path == path) {
             selected = index;
@@ -463,6 +464,34 @@ fn sdl_main() -> Result<(), String> {
     }
 
     'app: loop {
+        #[cfg(target_os = "windows")]
+        if let Some(pipe) = player_pipe.as_ref() {
+            match pipe.try_command() {
+                Ok(Some(transport::PlayerCommand::Stop)) => break 'app,
+                Ok(Some(transport::PlayerCommand::SaveState)) => {
+                    if let (Some(c), Some(g)) = (core.as_mut(), session_save_owner(&active_game)) {
+                        if let Ok(bytes) = c.serialize() {
+                            let path = preferred_state_path(g, &state_dir);
+                            if let Some(parent) = path.parent() {
+                                let _ = fs::create_dir_all(parent);
+                            }
+                            let _ = atomic_write(&path, &bytes);
+                        }
+                    }
+                }
+                Ok(Some(transport::PlayerCommand::LoadState)) => {
+                    if let (Some(c), Some(g)) = (core.as_mut(), session_save_owner(&active_game)) {
+                        if let Ok(bytes) =
+                            load_compatible_state(g, &state_dir, active_core_hash.as_deref())
+                        {
+                            let _ = c.unserialize(&bytes);
+                        }
+                    }
+                }
+                Ok(Some(transport::PlayerCommand::Pause(_))) | Ok(None) => {}
+                Err(_) => break 'app,
+            }
+        }
         let (logical_w, logical_h) = canvas.window().size();
         canvas
             .set_logical_size(logical_w, logical_h)
@@ -1021,6 +1050,18 @@ fn sdl_main() -> Result<(), String> {
             }
         }
         canvas.present();
+        #[cfg(target_os = "windows")]
+        if last_pipe_snapshot.elapsed() >= Duration::from_millis(500) {
+            if let Some(pipe) = player_pipe.as_mut() {
+                let snapshot = serde_json::json!({
+                    "title": active_game.as_ref().map(|game| game.title.as_str()),
+                    "system": active_game.as_ref().map(|game| game.system),
+                    "screen": if matches!(screen, Screen::Playing) { "playing" } else { "menu" },
+                });
+                let _ = pipe.send_snapshot(snapshot);
+            }
+            last_pipe_snapshot = Instant::now();
+        }
         std::thread::sleep(Duration::from_millis(
             if matches!(screen, Screen::Playing) {
                 4

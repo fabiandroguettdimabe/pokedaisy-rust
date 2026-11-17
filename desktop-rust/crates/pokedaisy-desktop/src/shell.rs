@@ -82,6 +82,7 @@ pub fn run() -> Result<(), String> {
     let mut scanning = false;
     let mut session: Option<domain::SessionIdentity> = None;
     let mut session_epoch: u64 = 0;
+    let mut player_commands: Option<crate::transport::PlayerCommandSender> = None;
     let mut command_revision: u64 = 0;
     let mut pending_migration: Option<migration::MigrationReport> = None;
     let mut probe_generation = 0u64;
@@ -89,7 +90,10 @@ pub fn run() -> Result<(), String> {
     event_loop.run(move |event,_,flow| {
         *flow=ControlFlow::Wait;
         match event {
-            TaoEvent::WindowEvent { event:WindowEvent::CloseRequested,.. } => *flow=ControlFlow::Exit,
+            TaoEvent::WindowEvent { event:WindowEvent::CloseRequested,.. } => {
+                if let Some(commands) = &player_commands { let _ = commands.send(crate::transport::PlayerCommand::Stop); }
+                *flow=ControlFlow::Exit
+            },
             TaoEvent::UserEvent(Message::Scanned(id,mut found)) if id==generation => {
                 for entry in &imported { if !found.iter().any(|g| g.path==entry.path) && (!entry.path.is_file() || supported(&entry.path)) { found.push(game_from_path(entry.path.clone())); } }
                 games=found; scanning=false;
@@ -124,12 +128,19 @@ pub fn run() -> Result<(), String> {
                 if matches_session {
                     match event.kind {
                         crate::player_pipe::PipeEventKind::Authenticated => {},
+                        crate::player_pipe::PipeEventKind::Snapshot(snapshot) => {
+                            if let Ok(value) = serde_json::to_string(&snapshot) {
+                                let _ = webview.evaluate_script(&format!("window.vyntraPlayerSnapshot({value});"));
+                            }
+                        },
                         crate::player_pipe::PipeEventKind::Disconnected => {
+                            player_commands = None;
                             session = None;
                             session_epoch = session_epoch.saturating_add(1);
                             publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
                         },
                         crate::player_pipe::PipeEventKind::Failed(reason) => {
+                            player_commands = None;
                             eprintln!("Falló el canal de la sesión Player: {reason}");
                             session = None;
                             session_epoch = session_epoch.saturating_add(1);
@@ -263,6 +274,7 @@ pub fn run() -> Result<(), String> {
                             let pipe = crate::player_pipe::start(session_id.clone(), next_epoch, move |event| {
                                 let _ = pipe_proxy.send_event(Message::Pipe(event));
                             })?;
+                            player_commands = Some(pipe.commands.clone());
                             child=Some(std::process::Command::new(env::current_exe().map_err(|e|e.to_string())?)
                                 .arg("--emulator").arg("--data").arg(&root).arg(&game.path)
                                 .arg("--pipe").arg(&pipe.name).arg("--nonce").arg(&pipe.nonce)
@@ -277,6 +289,11 @@ pub fn run() -> Result<(), String> {
                                 adapter_id: None,
                                 epoch: session_epoch,
                             });
+                        },
+                        "stop_player" => {
+                            player_commands.as_ref().ok_or("No hay una partida conectada")?
+                                .send(crate::transport::PlayerCommand::Stop)
+                                .map_err(|error| format!("No se pudo detener Player: {error:?}"))?;
                         },
                         "open_folder"=> {
                             let field=action["field"].as_str().unwrap_or("");
