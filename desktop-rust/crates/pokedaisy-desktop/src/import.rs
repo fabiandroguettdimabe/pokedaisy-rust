@@ -103,6 +103,8 @@ pub fn import_archive(
     let library_root = fs::canonicalize(library_dir).unwrap_or_else(|_| library_dir.to_path_buf());
     let mut total_declared = 0u64;
     let mut total_copied = 0u64;
+    let entries_before = entries.len();
+    let mut created_paths = Vec::new();
     for index in 0..archive.len() {
         let Ok(mut member) = archive.by_index(index) else {
             summary.rejected += 1;
@@ -208,6 +210,7 @@ pub fn import_archive(
             summary.rejected += 1;
             continue;
         }
+        created_paths.push(destination.clone());
         let canonical = destination.canonicalize().unwrap_or(destination);
         if entries.iter().any(|entry| entry.path == canonical) {
             summary.duplicates += 1;
@@ -215,6 +218,13 @@ pub fn import_archive(
             entries.push(LibraryEntry::from_path(canonical));
             summary.imported += 1;
         }
+    }
+    if summary.rejected > 0 {
+        entries.truncate(entries_before);
+        for path in created_paths {
+            let _ = fs::remove_file(path);
+        }
+        summary.imported = 0;
     }
     summary
 }
