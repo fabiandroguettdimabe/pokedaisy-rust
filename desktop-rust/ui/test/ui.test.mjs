@@ -32,11 +32,16 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.waitForFunction(()=>typeof window.vyntraState==='function');
   await page.evaluate(()=>window.vyntraState(window.testState={
    config:{library:'C:/fixtures/roms',saves:'C:/fixtures/saves',states:'C:/fixtures/states',system:'C:/fixtures/bios',cores:[null,null,null],volume:80,smooth:true,fullscreen:false,recursive:true,fast_forward:2,autosave:20,reduced_motion:false,keys:['Z','X','F','Tab','Return','Backspace','Up','Down','Left','Right','Q','E','1','2']},
-   games:[{id:0,storage_id:'gb-fixture',title:'Synthetic GB fixture',system:'GB',path:'C:/fixtures/test.gb',missing:false,core:false,note:''},{id:1,storage_id:'gba-fixture',title:'Synthetic GBA fixture',system:'GBA',path:'C:/fixtures/test.gba',missing:false,core:false,note:''}],
+   games:[{id:0,storage_id:'gb-fixture',title:'Synthetic GB fixture',system:'GB',path:'C:/fixtures/test.gb',missing:false,core:false,note:''},{id:1,storage_id:'gba-fixture',title:'Synthetic GBA fixture',system:'GBA',path:'C:/fixtures/test.gba',missing:false,core:true,note:''},{id:2,storage_id:'gba-fixture',title:'Synthetic GBA fixture',system:'GBA',path:'D:/backup/test.gba',missing:false,core:true,note:''}],
    cores:[{id:0,system:'GBC',path:null,installed:false},{id:1,system:'GBA',path:'C:/cores/test.dll',installed:true},{id:2,system:'DS',path:null,installed:false}],saves:[],scanning:false,
    reference_type_chart:{schema_version:1,dataset_id:'pokemon-gen3-type-chart',generation:3,source_sha256:'a'.repeat(64),license:'GPL-3.0-only',default_percent:100,types:[{id:8,name:'Steel'},{id:10,name:'Fire'},{id:12,name:'Grass'}],matchups:[]},
   }));
-  assert.equal(await page.locator('.game-card').count(),2);
+  assert.equal(await page.locator('.game-card').count(),3);
+  await page.locator('.game-card').filter({hasText:'Synthetic GBA fixture'}).first().click();
+  await page.getByLabel('Copia del juego').selectOption('2');
+  await page.getByRole('button',{name:'Jugar',exact:true}).click();
+  await expectCommand('play',{storage_id:'gba-fixture',source_index:2});
+  await page.locator('.game-card').filter({hasText:'Synthetic GB fixture'}).click();
   await page.getByRole('button',{name:'Importar carpetas',exact:true}).click();
   await expectCommand('import_roots');
   assert.equal(await page.getByRole('button',{name:'Jugar',exact:true}).isDisabled(),true);
@@ -44,10 +49,10 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.getByRole('button',{name:'Guardar nota'}).click();
   await expectCommand('game_note',{storage_id:'gb-fixture',value:'Usar partida del bosque'});
   await page.getByRole('textbox',{name:'Buscar juegos'}).fill('Synthetic GBA');
-  assert.equal(await page.locator('.game-card').count(),1);
+  assert.equal(await page.locator('.game-card').count(),2);
   await page.getByRole('button',{name:'Limpiar búsqueda'}).click();
   await page.locator('.system-row').filter({hasText:'GBA'}).click();
-  assert.equal(await page.locator('.game-card').count(),1);
+  assert.equal(await page.locator('.game-card').count(),2);
   await page.getByRole('button',{name:'Configuración',exact:true}).click();
   await page.getByRole('switch',{name:'Reducir animaciones'}).click();
   await expectCommand('set',{field:'reduced_motion',value:true});

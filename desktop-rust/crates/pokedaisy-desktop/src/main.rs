@@ -1319,6 +1319,17 @@ fn session_save_owner(active: &Option<Game>) -> Option<&Game> {
     active.as_ref()
 }
 
+fn resolve_game_by_source<'a>(
+    games: &'a [Game],
+    id: &str,
+    source_index: usize,
+) -> Option<&'a Game> {
+    games
+        .get(source_index)
+        .filter(|game| game_storage_key(game) == id)
+}
+
+#[cfg(test)]
 fn resolve_game_by_storage_id<'a>(games: &'a [Game], id: &str) -> Option<&'a Game> {
     games.iter().find(|game| game_storage_key(game) == id)
 }
@@ -2770,6 +2781,32 @@ mod tests {
     use std::fs;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn explicit_game_source_selects_matching_duplicate_and_rejects_mismatch() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-source-choice-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        let first_path = root.join("first.gb");
+        let second_path = root.join("second.gb");
+        fs::write(&first_path, b"same rom bytes").unwrap();
+        fs::write(&second_path, b"same rom bytes").unwrap();
+        let games = vec![
+            super::game_from_path(first_path),
+            super::game_from_path(second_path),
+        ];
+        let storage_id = super::game_storage_key(&games[0]);
+
+        assert_eq!(
+            super::resolve_game_by_source(&games, &storage_id, 1)
+                .unwrap()
+                .path,
+            games[1].path
+        );
+        assert!(super::resolve_game_by_source(&games, "different-content", 1).is_none());
+        assert!(super::resolve_game_by_source(&games, &storage_id, 2).is_none());
+        fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn filesystem_diagnostic_labels_hide_parent_paths_and_control_characters() {

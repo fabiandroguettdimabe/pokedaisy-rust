@@ -586,7 +586,9 @@ pub fn run() -> Result<(), String> {
                                 }
                             }
                             let game = if let Some(storage_id) = action["storage_id"].as_str() {
-                                crate::resolve_game_by_storage_id(&games, storage_id).ok_or("El juego cambió desde que se mostró la biblioteca; actualízala")?
+                                let source_index = action["source_index"].as_u64().ok_or("Selecciona una copia del juego")? as usize;
+                                let source = crate::resolve_game_by_source(&games, storage_id, source_index).ok_or("La copia seleccionada cambió desde que se mostró la biblioteca; actualízala")?;
+                                source
                             } else {
                                 games.get(action["id"].as_u64().ok_or("Selecciona un juego")? as usize).ok_or("Juego no encontrado")?
                             };

@@ -75,7 +75,14 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
         "library_view" | "library_filter" | "library_selection" => {
             (&[("value", PayloadFieldType::String)], &["value"])
         }
-        "relink" | "play" => (&[("storage_id", PayloadFieldType::String)], &["storage_id"]),
+        "relink" => (&[("storage_id", PayloadFieldType::String)], &["storage_id"]),
+        "play" => (
+            &[
+                ("storage_id", PayloadFieldType::String),
+                ("source_index", PayloadFieldType::Number),
+            ],
+            &["storage_id", "source_index"],
+        ),
         "type_matchup" => (
             &[
                 ("attack", PayloadFieldType::Number),
@@ -161,7 +168,13 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
                             .any(|ch| ch.is_control() && ch != '\n' && ch != '\r' && ch != '\t')
                 })
         }
-        "favorite" | "relink" | "play" => invalid_storage_id(),
+        "favorite" | "relink" => invalid_storage_id(),
+        "play" => {
+            invalid_storage_id()
+                || object["source_index"]
+                    .as_u64()
+                    .is_none_or(|index| index > u32::MAX as u64)
+        }
         "choose" => object["field"].as_str().is_some_and(|field| {
             !["library", "saves", "states", "system"].contains(&field)
                 && !field
@@ -549,6 +562,20 @@ mod tests {
     }
 
     #[test]
+    fn play_requires_bounded_source_index_with_storage_identity() {
+        for payload in [
+            serde_json::json!({"storage_id":"g1"}),
+            serde_json::json!({"storage_id":"g1","source_index":-1}),
+            serde_json::json!({"storage_id":"g1","source_index":4294967296u64}),
+        ] {
+            let body = serde_json::json!({"protocol_version":1,"command_id":"play-source","action":"play","payload":payload}).to_string();
+            assert_eq!(parse_ui_command(&body).unwrap_err().code, "invalid_payload");
+        }
+        let body = r#"{"protocol_version":1,"command_id":"play-source-ok","action":"play","payload":{"storage_id":"g1","source_index":2}}"#;
+        assert!(parse_ui_command(body).is_ok());
+    }
+
+    #[test]
     fn versioned_payloads_reject_values_outside_action_contracts() {
         for (action, payload) in [
             ("library_view", serde_json::json!({"value":"tiles"})),
@@ -574,7 +601,10 @@ mod tests {
             ),
             ("choose", serde_json::json!({"field":"core3"})),
             ("open_folder", serde_json::json!({"field":"arbitrary"})),
-            ("play", serde_json::json!({"storage_id":"../game"})),
+            (
+                "play",
+                serde_json::json!({"storage_id":"../game","source_index":0}),
+            ),
             (
                 "favorite",
                 serde_json::json!({"storage_id":"g1","value":true,"path":"C:/outside"}),
@@ -613,7 +643,10 @@ mod tests {
         for (action, payload) in [
             ("choose", serde_json::json!({"field":"core2"})),
             ("open_folder", serde_json::json!({"field":"system"})),
-            ("play", serde_json::json!({"storage_id":"a1-b2"})),
+            (
+                "play",
+                serde_json::json!({"storage_id":"a1-b2","source_index":0}),
+            ),
             ("probe_core", serde_json::json!({"index":2})),
         ] {
             let body = serde_json::json!({
@@ -637,7 +670,8 @@ mod tests {
                 "library_view" => serde_json::json!({"value":"grid"}),
                 "library_filter" => serde_json::json!({"value":"Todos"}),
                 "library_selection" => serde_json::json!({"value":"g1"}),
-                "relink" | "play" => serde_json::json!({"storage_id":"g1"}),
+                "relink" => serde_json::json!({"storage_id":"g1"}),
+                "play" => serde_json::json!({"storage_id":"g1","source_index":0}),
                 "type_matchup" => serde_json::json!({"attack":10,"defenses":[12,8]}),
                 "choose" => serde_json::json!({"field":"library"}),
                 "set" => serde_json::json!({"field":"volume","value":80}),
