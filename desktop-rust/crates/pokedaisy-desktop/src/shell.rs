@@ -163,6 +163,13 @@ pub fn run() -> Result<(), String> {
                                 refresh = true;
                             }
                         },
+                        "type_matchup" => {
+                            let attack = action["attack"].as_u64().filter(|id| *id <= u8::MAX as u64).ok_or("Tipo atacante inválido")? as u8;
+                            let defense_values = action["defenses"].as_array().ok_or("Tipos defensores inválidos")?;
+                            let defenses = defense_values.iter().map(|value| value.as_u64().filter(|id| *id <= u8::MAX as u64).map(|id| id as u8).ok_or_else(|| "Tipo defensor inválido".to_owned())).collect::<Result<Vec<_>, _>>()?;
+                            let result = crate::reference::resolve_matchup(&crate::reference::gen3_type_chart()?, attack, &defenses)?;
+                            command_result = Some(serde_json::to_value(result).map_err(|error| error.to_string())?);
+                        },
                         "import" => {
                             if let Some(paths)=rfd::FileDialog::new().set_title("Importar ROMs a Vyntra").add_filter("ROMs GB / GBC / GBA / DS", &["gb","gbc","gba","nds"]).pick_files() {
                                 let summary = crate::import::import_paths(&mut imported, paths);
@@ -473,7 +480,8 @@ fn publish(
         "session": session,
         "session_epoch": session_epoch,
         "command_revision": command_revision,
-        "core_probe": core_probe
+        "core_probe": core_probe,
+        "reference_type_chart": crate::reference::gen3_type_chart().ok()
     });
     let _ = webview.evaluate_script(&format!("window.vyntraState({value});"));
 }

@@ -40,6 +40,17 @@ python3 scripts/gen_gamedata.py --check    # fails if it's stale (make check and
 Never edit a generated file by hand (`NativeConfigsGen.kt`, `GameDataRecordsGen.kt`,
 `pd_configs_gen.h`): the next `make gamedata` overwrites it and the check fails.
 
+### Desktop reference data
+
+The first versioned Desktop reference artifact is the sparse Gen 3 type chart at
+`desktop-rust/assets/reference/type-chart-gen3.json`. It is generated from the shared Kotlin
+`TypeChart.kt` and `TypeChartUtil.kt` tables by `scripts/export_desktop_reference.py`; the JSON
+records schema version, dataset ID, input hash and GPL-3.0-only license. Rust reads it through
+`desktop-rust/crates/pokedaisy-desktop/src/reference.rs`. Regenerate with
+`python3 scripts/export_desktop_reference.py`, and verify source parity with
+`python3 scripts/export_desktop_reference.py --check` plus
+`python3 -m unittest scripts.tests.test_export_desktop_reference`. Do not edit the JSON by hand.
+
 ## Adding or changing a game
 
 1. Open the game's family file (or add one in `gen3/hacks/`; the file name is free).

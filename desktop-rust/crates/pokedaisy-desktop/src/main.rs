@@ -7,6 +7,7 @@ mod migration;
 mod probe;
 mod probe_pe;
 mod protocol;
+mod reference;
 mod settings;
 #[cfg(target_os = "windows")]
 mod shell;
