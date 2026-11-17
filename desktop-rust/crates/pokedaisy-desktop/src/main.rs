@@ -2887,6 +2887,15 @@ mod tests {
                 .expect("mGBA must load the homebrew ROM through the production open_game path");
         assert_eq!(core.system_info().library_name.as_deref(), Some("mGBA"));
         exercise_real_core_frame_and_state(&mut core);
+        let mut battery = core.read_save_ram().expect("mGBA must expose save RAM");
+        assert!(!battery.is_empty(), "mGBA must expose writable save RAM");
+        battery[0] ^= 0xff;
+        core.write_save_ram(&battery)
+            .expect("mGBA must accept changed save RAM data");
+        let read_back = core
+            .read_save_ram()
+            .expect("mGBA must return save RAM after a write");
+        assert_eq!(read_back, battery);
         drop(core);
         std::fs::remove_dir_all(root).unwrap();
     }
