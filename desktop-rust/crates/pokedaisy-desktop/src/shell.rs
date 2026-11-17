@@ -2373,6 +2373,106 @@ mod tests {
     }
 
     #[test]
+    fn migration_apply_rejects_a_source_reached_through_an_escaping_junction() {
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-legacy-source-junction-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        let saves = root.join("custom/saves");
+        let states = root.join("custom/states");
+        let historical = root.join("saves");
+        let outside = root.join("outside");
+        fs::create_dir_all(&saves).unwrap();
+        fs::create_dir_all(&states).unwrap();
+        fs::create_dir_all(&historical).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        let linked_root = historical.join("linked");
+        let output = std::process::Command::new("cmd.exe")
+            .arg("/C")
+            .arg(format!(
+                "mklink /J {} {}",
+                linked_root.display(),
+                outside.display()
+            ))
+            .output()
+            .expect("Windows cmd.exe is required for the junction fixture");
+        assert!(
+            output.status.success(),
+            "could not create source junction: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let source = linked_root.join("legacy.gb.sav");
+        fs::write(&source, b"outside battery").unwrap();
+        let destination = saves.join("by-id/game/battery.sav");
+        let config = Settings {
+            saves,
+            states,
+            ..Settings::default()
+        };
+        let report = migration::preview(&[migration::MigrationItem::new(
+            source,
+            destination,
+            "game".into(),
+            "battery".into(),
+        )])
+        .unwrap();
+
+        assert!(validate_migration_report_paths(&report, &config, &root).is_err());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn migration_apply_rejects_a_destination_under_an_escaping_junction() {
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-legacy-destination-junction-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        let saves = root.join("custom").join("saves");
+        let states = root.join("custom").join("states");
+        let outside = root.join("outside");
+        fs::create_dir_all(&saves).unwrap();
+        fs::create_dir_all(&states).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        let linked_parent = saves.join("linked");
+        let output = std::process::Command::new("cmd.exe")
+            .arg("/C")
+            .arg(format!(
+                "mklink /J {} {}",
+                linked_parent.display(),
+                outside.display()
+            ))
+            .output()
+            .expect("Windows cmd.exe is required for the junction fixture");
+        assert!(
+            output.status.success(),
+            "could not create destination junction at {} -> {}: {}",
+            linked_parent.display(),
+            outside.display(),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let source = root.join("legacy.gb.sav");
+        fs::write(&source, b"legacy battery").unwrap();
+        let destination = linked_parent.join("game/battery.sav");
+        let config = Settings {
+            saves,
+            states,
+            ..Settings::default()
+        };
+        let report = migration::preview(&[migration::MigrationItem::new(
+            source,
+            destination,
+            "game".into(),
+            "battery".into(),
+        )])
+        .unwrap();
+
+        assert!(validate_migration_report_paths(&report, &config, &root).is_err());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn migration_preview_discovers_known_legacy_roots_outside_custom_folders() {
         let root = std::env::temp_dir().join(format!("vyntra-legacy-roots-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
