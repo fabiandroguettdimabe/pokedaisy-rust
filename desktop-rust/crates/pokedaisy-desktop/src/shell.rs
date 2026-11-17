@@ -204,8 +204,18 @@ pub fn run() -> Result<(), String> {
                             command_result = Some(serde_json::to_value(result).map_err(|error| error.to_string())?);
                         },
                         "import" => {
-                            if let Some(paths)=rfd::FileDialog::new().set_title("Importar ROMs a Vyntra").add_filter("ROMs GB / GBC / GBA / DS", &["gb","gbc","gba","nds"]).pick_files() {
-                                let summary = crate::import::import_paths(&mut imported, paths);
+                            if let Some(paths)=rfd::FileDialog::new().set_title("Importar ROMs o ZIP a Vyntra").add_filter("ROMs y ZIP", &["gb","gbc","gba","nds","zip"]).pick_files() {
+                                let mut summary = crate::import::ImportSummary::default();
+                                for path in paths {
+                                    let result = if path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("zip")) {
+                                        crate::import::import_archive(&mut imported, &path, &data.join("import-cache"), crate::import::ArchivePolicy::default())
+                                    } else {
+                                        crate::import::import_paths(&mut imported, [path])
+                                    };
+                                    summary.imported += result.imported;
+                                    summary.duplicates += result.duplicates;
+                                    summary.rejected += result.rejected;
+                                }
                                 if summary.imported > 0 { library::save(&index_path, &imported)?; refresh=true; }
                                 command_result = Some(json!({"import":{"imported":summary.imported,"duplicates":summary.duplicates,"rejected":summary.rejected}}));
                             }
