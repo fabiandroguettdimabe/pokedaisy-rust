@@ -245,6 +245,38 @@ mod tests {
     }
 
     #[test]
+    fn synthetic_gba_header_matrix_preserves_code_revision_and_tolerates_checksum_variants() {
+        for (code, revision, title) in [
+            (*b"ABCE", 0, b"GAME ZERO".as_slice()),
+            (*b"ABCP", 1, b"GAME ONE".as_slice()),
+            (*b"ABCJ", u8::MAX, b"".as_slice()),
+        ] {
+            let mut bytes = vec![0; 0xc0];
+            bytes[0xa0..0xa0 + title.len()].copy_from_slice(title);
+            bytes[0xac..0xb0].copy_from_slice(&code);
+            bytes[0xb2] = 0x96;
+            bytes[0xbc] = revision;
+            bytes[0xbd] = super::gba_header_checksum(&bytes);
+            let valid = inspect_bytes("fixture.gba", &bytes).unwrap();
+            assert_eq!(
+                valid.game_code.as_deref(),
+                Some(std::str::from_utf8(&code).unwrap())
+            );
+            assert_eq!(valid.revision, Some(revision));
+            assert_eq!(
+                valid.title.as_deref(),
+                (!title.is_empty()).then(|| std::str::from_utf8(title).unwrap())
+            );
+            assert_eq!(valid.header_checksum_valid, Some(true));
+
+            bytes[0xbd] ^= 1;
+            let damaged = inspect_bytes("fixture.gba", &bytes).unwrap();
+            assert_eq!(damaged.header_checksum_valid, Some(false));
+            assert_eq!(damaged.game_code, valid.game_code);
+        }
+    }
+
+    #[test]
     fn file_inspection_reads_only_a_bounded_header_from_large_roms() {
         let path =
             std::env::temp_dir().join(format!("vyntra-inspect-bounded-{}.GBA", std::process::id()));
