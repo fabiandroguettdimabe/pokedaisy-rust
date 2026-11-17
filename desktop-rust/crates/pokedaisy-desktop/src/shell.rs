@@ -260,7 +260,7 @@ pub fn run() -> Result<(), String> {
                 }
             },
             TaoEvent::UserEvent(Message::Action(body)) => {
-                let cmd = match protocol::parse_legacy_action(&body) {
+                let cmd = match protocol::parse_ui_command(&body) {
                     Ok(cmd) => cmd,
                     Err(error) => {
                         let ack = protocol::UiAck::failure("legacy-invalid", error.clone());

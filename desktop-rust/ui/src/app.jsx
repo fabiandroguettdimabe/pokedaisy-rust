@@ -2,8 +2,8 @@ import {render} from 'preact';
 import {useState,useEffect,useLayoutEffect} from 'preact/hooks';
 import {Library,Gamepad2,Download,Settings,FolderOpen,Search,Grid2X2,List,Play,ChevronRight,RefreshCw,HardDrive,Save,Link,ShieldCheck,Volume2,Monitor,Keyboard,SlidersHorizontal,ChevronDown,Check,Info,AlertCircle,X,Users,Swords,Map,BookOpen,Package,ExternalLink,FileDown,Activity,Boxes,Folder,RotateCcw,Star} from 'lucide-preact';
 
-let session=null,revision=null;
-const send=(action,values={})=>{const message={action,...values};if(session?.session_id){message.session_id=session.session_id;message.epoch=session.epoch;}if(revision!==null)message.expected_revision=revision;return window.ipc?.postMessage(JSON.stringify(message));};
+let session=null,revision=null,commandSequence=0;
+const send=(action,values={})=>{const message={protocol_version:1,command_id:`ui-${Date.now()}-${++commandSequence}`,action,payload:values};if(session?.session_id){message.session_id=session.session_id;message.epoch=session.epoch;}if(revision!==null)message.expected_revision=revision;return window.ipc?.postMessage(JSON.stringify(message));};
 const systems=['GB','GBC','GBA','DS'];
 const labels=['A','B','Y','X','Start','Select','Arriba','Abajo','Izquierda','Derecha','L','R','L2','R2'];
 const colors={GB:'green',GBC:'green',GBA:'',DS:'purple'};

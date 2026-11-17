@@ -10,6 +10,36 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::VecDeque;
 
+const SUPPORTED_ACTIONS: &[&str] = &[
+    "ready",
+    "scan",
+    "reset_settings_section",
+    "favorite",
+    "game_note",
+    "library_view",
+    "library_filter",
+    "library_selection",
+    "relink",
+    "type_matchup",
+    "import",
+    "import_roots",
+    "cancel_import",
+    "choose",
+    "set",
+    "play",
+    "stop_player",
+    "pause_player",
+    "save_player_state",
+    "load_player_state",
+    "export_vault_bundle",
+    "import_vault_bundle",
+    "export_save",
+    "migration_preview",
+    "migration_apply",
+    "probe_core",
+    "open_folder",
+];
+
 /// Application-level error with a stable code for UI handling and diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AppError {
@@ -173,49 +203,44 @@ impl UiAck {
     }
 }
 
-/// Parse a legacy action payload (`{"action":"..."}`) into a best-effort command
-/// envelope. This supports incremental migration of `shell.rs` handlers.
-pub fn parse_legacy_action(body: &str) -> Result<UiCommandEnvelope, AppError> {
+/// Parse a versioned command envelope, while accepting the prior flat action
+/// shape during the frontend migration.
+pub fn parse_ui_command(body: &str) -> Result<UiCommandEnvelope, AppError> {
     const MAX_LEGACY_BYTES: usize = 32 * 1024;
     if body.len() > MAX_LEGACY_BYTES {
         return Err(AppError::new("payload_too_large", "Mensaje demasiado grande").retryable());
     }
     let payload: Value = serde_json::from_str(body)
         .map_err(|e| AppError::new("invalid_json", format!("JSON inválido: {e}")))?;
+    if payload.get("protocol_version").is_some() || payload.get("command_id").is_some() {
+        let command: UiCommandEnvelope = serde_json::from_value(payload.clone())
+            .map_err(|e| AppError::new("invalid_envelope", format!("Envelope inválido: {e}")))?;
+        if command.protocol_version != CONTRACT_VERSION {
+            return Err(AppError::new(
+                "unsupported_protocol_version",
+                "Versión del protocolo no compatible",
+            ));
+        }
+        if command.command_id.trim().is_empty() {
+            return Err(AppError::new(
+                "invalid_command_id",
+                "Falta un command_id válido",
+            ));
+        }
+        let action = command.action.trim();
+        if action.is_empty() {
+            return Err(AppError::new("invalid_action", "Falta una acción válida"));
+        }
+        if !SUPPORTED_ACTIONS.contains(&action) {
+            return Err(AppError::new("unknown_action", "Acción no disponible"));
+        }
+        return Ok(command);
+    }
     let action = payload
         .get("action")
         .and_then(|v| v.as_str())
         .filter(|action| !action.trim().is_empty())
         .ok_or_else(|| AppError::new("invalid_action", "Falta una acción válida"))?;
-    const SUPPORTED_ACTIONS: &[&str] = &[
-        "ready",
-        "scan",
-        "reset_settings_section",
-        "favorite",
-        "game_note",
-        "library_view",
-        "library_filter",
-        "library_selection",
-        "relink",
-        "type_matchup",
-        "import",
-        "import_roots",
-        "cancel_import",
-        "choose",
-        "set",
-        "play",
-        "stop_player",
-        "pause_player",
-        "save_player_state",
-        "load_player_state",
-        "export_vault_bundle",
-        "import_vault_bundle",
-        "export_save",
-        "migration_preview",
-        "migration_apply",
-        "probe_core",
-        "open_folder",
-    ];
     if !SUPPORTED_ACTIONS.contains(&action) {
         return Err(AppError::new("unknown_action", "Acción no disponible"));
     }
@@ -238,6 +263,12 @@ pub fn parse_legacy_action(body: &str) -> Result<UiCommandEnvelope, AppError> {
     })
 }
 
+/// Compatibility entry point for callers and tests that still use the legacy
+/// protocol name.
+pub fn parse_legacy_action(body: &str) -> Result<UiCommandEnvelope, AppError> {
+    parse_ui_command(body)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -248,6 +279,35 @@ mod tests {
         assert_eq!(cmd.action, "scan");
         assert_eq!(cmd.command_id, "legacy-scan");
         assert_eq!(cmd.payload["x"], 1);
+    }
+
+    #[test]
+    fn versioned_envelope_parses_command_and_nested_payload() {
+        let cmd = parse_ui_command(
+            r#"{"protocol_version":1,"command_id":"ui-7","action":"favorite","request_id":"r-2","expected_revision":4,"payload":{"storage_id":"abc","value":true}}"#,
+        )
+        .unwrap();
+        assert_eq!(cmd.command_id, "ui-7");
+        assert_eq!(cmd.request_id.as_deref(), Some("r-2"));
+        assert_eq!(cmd.expected_revision, Some(4));
+        assert_eq!(cmd.payload["storage_id"], "abc");
+        assert_eq!(cmd.payload["value"], true);
+    }
+
+    #[test]
+    fn versioned_envelopes_reject_unsupported_versions_and_missing_ids() {
+        for (body, code) in [
+            (
+                r#"{"protocol_version":2,"command_id":"x","action":"scan"}"#,
+                "unsupported_protocol_version",
+            ),
+            (
+                r#"{"protocol_version":1,"command_id":" ","action":"scan"}"#,
+                "invalid_command_id",
+            ),
+        ] {
+            assert_eq!(parse_ui_command(body).unwrap_err().code, code);
+        }
     }
 
     #[test]
