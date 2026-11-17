@@ -2819,11 +2819,14 @@ mod tests {
         let battery_backup = super::backup_verified_battery(&game, &dir, Some(&core_hash))
             .unwrap()
             .unwrap();
-        fs::create_dir(
-            battery_backup
-                .parent()
-                .unwrap()
-                .join("zz-incomplete-backup"),
+        let partial_battery = battery_backup
+            .parent()
+            .unwrap()
+            .join("zz-incomplete-backup");
+        fs::create_dir(&partial_battery).unwrap();
+        fs::write(
+            partial_battery.join("battery.sav"),
+            b"orphan payload without manifest",
         )
         .unwrap();
         fs::write(super::preferred_battery_path(&game, &dir), b"damaged").unwrap();
@@ -2865,7 +2868,13 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(fs::read(backup.join("slot1.ss")).unwrap(), b"state");
-        fs::create_dir(backup.parent().unwrap().join("zz-incomplete-backup")).unwrap();
+        let partial_state = backup.parent().unwrap().join("zz-incomplete-backup");
+        fs::create_dir(&partial_state).unwrap();
+        fs::write(
+            partial_state.join("slot1.ss"),
+            b"orphan state without manifest",
+        )
+        .unwrap();
         // Model a crash after the replacement payload lands but before its
         // matching manifest can be committed.
         fs::write(super::state_path(&game, &dir), b"tampered").unwrap();
