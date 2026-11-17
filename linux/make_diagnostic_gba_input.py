@@ -49,6 +49,9 @@ branch(0x0, "pressed")
 ldr_literal(4, "blue")
 branch(0xE, "draw")
 label("pressed")
+ldr_literal(7, "sram")
+emit(0xE3A080A5)  # MOV r8, #0xA5: persistent marker for the input smoke.
+emit(0xE5C78000)  # STRB r8, [r7]
 ldr_literal(4, "green")
 label("draw")
 emit(0xE1A05001)  # MOV r5, r1
@@ -68,6 +71,7 @@ literal_values = {
     "pixels": 240 * 160,
     "blue": 0x001F,
     "green": 0x03E0,
+    "sram": 0x0E000000,
 }
 literal_positions = {name: literal_index + offset for offset, name in enumerate(literal_values)}
 for instruction, register, name in literals:

@@ -301,6 +301,11 @@ fn configured_local_gba_core_receives_a_button_from_libretro_input() {
         &[192, 7],
         "pressed A must render the green diagnostic screen"
     );
+    assert_eq!(
+        core.read_save_ram().unwrap().first(),
+        Some(&0xA5),
+        "pressed A must write the diagnostic battery marker"
+    );
     drop(core);
     fs::remove_dir_all(root).unwrap();
 }
