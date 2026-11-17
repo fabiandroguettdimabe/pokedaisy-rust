@@ -31,6 +31,10 @@ pub struct LibraryEntry {
     pub confidence: Option<IdentityConfidence>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_seen_unix: Option<u64>,
+    #[serde(default)]
+    pub favorite: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_played_unix: Option<u64>,
 }
 
 impl LibraryEntry {
@@ -60,6 +64,8 @@ impl LibraryEntry {
             path,
             content_hash,
             last_seen_unix: None,
+            favorite: false,
+            last_played_unix: None,
         }
     }
 
@@ -85,6 +91,22 @@ impl LibraryEntry {
             self.system = system_from_extension(&self.path);
         }
     }
+}
+
+pub fn set_favorite(entries: &mut [LibraryEntry], id: &str, favorite: bool) -> bool {
+    let Some(entry) = entries.iter_mut().find(|entry| entry.id == id) else {
+        return false;
+    };
+    entry.favorite = favorite;
+    true
+}
+
+pub fn mark_played(entries: &mut [LibraryEntry], id: &str, played_at_unix: u64) -> bool {
+    let Some(entry) = entries.iter_mut().find(|entry| entry.id == id) else {
+        return false;
+    };
+    entry.last_played_unix = Some(played_at_unix);
+    true
 }
 
 fn system_from_extension(path: &Path) -> Option<String> {
@@ -175,6 +197,47 @@ mod tests {
     }
 
     #[test]
+    fn favorite_and_recent_metadata_roundtrip_without_changing_identity() {
+        let dir = std::env::temp_dir().join(format!("vyntra-library-meta-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let rom = dir.join("favorite.gba");
+        fs::write(&rom, b"fixture").unwrap();
+        let mut entry = LibraryEntry::from_path(rom);
+        let id = entry.id.clone();
+        entry.favorite = true;
+        entry.last_played_unix = Some(1234);
+        let index = dir.join("library.json");
+        save(&index, &[entry]).unwrap();
+        let loaded = load(&index).unwrap();
+        assert_eq!(loaded[0].id, id);
+        assert!(loaded[0].favorite);
+        assert_eq!(loaded[0].last_played_unix, Some(1234));
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn favorite_and_played_updates_resolve_only_by_stable_id() {
+        let mut entries = vec![LibraryEntry {
+            id: "game-a".into(),
+            path: PathBuf::from("a.gba"),
+            content_hash: None,
+            title: None,
+            system: None,
+            game_code: None,
+            revision: None,
+            confidence: None,
+            last_seen_unix: None,
+            favorite: false,
+            last_played_unix: None,
+        }];
+        assert!(set_favorite(&mut entries, "game-a", true));
+        assert!(mark_played(&mut entries, "game-a", 42));
+        assert!(!mark_played(&mut entries, "missing", 50));
+        assert!(entries[0].favorite);
+        assert_eq!(entries[0].last_played_unix, Some(42));
+    }
+
+    #[test]
     fn rom_header_metadata_is_used_when_structurally_valid() {
         let dir = std::env::temp_dir().join(format!("vyntra-header-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
@@ -203,6 +266,8 @@ mod tests {
             revision: None,
             confidence: None,
             last_seen_unix: Some(1),
+            favorite: false,
+            last_played_unix: None,
         };
         let value = serde_json::json!([entry]);
         let parsed = parse_value(value).unwrap();
@@ -225,6 +290,8 @@ mod tests {
             revision: None,
             confidence: None,
             last_seen_unix: None,
+            favorite: false,
+            last_played_unix: None,
         }];
         save(&path, &entries).unwrap();
         assert!(!path.with_extension("tmp").exists());

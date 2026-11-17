@@ -110,11 +110,11 @@ pub fn run() -> Result<(), String> {
                 if catalog_changed {
                     let _ = library::save(&index_path, &imported);
                 }
-                publish(&webview,&config,&games,scanning,&session,session_epoch,command_revision,&core_probe);
+                publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
             },
             TaoEvent::UserEvent(Message::CoreProbed(id, report)) if id == probe_generation => {
                 core_probe = Some(report);
-                publish(&webview,&config,&games,scanning,&session,session_epoch,command_revision,&core_probe);
+                publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
             },
             TaoEvent::UserEvent(Message::Action(body)) => {
                 let cmd = match protocol::parse_legacy_action(&body) {
@@ -129,6 +129,12 @@ pub fn run() -> Result<(), String> {
                     validate_command_session(&session, session_epoch, &cmd)?;
                     match name {
                         "ready" | "scan" => refresh=true,
+                        "favorite" => {
+                            let id = action["storage_id"].as_str().ok_or("Juego inválido")?;
+                            let favorite = action["value"].as_bool().ok_or("Favorito inválido")?;
+                            if !library::set_favorite(&mut imported, id, favorite) { return Err("El juego ya no está en la biblioteca".into()); }
+                            library::save(&index_path, &imported)?;
+                        },
                         "import" => {
                             if let Some(paths)=rfd::FileDialog::new().set_title("Importar ROMs a Vyntra").add_filter("ROMs GB / GBC / GBA / DS", &["gb","gbc","gba","nds"]).pick_files() {
                                 let summary = crate::import::import_paths(&mut imported, paths);
@@ -191,6 +197,10 @@ pub fn run() -> Result<(), String> {
                             let core=config.core(game.system)?;
                             if !core.is_file(){return Err("La DLL seleccionada no existe. Revisa Ajustes > Nǧcleos.".into());}
                             child=Some(std::process::Command::new(env::current_exe().map_err(|e|e.to_string())?).arg("--emulator").arg("--data").arg(&root).arg(&game.path).spawn().map_err(|e|e.to_string())?);
+                            let game_id = game_storage_key(game);
+                            if library::mark_played(&mut imported, &game_id, now_unix()) {
+                                library::save(&index_path, &imported)?;
+                            }
                             session_epoch = session_epoch.saturating_add(1);
                             session = Some(domain::SessionIdentity {
                                 session_id: format!("sess-{}-{}", std::process::id(), session_epoch),
@@ -278,7 +288,7 @@ pub fn run() -> Result<(), String> {
                 let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
                 if let Err(error)=result { let _=webview.evaluate_script(&format!("window.vyntraError({});",json!(error))); }
                 if refresh {generation+=1; scanning=true; let id=generation; let cfg=config.clone(); let tx=proxy.clone(); std::thread::spawn(move||{let found=scan_games(&cfg.library,cfg.recursive);let _=tx.send_event(Message::Scanned(id,found));});}
-                publish(&webview,&config,&games,scanning,&session,session_epoch,command_revision,&core_probe);
+                publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
             },
             _=>{}
         }
@@ -409,13 +419,14 @@ fn publish(
     webview: &wry::WebView,
     config: &Settings,
     games: &[Game],
+    imported: &[library::LibraryEntry],
     scanning: bool,
     session: &Option<domain::SessionIdentity>,
     session_epoch: u64,
     command_revision: u64,
     core_probe: &Option<serde_json::Value>,
 ) {
-    let games:Vec<_>=games.iter().enumerate().map(|(id,g)|json!({"id":id,"storage_id":game_storage_key(g),"title":g.title,"system":g.system,"path":g.path,"missing":!g.path.is_file(),"core":config.core(g.system).is_ok_and(|p|p.is_file())})).collect();
+    let games:Vec<_>=games.iter().enumerate().map(|(id,g)|{let storage_id=game_storage_key(g);let metadata=imported.iter().find(|entry|entry.id==storage_id);json!({"id":id,"storage_id":storage_id,"title":g.title,"system":g.system,"path":g.path,"missing":!g.path.is_file(),"core":config.core(g.system).is_ok_and(|p|p.is_file()),"favorite":metadata.is_some_and(|entry|entry.favorite),"last_played_unix":metadata.and_then(|entry|entry.last_played_unix)})}).collect();
     let cores:Vec<_>=["GBC","GBA","DS"].iter().enumerate().map(|(id,s)| {let path=config.core(s).ok();json!({"id":id,"system":s,"path":path,"installed":path.as_ref().is_some_and(|p|p.is_file())})}).collect();
     let saves:Vec<_>=save_files(config).iter().enumerate().map(|(id,p)|{let meta=p.metadata().ok();json!({"id":id,"path":p,"name":p.file_name().unwrap_or_default().to_string_lossy(),"bytes":meta.as_ref().map(|m|m.len()),"date":meta.and_then(|m|m.modified().ok()).and_then(|t|t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d|d.as_secs()),"state":p.starts_with(&config.states)})}).collect();
     let value = json!({
