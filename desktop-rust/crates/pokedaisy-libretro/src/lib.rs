@@ -34,7 +34,9 @@ const RETRO_DEVICE_MASK: u32 = 0xff;
 const RETRO_DEVICE_ID_JOYPAD_MASK: u32 = 256;
 const RETRO_MEMORY_SAVE_RAM: u32 = 0;
 const RETRO_MEMORY_SYSTEM_RAM: u32 = 2;
+const RETRO_MEMDESC_SYSTEM_RAM: u64 = 1 << 2;
 const MAX_SYSTEM_RAM_BYTES: usize = 64 * 1024 * 1024;
+const MAX_MEMORY_MAP_DESCRIPTORS: usize = 256;
 const RETRO_PIXEL_FORMAT_0RGB1555: u32 = 0;
 const RETRO_PIXEL_FORMAT_XRGB8888: u32 = 1;
 const RETRO_PIXEL_FORMAT_RGB565: u32 = 2;
@@ -233,6 +235,7 @@ pub enum CoreError {
         actual: usize,
         max: usize,
     },
+    SystemMemoryUnavailable,
     SaveRamSize {
         expected: usize,
         actual: usize,
@@ -284,6 +287,9 @@ impl std::fmt::Display for CoreError {
                 f,
                 "System RAM size {actual} exceeds the safe capture limit {max}"
             ),
+            Self::SystemMemoryUnavailable => {
+                f.write_str("The core does not expose a readable system-memory map")
+            }
             Self::SaveRamSize { expected, actual } => write!(
                 f,
                 "Save RAM size mismatch: expected {expected}, got {actual}"
@@ -306,6 +312,34 @@ struct RetroGameInfo {
     data: *const c_void,
     size: usize,
     meta: *const c_char,
+}
+
+#[repr(C)]
+struct RetroMemoryDescriptor {
+    flags: u64,
+    ptr: *mut c_void,
+    offset: usize,
+    start: usize,
+    select: usize,
+    disconnect: usize,
+    len: usize,
+    addrspace: *const c_char,
+}
+
+#[repr(C)]
+struct RetroMemoryMap {
+    descriptors: *const RetroMemoryDescriptor,
+    num_descriptors: u32,
+}
+
+#[derive(Clone, Copy)]
+struct CoreMemoryRegion {
+    ptr: usize,
+    offset: usize,
+    start: usize,
+    select: usize,
+    disconnect: usize,
+    len: usize,
 }
 
 #[repr(C)]
@@ -481,6 +515,7 @@ struct CallbackState {
     pixel_format: PixelFormat,
     av: RetroAvInfo,
     fast_forward: bool,
+    memory_regions: Vec<CoreMemoryRegion>,
 }
 
 impl CallbackState {
@@ -504,6 +539,7 @@ impl CallbackState {
             pixel_format: PixelFormat::Rgb1555,
             av: RetroAvInfo::default(),
             fast_forward: false,
+            memory_regions: Vec::new(),
         })
     }
 }
@@ -867,6 +903,60 @@ impl LibretroCore {
         Ok(unsafe { std::slice::from_raw_parts(ptr, size) }.to_vec())
     }
 
+    /// Copy a guest-address range from a core-declared System RAM region.
+    /// The core owns the backing pointer for this game's session; callers only receive owned bytes.
+    pub fn read_memory_range(
+        &mut self,
+        address: usize,
+        length: usize,
+    ) -> Result<Vec<u8>, CoreError> {
+        if self.loaded_rom.is_none() {
+            return Err(CoreError::NoGameLoaded);
+        }
+        let regions = callback_state()
+            .lock()
+            .map_err(|_| CoreError::PoisonedContext)?
+            .as_ref()
+            .filter(|state| state.active && state.game_loaded)
+            .map(|state| state.memory_regions.clone())
+            .ok_or(CoreError::SystemMemoryUnavailable)?;
+
+        for region in regions {
+            if region.ptr == 0
+                || (region.select != 0
+                    && (address & region.select) != (region.start & region.select))
+            {
+                continue;
+            }
+            let disconnected = address & !region.disconnect;
+            let Some(relative) = disconnected.checked_sub(region.start) else {
+                continue;
+            };
+            let Some(offset) = region.offset.checked_add(relative) else {
+                continue;
+            };
+            let Some(end) = offset.checked_add(length) else {
+                return Err(CoreError::SystemRamRangeOutOfBounds {
+                    offset,
+                    length,
+                    size: region.len,
+                });
+            };
+            if end > region.len {
+                continue;
+            }
+            let Some(host_address) = region.ptr.checked_add(offset) else {
+                return Err(CoreError::SystemMemoryUnavailable);
+            };
+            // SAFETY: libretro's SET_MEMORY_MAPS contract keeps region pointers valid
+            // and unmoved for this session. The requested range is within its advertised length.
+            return Ok(unsafe {
+                std::slice::from_raw_parts(host_address as *const u8, length).to_vec()
+            });
+        }
+        Err(CoreError::SystemMemoryUnavailable)
+    }
+
     /// Copy a checked System RAM range from the live core owner. The returned bytes own their storage.
     pub fn read_system_ram_range(
         &mut self,
@@ -1073,7 +1163,50 @@ fn environment_inner(command: u32, data: *mut c_void) -> bool {
                     false
                 }
             }
-            ENV_SET_INPUT_DESCRIPTORS | ENV_SET_MEMORY_MAPS | ENV_SET_CORE_OPTIONS_DISPLAY => true,
+            ENV_SET_INPUT_DESCRIPTORS | ENV_SET_CORE_OPTIONS_DISPLAY => true,
+            ENV_SET_MEMORY_MAPS => {
+                if data.is_null() {
+                    return false;
+                }
+                let map = &*data.cast::<RetroMemoryMap>();
+                let count = map.num_descriptors as usize;
+                if count > MAX_MEMORY_MAP_DESCRIPTORS || (count > 0 && map.descriptors.is_null()) {
+                    state.memory_regions.clear();
+                    return false;
+                }
+                let descriptors = if count == 0 {
+                    &[]
+                } else {
+                    std::slice::from_raw_parts(map.descriptors, count)
+                };
+                let mut regions = Vec::new();
+                let mut total = 0usize;
+                for descriptor in descriptors {
+                    if descriptor.flags & RETRO_MEMDESC_SYSTEM_RAM == 0
+                        || descriptor.ptr.is_null()
+                        || descriptor.len == 0
+                    {
+                        continue;
+                    }
+                    total = match total.checked_add(descriptor.len) {
+                        Some(total) if total <= MAX_SYSTEM_RAM_BYTES => total,
+                        _ => {
+                            state.memory_regions.clear();
+                            return false;
+                        }
+                    };
+                    regions.push(CoreMemoryRegion {
+                        ptr: descriptor.ptr as usize,
+                        offset: descriptor.offset,
+                        start: descriptor.start,
+                        select: descriptor.select,
+                        disconnect: descriptor.disconnect,
+                        len: descriptor.len,
+                    });
+                }
+                state.memory_regions = regions;
+                true
+            }
             ENV_GET_VARIABLE => {
                 if data.is_null() {
                     return false;

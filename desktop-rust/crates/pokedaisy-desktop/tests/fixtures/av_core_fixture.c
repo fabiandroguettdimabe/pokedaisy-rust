@@ -26,6 +26,22 @@ struct retro_game_info {
     const char *meta;
 };
 
+struct retro_memory_descriptor {
+    uint64_t flags;
+    void *ptr;
+    size_t offset;
+    size_t start;
+    size_t select;
+    size_t disconnect;
+    size_t len;
+    const char *addrspace;
+};
+
+struct retro_memory_map {
+    const struct retro_memory_descriptor *descriptors;
+    unsigned num_descriptors;
+};
+
 struct retro_geometry {
     unsigned base_width;
     unsigned base_height;
@@ -51,6 +67,13 @@ static retro_audio_sample_batch_t audio_batch_cb;
 static retro_input_poll_t input_poll_cb;
 static retro_input_state_t input_state_cb;
 static uint8_t system_ram[4] = {0, 2, 3, 4};
+static uint8_t ewram[16] = {1, 2, 3, 4, 5, 6};
+static uint8_t iwram[8] = {7, 8, 9, 10};
+static const struct retro_memory_descriptor regions[] = {
+    { .flags = 1u << 2, .ptr = ewram, .start = 0x02000000, .select = 0xff000000, .len = sizeof(ewram) },
+    { .flags = 1u << 2, .ptr = iwram, .start = 0x03000000, .select = 0xff000000, .len = sizeof(iwram) },
+};
+static const struct retro_memory_map map = { regions, 2 };
 
 EXPORT unsigned retro_api_version(void) { return 1; }
 EXPORT void retro_set_environment(retro_environment_t callback) { environment_cb = callback; }
@@ -71,7 +94,10 @@ EXPORT void retro_get_system_info(struct retro_system_info *info) {
     info->need_fullpath = true;
     info->block_extract = false;
 }
-EXPORT bool retro_load_game(const struct retro_game_info *info) { return info && info->data && info->size; }
+EXPORT bool retro_load_game(const struct retro_game_info *info) {
+    if (environment_cb) environment_cb(32804, (void *)&map);
+    return info && info->data && info->size;
+}
 EXPORT void retro_unload_game(void) {}
 EXPORT void retro_get_system_av_info(struct retro_system_av_info *info) {
     *info = (struct retro_system_av_info){

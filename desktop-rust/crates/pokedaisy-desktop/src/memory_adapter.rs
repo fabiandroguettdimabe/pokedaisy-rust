@@ -47,20 +47,20 @@ pub enum CaptureError {
 pub trait MemoryReader {
     fn read(&mut self, offset: usize, length: usize) -> Result<Vec<u8>, CaptureError>;
 }
-pub struct LibretroSystemRamReader<'a> {
+pub struct LibretroMemoryReader<'a> {
     core: &'a mut vyntra_libretro::LibretroCore,
 }
 
-impl<'a> LibretroSystemRamReader<'a> {
+impl<'a> LibretroMemoryReader<'a> {
     pub fn new(core: &'a mut vyntra_libretro::LibretroCore) -> Self {
         Self { core }
     }
 }
 
-impl MemoryReader for LibretroSystemRamReader<'_> {
+impl MemoryReader for LibretroMemoryReader<'_> {
     fn read(&mut self, offset: usize, length: usize) -> Result<Vec<u8>, CaptureError> {
         self.core
-            .read_system_ram_range(offset, length)
+            .read_memory_range(offset, length)
             .map_err(|error| match error {
                 vyntra_libretro::CoreError::SystemRamRangeOutOfBounds { .. } => {
                     CaptureError::OutOfBounds
