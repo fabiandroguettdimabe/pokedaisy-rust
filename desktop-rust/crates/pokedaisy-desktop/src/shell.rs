@@ -3,6 +3,8 @@ use super::*;
 use crate::library;
 use crate::protocol;
 use serde_json::json;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tao::{
     event::{Event as TaoEvent, WindowEvent},
     event_loop::{ControlFlow, EventLoopBuilder},
@@ -15,6 +17,18 @@ enum Message {
     Scanned(u64, Vec<Game>),
     CoreProbed(u64, serde_json::Value),
     Pipe(crate::player_pipe::PipeEvent),
+    ImportProgress(u64, crate::import::ArchiveProgress),
+    ImportFinished(
+        u64,
+        Vec<library::LibraryEntry>,
+        crate::import::ImportSummary,
+    ),
+}
+
+enum ImportSource {
+    Loose(PathBuf),
+    Archive(PathBuf, Vec<String>),
+    Rejected,
 }
 
 pub fn run() -> Result<(), String> {
@@ -83,6 +97,8 @@ pub fn run() -> Result<(), String> {
     let mut session: Option<domain::SessionIdentity> = None;
     let mut session_epoch: u64 = 0;
     let mut player_commands: Option<crate::transport::PlayerCommandSender> = None;
+    let mut import_generation = 0u64;
+    let mut active_import: Option<Arc<AtomicBool>> = None;
     let mut command_revision: u64 = 0;
     let mut pending_migration: Option<migration::MigrationReport> = None;
     let mut probe_generation = 0u64;
@@ -119,6 +135,32 @@ pub fn run() -> Result<(), String> {
             },
             TaoEvent::UserEvent(Message::CoreProbed(id, report)) if id == probe_generation => {
                 core_probe = Some(report);
+                publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
+            },
+            TaoEvent::UserEvent(Message::ImportProgress(id, progress)) if id == import_generation => {
+                if let Ok(payload) = serde_json::to_string(&json!({
+                    "member": progress.member,
+                    "completed_bytes": progress.completed_bytes,
+                    "total_bytes": progress.total_bytes,
+                })) {
+                    let _ = webview.evaluate_script(&format!("window.vyntraImportProgress&&window.vyntraImportProgress({payload});"));
+                }
+            },
+            TaoEvent::UserEvent(Message::ImportFinished(id, new_entries, summary)) if id == import_generation => {
+                imported = new_entries;
+                active_import = None;
+                if summary.imported > 0 {
+                    let _ = library::save(&index_path, &imported);
+                    for entry in &imported {
+                        if entry.path.is_file() && supported(&entry.path) && !games.iter().any(|game| game.path == entry.path) {
+                            games.push(game_from_path(entry.path.clone()));
+                        }
+                    }
+                }
+                let done = json!({"imported":summary.imported,"duplicates":summary.duplicates,"rejected":summary.rejected,"cancelled":summary.cancelled});
+                if let Ok(payload) = serde_json::to_string(&done) {
+                    let _ = webview.evaluate_script(&format!("window.vyntraImportDone&&window.vyntraImportDone({payload});"));
+                }
                 publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
             },
             TaoEvent::UserEvent(Message::Pipe(event)) => {
@@ -204,10 +246,11 @@ pub fn run() -> Result<(), String> {
                             command_result = Some(serde_json::to_value(result).map_err(|error| error.to_string())?);
                         },
                         "import" => {
+                            if active_import.is_some() { return Err("Ya hay una importación en curso".into()); }
                             if let Some(paths)=rfd::FileDialog::new().set_title("Importar ROMs o ZIP a Vyntra").add_filter("ROMs y ZIP", &["gb","gbc","gba","nds","zip"]).pick_files() {
-                                let mut summary = crate::import::ImportSummary::default();
+                                let mut sources = Vec::new();
                                 for path in paths {
-                                    let result = if path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("zip")) {
+                                    if path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("zip")) {
                                         let policy = crate::import::ArchivePolicy::default();
                                         match crate::import::archive_rom_members(&path, policy) {
                                             Ok(candidates) => {
@@ -230,25 +273,69 @@ pub fn run() -> Result<(), String> {
                                                         }
                                                     }
                                                 }
-                                                if cancelled { selected.clear(); }
-                                                crate::import::import_archive_members(&mut imported, &path, &data.join("import-cache"), policy, &selected)
+                                                if cancelled { break; }
+                                                if !selected.is_empty() { sources.push(ImportSource::Archive(path, selected)); }
                                             }
-                                            Err(_) => {
-                                                let mut rejected = crate::import::ImportSummary::default();
-                                                rejected.rejected = 1;
-                                                rejected
-                                            }
+                                            Err(_) => sources.push(ImportSource::Rejected),
                                         }
                                     } else {
-                                        crate::import::import_paths(&mut imported, [path])
-                                    };
-                                    summary.imported += result.imported;
-                                    summary.duplicates += result.duplicates;
-                                    summary.rejected += result.rejected;
+                                        sources.push(ImportSource::Loose(path));
+                                    }
                                 }
-                                if summary.imported > 0 { library::save(&index_path, &imported)?; refresh=true; }
-                                command_result = Some(json!({"import":{"imported":summary.imported,"duplicates":summary.duplicates,"rejected":summary.rejected}}));
+                                if !sources.is_empty() {
+                                    import_generation = import_generation.saturating_add(1);
+                                    let id = import_generation;
+                                    let cancelled = Arc::new(AtomicBool::new(false));
+                                    let cancel_worker = Arc::clone(&cancelled);
+                                    let mut worker_entries = imported.clone();
+                                    let worker_data = data.join("import-cache");
+                                    let worker_proxy = proxy.clone();
+                                    let spawn = std::thread::Builder::new().name("vyntra-import".into()).spawn(move || {
+                                        let mut summary = crate::import::ImportSummary::default();
+                                        for source in sources {
+                                            if cancel_worker.load(Ordering::Acquire) { summary.cancelled = true; break; }
+                                            match source {
+                                                ImportSource::Loose(path) => {
+                                                    let proxy = worker_proxy.clone();
+                                                    let result = crate::import::import_paths_controlled(
+                                                        &mut worker_entries, [path], 1024 * 1024 * 1024,
+                                                        &cancel_worker, move |progress| { let _ = proxy.send_event(Message::ImportProgress(id, progress)); },
+                                                    );
+                                                    summary.imported += result.imported;
+                                                    summary.duplicates += result.duplicates;
+                                                    summary.rejected += result.rejected;
+                                                    if result.cancelled { summary.cancelled = true; break; }
+                                                }
+                                                ImportSource::Archive(path, selected) => {
+                                                    let proxy = worker_proxy.clone();
+                                                    let result = crate::import::import_archive_members_controlled(
+                                                        &mut worker_entries, &path, &worker_data,
+                                                        crate::import::ArchivePolicy::default(), &selected,
+                                                        &cancel_worker, move |progress| { let _ = proxy.send_event(Message::ImportProgress(id, progress)); },
+                                                    );
+                                                    summary.imported += result.imported;
+                                                    summary.duplicates += result.duplicates;
+                                                    summary.rejected += result.rejected;
+                                                    if result.cancelled { summary.cancelled = true; break; }
+                                                }
+                                                ImportSource::Rejected => summary.rejected += 1,
+                                            }
+                                        }
+                                        let _ = worker_proxy.send_event(Message::ImportFinished(id, worker_entries, summary));
+                                    });
+                                    match spawn {
+                                        Ok(_) => {
+                                            active_import = Some(cancelled);
+                                            command_result = Some(json!({"import":{"started":true}}));
+                                        }
+                                        Err(error) => return Err(format!("No se pudo iniciar la importación: {error}")),
+                                    }
+                                }
                             }
+                        },
+                        "cancel_import" => {
+                            let cancellation = active_import.as_ref().ok_or("No hay una importación activa")?;
+                            cancellation.store(true, Ordering::Release);
                         },
                         "choose" => {
                             let field=action["field"].as_str().unwrap_or("");

@@ -40,6 +40,14 @@ pub struct LibraryEntry {
 impl LibraryEntry {
     pub fn from_path(path: PathBuf) -> Self {
         let content_hash = identity::sha256_file(&path).ok();
+        Self::from_path_with_content_hash(path, content_hash)
+    }
+
+    pub fn from_path_with_hash(path: PathBuf, hash: String) -> Self {
+        Self::from_path_with_content_hash(path, Some(hash))
+    }
+
+    fn from_path_with_content_hash(path: PathBuf, content_hash: Option<String>) -> Self {
         let inspection = inspect::inspect_file(&path);
         let id = content_hash
             .as_ref()

@@ -3,6 +3,7 @@ use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use zip::ZipArchive;
 
 const MAX_ARCHIVE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
@@ -15,6 +16,14 @@ pub struct ImportSummary {
     pub imported: usize,
     pub duplicates: usize,
     pub rejected: usize,
+    pub cancelled: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct ArchiveProgress {
+    pub completed_bytes: u64,
+    pub total_bytes: u64,
+    pub member: String,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -44,7 +53,15 @@ pub fn import_archive(
     library_dir: &Path,
     policy: ArchivePolicy,
 ) -> ImportSummary {
-    import_archive_selected(entries, archive_path, library_dir, policy, None)
+    import_archive_selected(
+        entries,
+        archive_path,
+        library_dir,
+        policy,
+        None,
+        None,
+        |_| {},
+    )
 }
 
 pub fn import_archive_members(
@@ -54,7 +71,35 @@ pub fn import_archive_members(
     policy: ArchivePolicy,
     selected: &[String],
 ) -> ImportSummary {
-    import_archive_selected(entries, archive_path, library_dir, policy, Some(selected))
+    import_archive_selected(
+        entries,
+        archive_path,
+        library_dir,
+        policy,
+        Some(selected),
+        None,
+        |_| {},
+    )
+}
+
+pub fn import_archive_members_controlled(
+    entries: &mut Vec<LibraryEntry>,
+    archive_path: &Path,
+    library_dir: &Path,
+    policy: ArchivePolicy,
+    selected: &[String],
+    cancelled: &AtomicBool,
+    on_progress: impl Fn(ArchiveProgress),
+) -> ImportSummary {
+    import_archive_selected(
+        entries,
+        archive_path,
+        library_dir,
+        policy,
+        Some(selected),
+        Some(cancelled),
+        on_progress,
+    )
 }
 
 pub fn archive_rom_members(
@@ -109,6 +154,8 @@ fn import_archive_selected(
     library_dir: &Path,
     policy: ArchivePolicy,
     selected: Option<&[String]>,
+    cancelled: Option<&AtomicBool>,
+    on_progress: impl Fn(ArchiveProgress),
 ) -> ImportSummary {
     let mut summary = ImportSummary::default();
     let Ok(metadata) = fs::metadata(archive_path) else {
@@ -198,6 +245,10 @@ fn import_archive_selected(
     let entries_before = entries.len();
     let mut created_paths = Vec::new();
     for index in 0..archive.len() {
+        if cancelled.is_some_and(|flag| flag.load(Ordering::Acquire)) {
+            summary.cancelled = true;
+            break;
+        }
         let Ok(mut member) = archive.by_index(index) else {
             summary.rejected += 1;
             continue;
@@ -266,6 +317,16 @@ fn import_archive_selected(
                         failed = true;
                         break;
                     }
+                    on_progress(ArchiveProgress {
+                        completed_bytes: total_copied,
+                        total_bytes: preflight_total,
+                        member: member.name().to_owned(),
+                    });
+                    if cancelled.is_some_and(|flag| flag.load(Ordering::Acquire)) {
+                        summary.cancelled = true;
+                        failed = true;
+                        break;
+                    }
                 }
                 Err(_) => {
                     failed = true;
@@ -276,7 +337,12 @@ fn import_archive_selected(
         if failed || copied != member.size() || output.sync_all().is_err() {
             drop(output);
             let _ = fs::remove_file(&temp_path);
-            summary.rejected += 1;
+            if !summary.cancelled {
+                summary.rejected += 1;
+            }
+            if summary.cancelled {
+                break;
+            }
             continue;
         }
         drop(output);
@@ -314,7 +380,7 @@ fn import_archive_selected(
             summary.imported += 1;
         }
     }
-    if summary.rejected > 0 {
+    if summary.rejected > 0 || summary.cancelled {
         entries.truncate(entries_before);
         for path in created_paths {
             let _ = fs::remove_file(path);
@@ -336,10 +402,31 @@ fn import_paths_with_limit(
     paths: impl IntoIterator<Item = PathBuf>,
     max_bytes: u64,
 ) -> ImportSummary {
+    let cancelled = AtomicBool::new(false);
+    import_paths_controlled(entries, paths, max_bytes, &cancelled, |_| {})
+}
+
+pub fn import_paths_controlled(
+    entries: &mut Vec<LibraryEntry>,
+    paths: impl IntoIterator<Item = PathBuf>,
+    max_bytes: u64,
+    cancelled: &AtomicBool,
+    on_progress: impl Fn(ArchiveProgress),
+) -> ImportSummary {
     let mut summary = ImportSummary::default();
+    let mut candidates = Vec::new();
+    let mut total_bytes = 0u64;
     for path in paths {
-        if !path.is_file()
-            || fs::metadata(&path).map_or(true, |metadata| metadata.len() > max_bytes)
+        if cancelled.load(Ordering::Acquire) {
+            summary.cancelled = true;
+            return summary;
+        }
+        let Ok(metadata) = fs::metadata(&path) else {
+            summary.rejected += 1;
+            continue;
+        };
+        if !metadata.is_file()
+            || metadata.len() > max_bytes
             || inspect::inspect_file(&path).is_none()
         {
             summary.rejected += 1;
@@ -355,13 +442,74 @@ fn import_paths_with_limit(
                 .canonicalize()
                 .unwrap_or_else(|_| entry.path.clone())
                 == path
-        });
+        }) || candidates.iter().any(|(candidate, _)| candidate == &path);
         if duplicate {
             summary.duplicates += 1;
         } else {
-            entries.push(LibraryEntry::from_path(path));
-            summary.imported += 1;
+            total_bytes = total_bytes.saturating_add(metadata.len());
+            candidates.push((path, metadata.len()));
         }
+    }
+    let mut completed_bytes = 0u64;
+    for (path, expected_size) in candidates {
+        if cancelled.load(Ordering::Acquire) {
+            summary.cancelled = true;
+            break;
+        }
+        let Ok(mut file) = fs::File::open(&path) else {
+            summary.rejected += 1;
+            continue;
+        };
+        let mut digest = Sha256::new();
+        let mut file_bytes = 0u64;
+        let mut buffer = [0u8; 64 * 1024];
+        let mut failed = false;
+        loop {
+            match file.read(&mut buffer) {
+                Ok(0) => break,
+                Ok(count) => {
+                    file_bytes = file_bytes.saturating_add(count as u64);
+                    if file_bytes > max_bytes || file_bytes > expected_size {
+                        failed = true;
+                        break;
+                    }
+                    digest.update(&buffer[..count]);
+                    completed_bytes = completed_bytes.saturating_add(count as u64);
+                    on_progress(ArchiveProgress {
+                        completed_bytes,
+                        total_bytes,
+                        member: path
+                            .file_name()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                            .into_owned(),
+                    });
+                    if cancelled.load(Ordering::Acquire) {
+                        summary.cancelled = true;
+                        failed = true;
+                        break;
+                    }
+                }
+                Err(_) => {
+                    failed = true;
+                    break;
+                }
+            }
+        }
+        if summary.cancelled {
+            break;
+        }
+        if failed || file_bytes != expected_size {
+            summary.rejected += 1;
+            continue;
+        }
+        let hash = digest
+            .finalize()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        entries.push(LibraryEntry::from_path_with_hash(path, hash));
+        summary.imported += 1;
     }
     summary
 }
@@ -369,13 +517,15 @@ fn import_paths_with_limit(
 #[cfg(test)]
 mod tests {
     use super::{
-        ArchivePolicy, archive_rom_members, import_archive, import_archive_members, import_paths,
+        ArchivePolicy, archive_rom_members, import_archive, import_archive_members,
+        import_archive_members_controlled, import_paths, import_paths_controlled,
         import_paths_with_limit,
     };
     use crate::library::LibraryEntry;
     use std::fs;
     use std::io::Write;
     use std::path::PathBuf;
+    use std::sync::atomic::AtomicBool;
     use zip::write::SimpleFileOptions;
 
     fn valid_gba() -> Vec<u8> {
@@ -433,6 +583,26 @@ mod tests {
             .unwrap();
         let summary = import_paths_with_limit(&mut Vec::new(), [path], 512);
         assert_eq!(summary.rejected, 1);
+        assert_eq!(summary.imported, 0);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn loose_file_cancellation_during_hashing_does_not_add_partial_catalog_entry() {
+        let root = std::env::temp_dir().join(format!("vyntra-loose-cancel-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join("game.gba");
+        fs::write(&path, valid_gba()).unwrap();
+        let cancelled = AtomicBool::new(false);
+        let mut entries = Vec::new();
+
+        let summary = import_paths_controlled(&mut entries, [path], 1024, &cancelled, |_| {
+            cancelled.store(true, std::sync::atomic::Ordering::Release)
+        });
+
+        assert!(summary.cancelled);
+        assert_eq!(entries.len(), 0);
         assert_eq!(summary.imported, 0);
         let _ = fs::remove_dir_all(root);
     }
@@ -507,6 +677,43 @@ mod tests {
 
         assert_eq!(summary.imported, 1);
         assert_eq!(fs::read_dir(root.join("library")).unwrap().count(), 1);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn archive_cancellation_during_streaming_removes_partial_output() {
+        let root = std::env::temp_dir().join(format!("vyntra-zip-cancel-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let archive_path = root.join("game.zip");
+        let file = fs::File::create(&archive_path).unwrap();
+        let mut writer = zip::ZipWriter::new(file);
+        writer
+            .start_file("game.gba", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(&valid_gba()).unwrap();
+        writer.finish().unwrap();
+        let members = vec!["game.gba".to_owned()];
+        let cancel = AtomicBool::new(false);
+
+        let summary = import_archive_members_controlled(
+            &mut Vec::new(),
+            &archive_path,
+            &root.join("library"),
+            ArchivePolicy::default(),
+            &members,
+            &cancel,
+            |_| cancel.store(true, std::sync::atomic::Ordering::Release),
+        );
+
+        assert!(summary.cancelled);
+        assert_eq!(summary.imported, 0);
+        assert_eq!(
+            fs::read_dir(root.join("library"))
+                .map(|items| items.count())
+                .unwrap_or(0),
+            0
+        );
         let _ = fs::remove_dir_all(root);
     }
 
