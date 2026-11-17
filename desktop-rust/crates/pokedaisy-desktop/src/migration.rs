@@ -211,6 +211,13 @@ pub fn apply(journal_path: &Path, report: &MigrationReport) -> Result<(), String
 }
 
 fn install_payload(item: &MigrationItem) -> Result<(), String> {
+    install_payload_with(item, |_| Ok(()))
+}
+
+fn install_payload_with(
+    item: &MigrationItem,
+    after_verification: impl FnOnce(&Path) -> Result<(), String>,
+) -> Result<(), String> {
     let parent = item.destination.parent().ok_or("Destino sin carpeta")?;
     fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     let staging = item.destination.with_extension("migration-tmp");
@@ -223,6 +230,7 @@ fn install_payload(item: &MigrationItem) -> Result<(), String> {
         let _ = fs::remove_file(&staging);
         return Err("La copia migrada no coincide con el hash del origen".into());
     }
+    after_verification(&staging)?;
     fs::rename(&staging, &item.destination).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -230,8 +238,9 @@ fn install_payload(item: &MigrationItem) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        MigrationItem, MigrationReport, MigrationStatus, apply, install_payload, load_journal,
-        persist, persist_with, persist_with_backup_and_install, persist_with_install, preview,
+        MigrationItem, MigrationReport, MigrationStatus, apply, install_payload,
+        install_payload_with, load_journal, persist, persist_with, persist_with_backup_and_install,
+        persist_with_install, preview,
     };
     use std::fs;
     use std::io::Write;
@@ -581,6 +590,81 @@ mod tests {
         let recovered = load_journal(&journal_path).unwrap().unwrap();
         assert_eq!(recovered.items[0].status, MigrationStatus::Committed);
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn migration_retry_replaces_verified_staging_after_process_termination() {
+        const STAGING_ENV: &str = "VYNTRA_MIGRATION_VERIFIED_STAGING_PATH";
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-migration-verified-cut-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("legacy.sav");
+        let destination = root.join("by-id/game/battery.sav");
+        let journal_path = root.join("migration.json");
+        let bytes = b"verified legacy save bytes";
+        fs::write(&source, bytes).unwrap();
+        let report = preview(&[MigrationItem::new(
+            source.clone(),
+            destination.clone(),
+            "game".into(),
+            "battery".into(),
+        )])
+        .unwrap();
+        persist(&journal_path, &report).unwrap();
+
+        let child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "migration::tests::terminate_after_migration_staging_verification",
+            ])
+            .env(STAGING_ENV, destination.with_extension("migration-tmp"))
+            .env("VYNTRA_MIGRATION_VERIFIED_SOURCE", &source)
+            .env("VYNTRA_MIGRATION_VERIFIED_DEST", &destination)
+            .status()
+            .unwrap();
+        assert_eq!(child.code(), Some(74));
+        let staging = destination.with_extension("migration-tmp");
+        assert_eq!(fs::read(&staging).unwrap(), bytes);
+        assert!(!destination.exists());
+
+        apply(&journal_path, &report).unwrap();
+
+        assert_eq!(fs::read(&destination).unwrap(), bytes);
+        assert_eq!(fs::read(&source).unwrap(), bytes);
+        assert!(!staging.exists());
+        assert_eq!(
+            load_journal(&journal_path).unwrap().unwrap().items[0].status,
+            MigrationStatus::Committed
+        );
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn terminate_after_migration_staging_verification() {
+        const STAGING_ENV: &str = "VYNTRA_MIGRATION_VERIFIED_STAGING_PATH";
+        const SOURCE_ENV: &str = "VYNTRA_MIGRATION_VERIFIED_SOURCE";
+        const DEST_ENV: &str = "VYNTRA_MIGRATION_VERIFIED_DEST";
+        let (Some(staging), Some(source), Some(destination)) = (
+            std::env::var_os(STAGING_ENV),
+            std::env::var_os(SOURCE_ENV),
+            std::env::var_os(DEST_ENV),
+        ) else {
+            return;
+        };
+        let item = MigrationItem::new(
+            source.into(),
+            destination.into(),
+            "game".into(),
+            "battery".into(),
+        );
+        install_payload_with(&item, |verified| {
+            assert_eq!(verified, std::path::Path::new(&staging));
+            std::process::exit(74);
+        })
+        .unwrap();
     }
 
     #[test]
