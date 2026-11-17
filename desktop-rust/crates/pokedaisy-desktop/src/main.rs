@@ -2876,6 +2876,43 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "smoke manual de ROM NDS homebrew/core local; requiere VYNTRA_CORE_GAME_SMOKE_PATH y VYNTRA_CORE_GAME_SMOKE_ROM"]
+    fn configured_core_opens_the_homebrew_ds_diagnostic_rom() {
+        let core_path = std::path::PathBuf::from(
+            std::env::var_os("VYNTRA_CORE_GAME_SMOKE_PATH")
+                .expect("define VYNTRA_CORE_GAME_SMOKE_PATH"),
+        );
+        let rom_path = std::path::PathBuf::from(
+            std::env::var_os("VYNTRA_CORE_GAME_SMOKE_ROM")
+                .expect("define VYNTRA_CORE_GAME_SMOKE_ROM"),
+        );
+        let root =
+            std::env::temp_dir().join(format!("vyntra-homebrew-ds-smoke-{}", std::process::id()));
+        let saves = root.join("saves");
+        let system = root.join("system");
+        std::fs::create_dir_all(&saves).unwrap();
+        std::fs::create_dir_all(&system).unwrap();
+        let mut config = super::Settings::default();
+        config.cores[2] = Some(core_path);
+        assert_eq!(
+            super::inspect::inspect_file(&rom_path).map(|info| info.system),
+            Some("DS")
+        );
+        let game = super::game_from_path(rom_path);
+        assert_eq!(game.system, "DS");
+        assert_eq!(
+            config.core("DS").unwrap(),
+            std::path::PathBuf::from(std::env::var_os("VYNTRA_CORE_GAME_SMOKE_PATH").unwrap())
+        );
+        let core = super::open_game(&game, std::slice::from_ref(&game), &saves, &system, &config)
+            .expect("melonDS must load the homebrew NDS ROM through the production open_game path");
+        let info = core.system_info();
+        assert!(info.valid_extensions.unwrap_or_default().contains("nds"));
+        drop(core);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn cancelled_library_scan_discards_partial_results() {
         let dir = std::env::temp_dir().join(format!("vyntra-cancel-scan-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
