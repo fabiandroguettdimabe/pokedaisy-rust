@@ -1090,18 +1090,95 @@ fn open_game(
     .map_err(|e| format!("No se pudo iniciar {}: {e:?}", core_path.display()))?;
     core.load_game(&game.path)
         .map_err(|e| format!("No se pudo abrir {}: {e:?}", game.path.display()))?;
-    let save_path = {
-        let preferred = preferred_battery_path(game, saves);
-        if preferred.is_file() {
-            preferred
-        } else {
-            legacy_battery_path(game, saves)
+    let preferred = preferred_battery_path(game, saves);
+    let save_bytes = if preferred.is_file() {
+        match load_compatible_battery(game, saves, &core_path) {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                eprintln!(
+                    "No se pudo validar/restaurar SRAM para {}: {error}",
+                    game.path.display()
+                );
+                None
+            }
         }
+    } else {
+        fs::read(legacy_battery_path(game, saves)).ok()
     };
-    if let Ok(bytes) = fs::read(save_path) {
-        let _ = core.write_save_ram(&bytes);
+    if let Some(bytes) = save_bytes {
+        if let Err(error) = core.write_save_ram(&bytes) {
+            eprintln!(
+                "El núcleo rechazó la SRAM de {}: {error:?}",
+                game.path.display()
+            );
+        }
     }
     Ok(core)
+}
+
+fn load_compatible_battery(
+    game: &Game,
+    dir: &Path,
+    core_path: &Path,
+) -> Result<Option<Vec<u8>>, String> {
+    let rom_hash = identity::sha256_file(&game.path).map_err(|e| e.to_string())?;
+    let core_hash = identity::sha256_file(core_path).map_err(|e| e.to_string())?;
+    let path = preferred_battery_path(game, dir);
+    let manifest_path = path
+        .parent()
+        .ok_or("Ruta de SRAM inválida")?
+        .join("manifest.json");
+    let mut candidates = vec![(path.clone(), manifest_path)];
+    let backup_root = path
+        .parent()
+        .ok_or("Ruta de SRAM inválida")?
+        .join("backups")
+        .join("battery");
+    if let Ok(entries) = fs::read_dir(&backup_root) {
+        let mut backups: Vec<_> = entries
+            .flatten()
+            .filter(|entry| entry.path().is_dir())
+            .map(|entry| entry.path())
+            .collect();
+        backups.sort();
+        backups.reverse();
+        candidates.extend(
+            backups
+                .into_iter()
+                .take(32)
+                .map(|backup| (backup.join("battery.sav"), backup.join("manifest.json"))),
+        );
+    }
+    let mut last_error = None;
+    for (candidate, manifest_path) in candidates {
+        if !candidate.is_file() {
+            continue;
+        }
+        match validate_battery_files(&candidate, &manifest_path, &rom_hash, &core_hash) {
+            Ok(bytes) => return Ok(Some(bytes)),
+            Err(error) => last_error = Some(error),
+        }
+    }
+    if let Some(error) = last_error {
+        Err(error)
+    } else {
+        Ok(None)
+    }
+}
+
+fn validate_battery_files(
+    save_path: &Path,
+    manifest_path: &Path,
+    rom_hash: &str,
+    core_hash: &str,
+) -> Result<Vec<u8>, String> {
+    let bytes = fs::read(save_path).map_err(|e| format!("No se pudo leer SRAM: {e}"))?;
+    let manifest: domain::SaveManifest = serde_json::from_slice(
+        &fs::read(manifest_path).map_err(|_| "La SRAM no tiene un manifiesto verificable")?,
+    )
+    .map_err(|_| "El manifiesto de SRAM está dañado")?;
+    vault::validate_battery(&manifest, &bytes, rom_hash, core_hash)?;
+    Ok(bytes)
 }
 
 fn find_core(system: &str) -> Result<PathBuf, String> {
@@ -1296,6 +1373,13 @@ fn save_battery(core: &mut LibretroCore, game: &Game, dir: &Path, core_hash: Opt
     match core.read_save_ram() {
         Ok(data) => {
             let path = preferred_battery_path(game, dir);
+            if let Err(error) = backup_verified_battery(game, dir, core_hash) {
+                eprintln!(
+                    "No se pudo respaldar SRAM anterior para {}: {error}",
+                    game.path.display()
+                );
+                return;
+            }
             match atomic_write(&path, &data) {
                 Ok(()) => write_save_manifest(
                     game,
@@ -1440,6 +1524,50 @@ fn backup_verified_state(
         .ok_or("No se pudo reservar una carpeta de respaldo")??;
     atomic_write(&backup_dir.join("slot1.ss"), &bytes)?;
     atomic_write(&backup_dir.join("state.manifest.json"), &manifest)?;
+    Ok(Some(backup_dir))
+}
+
+fn backup_verified_battery(
+    game: &Game,
+    dir: &Path,
+    core_hash: Option<&str>,
+) -> Result<Option<PathBuf>, String> {
+    let Some(core_hash) = core_hash else {
+        return Ok(None);
+    };
+    let path = preferred_battery_path(game, dir);
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let rom_hash = identity::sha256_file(&game.path).map_err(|e| e.to_string())?;
+    let manifest_path = path
+        .parent()
+        .ok_or("Ruta de SRAM inválida")?
+        .join("manifest.json");
+    let bytes = match validate_battery_files(&path, &manifest_path, &rom_hash, core_hash) {
+        Ok(bytes) => bytes,
+        Err(_) => return Ok(None),
+    };
+    let manifest = fs::read(&manifest_path).map_err(|e| e.to_string())?;
+    let backup_root = path
+        .parent()
+        .ok_or("Ruta de SRAM inválida")?
+        .join("backups")
+        .join("battery");
+    fs::create_dir_all(&backup_root).map_err(|e| e.to_string())?;
+    let base = now_unix().to_string();
+    let backup_dir = (0u32..)
+        .find_map(|suffix| {
+            let candidate = backup_root.join(format!("{base}-{suffix:04}"));
+            match fs::create_dir(&candidate) {
+                Ok(()) => Some(Ok(candidate)),
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => None,
+                Err(error) => Some(Err(error.to_string())),
+            }
+        })
+        .ok_or("No se pudo reservar una carpeta de respaldo de SRAM")??;
+    atomic_write(&backup_dir.join("battery.sav"), &bytes)?;
+    atomic_write(&backup_dir.join("manifest.json"), &manifest)?;
     Ok(Some(backup_dir))
 }
 
@@ -2191,13 +2319,16 @@ mod tests {
             system: "GB",
             storage_key: std::sync::OnceLock::new(),
         };
+        let core_path = dir.join("fixture-core.dll");
+        fs::write(&core_path, b"core bytes").unwrap();
+        let core_hash = super::identity::sha256_file(&core_path).unwrap();
         super::write_save_manifest(
             &game,
             &dir,
             super::domain::SaveKind::BatteryRam,
             b"ram",
             None,
-            None,
+            Some(&core_hash),
             "committed",
         );
         let key = super::game_storage_key(&game);
@@ -2210,6 +2341,26 @@ mod tests {
         assert_eq!(parsed.kind, super::domain::SaveKind::BatteryRam);
         assert!(parsed.sha256.is_some());
         assert!(parsed.state_format.is_none());
+        fs::write(super::preferred_battery_path(&game, &dir), b"ram").unwrap();
+        let battery_backup = super::backup_verified_battery(&game, &dir, Some(&core_hash))
+            .unwrap()
+            .unwrap();
+        fs::create_dir(
+            battery_backup
+                .parent()
+                .unwrap()
+                .join("zz-incomplete-backup"),
+        )
+        .unwrap();
+        fs::write(super::preferred_battery_path(&game, &dir), b"damaged").unwrap();
+        assert_eq!(
+            super::load_compatible_battery(&game, &dir, &core_path)
+                .unwrap()
+                .unwrap(),
+            b"ram"
+        );
+        fs::write(battery_backup.join("battery.sav"), b"damaged backup").unwrap();
+        assert!(super::load_compatible_battery(&game, &dir, &core_path).is_err());
 
         super::write_save_manifest(
             &game,
