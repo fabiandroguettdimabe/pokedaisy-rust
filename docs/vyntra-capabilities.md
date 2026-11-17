@@ -14,7 +14,7 @@ Actualizado: 2026-11-17. Este documento inicia la ejecución del plan técnico (
 | Área | Detectado/presente | Probado en esta sesión | Evidencia | Notas / bloqueo |
 |---|---|---|---|---|
 | Plan técnico y estado | Sí | n/a (documental) | `docs/VYNTRA_PLAN_TECNICO.md`, `docs/VYNTRA_IMPLEMENTATION_STATUS.md` | Punto de partida para Fase 0/F1. |
-| Desktop Rust (launcher + player SDL/libretro) | Sí | Parcial (API, Player SDL y Launcher/Companion E2E) | E01–E06, `desktop-rust/crates/pokedaisy-desktop`, `desktop-rust/crates/pokedaisy-libretro` | Windows GNU workspace: Desktop 206/4 ignorados, `core_probe` 5/1 ignorado, A/V 1/3 ignorados, libretro 4/4; Launcher/Companion E2E con ROM GBA fixture y mGBA oficial verificado. Quedan otros sistemas/capacidades y pruebas de hardware. |
+| Desktop Rust (launcher + player SDL/libretro) | Sí | Parcial (API, Player SDL y Launcher/Companion E2E) | E01–E06, `desktop-rust/crates/pokedaisy-desktop`, `desktop-rust/crates/pokedaisy-libretro` | Windows GNU workspace: Desktop 207/4 ignorados, `core_probe` 5/1 ignorado, A/V 1/3 ignorados, libretro 4/4; Launcher/Companion E2E con ROM GBA fixture y mGBA oficial verificado. T02 valida ACK terminal Vault correlacionado en helper; faltan pruebas UI de fallos async. Quedan otros sistemas/capacidades y pruebas de hardware. |
 | UI web (Preact/Tailwind) embebida en shell | Sí | Parcial (pruebas UI y WebView2 real por CDP) | E05, `desktop-rust/ui/` | Suite UI Playwright del proyecto 1/1; `npm run build` OK. El E2E interactuó con WebView2 real en Launcher y Companion, con snapshots y comandos Player. La referencia visual multiventana 2 sigue ausente. |
 | Núcleos libretro locales (DLL) | Sí (6 archivos) | Parcial (probe, API, Player y E2E GBA; DS por API/Player) | E01.4 / hashes en plan, `desktop-rust/cores/`, `docs/VYNTRA_CORE_PROVENANCE.md` | El mGBA usado en E2E coincide por SHA con nightly oficial. La DLL melonDS DS local declara 1.4.0, pero no coincide con artefactos oficiales comparados. GBA propio/armGBA separado no está construido. |
 | Android (Compose/JNI, emulación, companion) | Sí | No | E07–E13, `app/` | `gradlew.bat` no observado en raíz del checkout inspeccionada; toolchain/dispositivo no acreditados en esta sesión. |
@@ -107,6 +107,6 @@ Las filas siguientes son verificaciones adicionales posteriores al baseline del 
 ## Próximos pasos inmediatos (alineados al plan)
 
 1. **T01/QA-02:** mantener el inventario por feature. El E2E GBA agrega evidencia separada para A/V, SRAM y Companion; faltan cores/ROMs de producto por celda y la segunda imagen de referencia.
-2. **T02/INFRA-01:** revisar mensajes y ACKs por acción, incluidos errores de Vault y recuperación; contratos v1 principales ya están implementados.
+2. **T02/INFRA-01:** revisar las acciones restantes y probar por UI los ACK terminales de Vault; el worker ya conserva `command_id`/`request_id` en éxito, cancelación y error.
 3. **T06/T07:** identificar la DLL melonDS DS local o mantenerla fuera de cualquier paquete publicado; completar la revisión de avisos/composición/licencias.
 4. **P0 restantes:** avanzar el E2E/importación ROM, recovery de Vault y pruebas restantes de sesión según §§1.5 y 7.3. Android mantiene bloqueado su build por la licencia NDK no aceptada; no se afirma dispositivo/firma.

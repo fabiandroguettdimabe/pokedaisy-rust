@@ -27,9 +27,11 @@ enum Message {
     ),
     VaultImportReady(
         u64,
+        String,
+        Option<String>,
         Result<(crate::vault::SaveBundleManifest, Vec<u8>), String>,
     ),
-    VaultExportFinished(u64, Result<(), String>),
+    VaultExportFinished(u64, String, Option<String>, Result<(), String>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -371,11 +373,12 @@ pub fn run() -> Result<(), String> {
                 }
                 publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe, companion_webview.as_ref());
             },
-            TaoEvent::UserEvent(Message::VaultImportReady(id, result)) if id == vault_generation => {
+            TaoEvent::UserEvent(Message::VaultImportReady(id, command_id, request_id, result)) if id == vault_generation => {
                 vault_busy = false;
                 match result.and_then(|(manifest, payload)| prepare_bundle_restore(manifest, payload, &games, &config)) {
                     Err(error) => {
-                        let _ = webview.evaluate_script(&format!("window.vyntraError({});", json!(error)));
+                        let ack = protocol::UiAck::terminal(command_id, request_id, Err(protocol::AppError::new("command_failed", error)));
+                        let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
                     }
                     Ok(prepared) => {
                         let kind = if prepared.manifest.kind == domain::SaveKind::SaveState { "estado" } else { "SRAM" };
@@ -390,22 +393,28 @@ pub fn run() -> Result<(), String> {
                             match commit_bundle_restore(prepared, &config) {
                                 Ok(()) => {
                                     publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe, companion_webview.as_ref());
-                                    let _ = webview.evaluate_script("window.vyntraAck&&window.vyntraAck({ok:true,result:{vault_import:{restored:true}}});");
+                                    let ack = protocol::UiAck::terminal(command_id.clone(), request_id.clone(), Ok(Some(json!({"vault_import":{"restored":true}}))));
+                                    let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
                                 }
-                                Err(error) => { let _ = webview.evaluate_script(&format!("window.vyntraError({});", json!(error))); }
+                                Err(error) => {
+                                    let ack = protocol::UiAck::terminal(command_id.clone(), request_id.clone(), Err(protocol::AppError::new("command_failed", error)));
+                                    let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
+                                }
                             }
                         } else {
-                            let _ = webview.evaluate_script("window.vyntraAck&&window.vyntraAck({ok:true,result:{vault_import:{cancelled:true}}});");
+                            let ack = protocol::UiAck::terminal(command_id, request_id, Ok(Some(json!({"vault_import":{"cancelled":true}}))));
+                            let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
                         }
                     }
                 }
             },
-            TaoEvent::UserEvent(Message::VaultExportFinished(id, result)) if id == vault_generation => {
+            TaoEvent::UserEvent(Message::VaultExportFinished(id, command_id, request_id, result)) if id == vault_generation => {
                 vault_busy = false;
-                match result {
-                    Ok(()) => { let _ = webview.evaluate_script("window.vyntraAck&&window.vyntraAck({ok:true,result:{vault_export:{done:true}}});"); }
-                    Err(error) => { let _ = webview.evaluate_script(&format!("window.vyntraError({});", json!(error))); }
-                }
+                let result = result
+                    .map(|()| Some(json!({"vault_export":{"done":true}})))
+                    .map_err(|error| protocol::AppError::new("command_failed", error));
+                let ack = protocol::UiAck::terminal(command_id, request_id, result);
+                let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
             },
             TaoEvent::UserEvent(Message::Pipe(event)) => {
                 let matches_session = session.as_ref().is_some_and(|active| {
@@ -529,6 +538,8 @@ pub fn run() -> Result<(), String> {
                 }
                 let action = cmd.payload.clone();
                 let name = cmd.action.as_str();
+                let command_id = cmd.command_id.clone();
+                let request_id = cmd.request_id.clone();
                 let mut refresh = false;
                 let mut command_result: Option<serde_json::Value> = None;
                 let mut external_config_error = None;
@@ -1117,13 +1128,15 @@ pub fn run() -> Result<(), String> {
                                 if destination == source { return Err("El paquete debe guardarse en otra ubicación".into()); }
                                 vault_generation = vault_generation.saturating_add(1);
                                 let id = vault_generation;
+                                let completion_command_id = command_id.clone();
+                                let completion_request_id = request_id.clone();
                                 let tx = proxy.clone();
                                 let worker_config = config.clone();
                                 vault_busy = true;
                                 let spawn = std::thread::Builder::new().name("vyntra-vault-export".into()).spawn(move || {
                                     let result = bundle_for_save_file(&source, &worker_config)
                                         .and_then(|bytes| atomic_write(&destination, &bytes));
-                                    let _ = tx.send_event(Message::VaultExportFinished(id, result));
+                                    let _ = tx.send_event(Message::VaultExportFinished(id, completion_command_id, completion_request_id, result));
                                 });
                                 if let Err(error) = spawn {
                                     vault_busy = false;
@@ -1144,11 +1157,13 @@ pub fn run() -> Result<(), String> {
                                 if size > crate::vault::MAX_BUNDLE_BYTES { return Err("El paquete Vault supera el límite de tamaño".into()); }
                                 vault_generation = vault_generation.saturating_add(1);
                                 let id = vault_generation;
+                                let completion_command_id = command_id.clone();
+                                let completion_request_id = request_id.clone();
                                 let tx = proxy.clone();
                                 vault_busy = true;
                                 let spawn = std::thread::Builder::new().name("vyntra-vault-import".into()).spawn(move || {
                                     let result = crate::vault::read_bundle_file(&bundle_path);
-                                    let _ = tx.send_event(Message::VaultImportReady(id, result));
+                                    let _ = tx.send_event(Message::VaultImportReady(id, completion_command_id, completion_request_id, result));
                                 });
                                 if let Err(error) = spawn {
                                     vault_busy = false;

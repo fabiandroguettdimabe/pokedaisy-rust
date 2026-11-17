@@ -496,6 +496,20 @@ pub fn default_protocol_version() -> u32 {
 }
 
 impl UiAck {
+    /// Build the terminal acknowledgement for an accepted asynchronous command.
+    pub fn terminal(
+        command_id: impl Into<String>,
+        request_id: Option<String>,
+        result: Result<Option<Value>, AppError>,
+    ) -> Self {
+        let mut ack = match result {
+            Ok(result) => Self::success(command_id, result),
+            Err(error) => Self::failure(command_id, error),
+        };
+        ack.request_id = request_id;
+        ack
+    }
+
     pub fn success(command_id: impl Into<String>, result: Option<Value>) -> Self {
         Self {
             protocol_version: CONTRACT_VERSION,
@@ -908,6 +922,33 @@ mod tests {
         assert!(ok.ok);
         let bad = UiAck::failure("c2", AppError::new("x", "y"));
         assert!(!bad.ok);
+    }
+
+    #[test]
+    fn asynchronous_terminal_ack_preserves_command_and_request_ids_on_failure() {
+        let ack = UiAck::terminal(
+            "vault-export-17",
+            Some("request-42".into()),
+            Err(AppError::new(
+                "command_failed",
+                "No se pudo escribir el paquete",
+            )),
+        );
+        let encoded = serde_json::to_value(ack).unwrap();
+        assert_eq!(encoded["command_id"], "vault-export-17");
+        assert_eq!(encoded["request_id"], "request-42");
+        assert_eq!(encoded["ok"], false);
+        assert_eq!(encoded["error"]["code"], "command_failed");
+
+        let success = UiAck::terminal(
+            "vault-import-18",
+            Some("request-43".into()),
+            Ok(Some(serde_json::json!({"vault_import":{"restored":true}}))),
+        );
+        assert!(success.ok);
+        assert_eq!(success.command_id, "vault-import-18");
+        assert_eq!(success.request_id.as_deref(), Some("request-43"));
+        assert_eq!(success.result.unwrap()["vault_import"]["restored"], true);
     }
 
     #[test]
