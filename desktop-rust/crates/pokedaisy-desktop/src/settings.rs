@@ -29,6 +29,24 @@ impl GameSettingsOverride {
             && self.autosave.is_none()
             && self.fullscreen.is_none()
     }
+
+    fn sanitize_values(&mut self) {
+        if self.volume.is_some_and(|value| value > 100) {
+            self.volume = None;
+        }
+        if self
+            .fast_forward
+            .is_some_and(|value| !(2..=4).contains(&value))
+        {
+            self.fast_forward = None;
+        }
+        if self
+            .autosave
+            .is_some_and(|value| !matches!(value, 10 | 20 | 30 | 60 | 120))
+        {
+            self.autosave = None;
+        }
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -195,6 +213,37 @@ mod tests {
         assert!(settings.game_overrides.is_empty());
         assert!(settings.system_overrides.is_empty());
         assert!(settings.set_system_fullscreen("ROM", Some(true)).is_err());
+    }
+
+    #[test]
+    fn load_discards_invalid_profile_values_and_keeps_valid_fields() {
+        let dir =
+            std::env::temp_dir().join(format!("vyntra-profile-validation-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("settings.json");
+        let raw = serde_json::json!({
+            "schema": 1,
+            "game_overrides": {
+                "game-one": {"volume": 200, "fast_forward": 9, "autosave": 15, "fullscreen": true}
+            },
+            "system_overrides": {
+                "GBA": {"smooth": false, "volume": 45, "autosave": 15, "fullscreen": false}
+            }
+        });
+        fs::write(&path, serde_json::to_vec(&raw).unwrap()).unwrap();
+
+        let settings = Settings::load(&path, &dir).unwrap();
+        let game = settings.game_overrides.get("game-one").unwrap();
+        assert_eq!(game.volume, None);
+        assert_eq!(game.fast_forward, None);
+        assert_eq!(game.autosave, None);
+        assert_eq!(game.fullscreen, Some(true));
+        let system = settings.system_overrides.get("GBA").unwrap();
+        assert_eq!(system.smooth, Some(false));
+        assert_eq!(system.volume, Some(45));
+        assert_eq!(system.autosave, None);
+        assert_eq!(system.fullscreen, Some(false));
+        let _ = fs::remove_dir_all(dir);
     }
 
     #[test]
@@ -375,6 +424,12 @@ impl Settings {
         }
         if value.game_overrides.len() > 10_000 {
             return Err("Demasiados perfiles por juego en la configuración".into());
+        }
+        for profile in value.game_overrides.values_mut() {
+            profile.sanitize_values();
+        }
+        for profile in value.system_overrides.values_mut() {
+            profile.sanitize_values();
         }
         value.game_overrides.retain(|id, profile| {
             !id.is_empty()
