@@ -141,6 +141,7 @@ pub fn run() -> Result<(), String> {
             },
             TaoEvent::UserEvent(Message::ImportProgress(id, progress)) if id == import_generation => {
                 if let Ok(payload) = serde_json::to_string(&json!({
+                    "phase": progress.phase,
                     "member": progress.member,
                     "completed_bytes": progress.completed_bytes,
                     "total_bytes": progress.total_bytes,
@@ -369,13 +370,9 @@ pub fn run() -> Result<(), String> {
                         "import_roots" => {
                             if active_import.is_some() { return Err("Ya hay una importación en curso".into()); }
                             if let Some(mut roots) = rfd::FileDialog::new().set_title("Elegir hasta 16 carpetas de ROMs").pick_folders() {
-                                let mut rejected = roots.len().saturating_sub(16);
+                                let rejected_roots = roots.len().saturating_sub(16);
                                 roots.truncate(16);
-                                let (paths, rejected_paths) = crate::import::collect_rom_paths(&roots, 10_000);
-                                rejected = rejected.saturating_add(rejected_paths);
-                                let mut sources: Vec<_> = paths.into_iter().map(ImportSource::Loose).collect();
-                                if rejected > 0 { sources.push(ImportSource::Rejected(rejected)); }
-                                if !sources.is_empty() {
+                                if !roots.is_empty() {
                                     import_generation = import_generation.saturating_add(1);
                                     let id = import_generation;
                                     let cancelled = Arc::new(AtomicBool::new(false));
@@ -384,6 +381,19 @@ pub fn run() -> Result<(), String> {
                                     let worker_proxy = proxy.clone();
                                     let spawn = std::thread::Builder::new().name("vyntra-import-roots".into()).spawn(move || {
                                         let mut summary = crate::import::ImportSummary::default();
+                                        summary.rejected = rejected_roots;
+                                        let scan_proxy = worker_proxy.clone();
+                                        let (paths, rejected_paths) = crate::import::collect_rom_paths_controlled(
+                                            &roots, 10_000, &cancel_worker, move |visited| {
+                                                let _ = scan_proxy.send_event(Message::ImportProgress(id, crate::import::ArchiveProgress {
+                                                    phase: "scan".into(), completed_bytes: visited as u64, total_bytes: 100_000,
+                                                    member: "Revisando carpetas".into(), batch_item: 0, batch_total: 0,
+                                                }));
+                                            },
+                                        );
+                                        summary.rejected += rejected_paths;
+                                        if cancel_worker.load(Ordering::Acquire) { summary.cancelled = true; }
+                                        let sources: Vec<_> = paths.into_iter().map(ImportSource::Loose).collect();
                                         let batch_total = sources.len();
                                         for (batch_index, source) in sources.into_iter().enumerate() {
                                             if cancel_worker.load(Ordering::Acquire) { summary.cancelled = true; break; }

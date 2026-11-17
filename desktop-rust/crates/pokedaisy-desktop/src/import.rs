@@ -23,6 +23,7 @@ pub struct ImportSummary {
 
 #[derive(Debug, Clone)]
 pub struct ArchiveProgress {
+    pub phase: String,
     pub completed_bytes: u64,
     pub total_bytes: u64,
     pub member: String,
@@ -33,17 +34,35 @@ pub struct ArchiveProgress {
 /// Enumerate ROM candidates below explicitly chosen roots without following
 /// directory symlinks. Duplicate paths across overlapping roots appear once.
 pub fn collect_rom_paths(roots: &[PathBuf], max_files: usize) -> (Vec<PathBuf>, usize) {
+    collect_rom_paths_controlled(roots, max_files, &AtomicBool::new(false), |_| {})
+}
+
+pub fn collect_rom_paths_controlled<F>(
+    roots: &[PathBuf],
+    max_files: usize,
+    cancelled: &AtomicBool,
+    mut on_scan_progress: F,
+) -> (Vec<PathBuf>, usize)
+where
+    F: FnMut(usize),
+{
     let mut candidates = Vec::new();
     let mut rejected = 0usize;
     let mut seen = HashSet::new();
     let mut pending: Vec<_> = roots.iter().cloned().map(|path| (path, 0usize)).collect();
     let mut visited = 0usize;
     while let Some((path, depth)) = pending.pop() {
+        if cancelled.load(Ordering::Acquire) {
+            break;
+        }
         if visited >= MAX_FOLDER_SCAN_ENTRIES {
             rejected = rejected.saturating_add(pending.len().saturating_add(1));
             break;
         }
         visited += 1;
+        if visited == 1 || visited % 256 == 0 {
+            on_scan_progress(visited);
+        }
         let Ok(metadata) = fs::symlink_metadata(&path) else {
             rejected += 1;
             continue;
@@ -94,6 +113,9 @@ pub fn collect_rom_paths(roots: &[PathBuf], max_files: usize) -> (Vec<PathBuf>, 
         } else {
             candidates.push(canonical);
         }
+    }
+    if visited > 0 && visited % 256 != 0 {
+        on_scan_progress(visited);
     }
     (candidates, rejected)
 }
@@ -390,6 +412,7 @@ fn import_archive_selected(
                         break;
                     }
                     on_progress(ArchiveProgress {
+                        phase: "import".into(),
                         completed_bytes: total_copied,
                         total_bytes: preflight_total,
                         member: member.name().to_owned(),
@@ -550,6 +573,7 @@ pub fn import_paths_controlled(
                     digest.update(&buffer[..count]);
                     completed_bytes = completed_bytes.saturating_add(count as u64);
                     on_progress(ArchiveProgress {
+                        phase: "import".into(),
                         completed_bytes,
                         total_bytes,
                         member: path
@@ -593,8 +617,8 @@ pub fn import_paths_controlled(
 #[cfg(test)]
 mod tests {
     use super::{
-        ArchivePolicy, archive_rom_members, collect_rom_paths, import_archive,
-        import_archive_members, import_archive_members_controlled, import_paths,
+        ArchivePolicy, archive_rom_members, collect_rom_paths, collect_rom_paths_controlled,
+        import_archive, import_archive_members, import_archive_members_controlled, import_paths,
         import_paths_controlled, import_paths_with_limit,
     };
     use crate::library::LibraryEntry;
@@ -672,6 +696,30 @@ mod tests {
 
         assert_eq!(paths.len(), 1);
         assert_eq!(rejected, 1);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn folder_scan_reports_progress_and_honors_cancellation() {
+        let root = std::env::temp_dir().join(format!("vyntra-import-scan-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("one.gba"), valid_gba()).unwrap();
+        let mut visited = 0;
+        let (paths, rejected) = collect_rom_paths_controlled(
+            std::slice::from_ref(&root),
+            10,
+            &AtomicBool::new(false),
+            |count| visited = count,
+        );
+        assert_eq!(paths.len(), 1);
+        assert_eq!(rejected, 0);
+        assert!(visited >= 1);
+
+        let cancelled = AtomicBool::new(true);
+        let (paths, _) =
+            collect_rom_paths_controlled(std::slice::from_ref(&root), 10, &cancelled, |_| {});
+        assert!(paths.is_empty());
         let _ = fs::remove_dir_all(root);
     }
 
