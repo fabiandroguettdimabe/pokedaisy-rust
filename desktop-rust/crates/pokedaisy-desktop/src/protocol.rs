@@ -103,6 +103,48 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
             ));
         }
     }
+
+    let invalid = match action {
+        "reset_settings_section" => !matches!(
+            object["section"].as_str(),
+            Some("general" | "folders" | "cores" | "av" | "input")
+        ),
+        "library_view" => !matches!(object["value"].as_str(), Some("grid" | "list")),
+        "library_filter" => !matches!(
+            object["value"].as_str(),
+            Some("Todos" | "Favoritos" | "GB" | "GBC" | "GBA" | "DS")
+        ),
+        "library_selection" => object["value"].as_str().is_some_and(|value| {
+            value.len() > 64
+                || !value
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || b"-_".contains(&byte))
+        }),
+        "game_note" => object["value"].as_str().is_some_and(|note| {
+            note.len() > 2000
+                || note
+                    .chars()
+                    .any(|ch| ch.is_control() && ch != '\n' && ch != '\r' && ch != '\t')
+        }),
+        "type_matchup" => {
+            object["attack"]
+                .as_u64()
+                .is_some_and(|value| value > u8::MAX as u64)
+                || object["index"].as_u64().is_some_and(|value| value >= 3)
+                || object["defenses"].as_array().is_some_and(|values| {
+                    values
+                        .iter()
+                        .any(|value| value.as_u64().is_none_or(|id| id > u8::MAX as u64))
+                })
+        }
+        _ => false,
+    };
+    if invalid {
+        return Err(AppError::new(
+            "invalid_payload",
+            "El payload contiene un valor fuera del contrato de la acción",
+        ));
+    }
     Ok(())
 }
 
@@ -400,6 +442,31 @@ mod tests {
             )
             .is_ok()
         );
+    }
+
+    #[test]
+    fn versioned_payloads_reject_values_outside_action_contracts() {
+        for (action, payload) in [
+            ("library_view", serde_json::json!({"value":"tiles"})),
+            ("library_filter", serde_json::json!({"value":"GBC+"})),
+            (
+                "type_matchup",
+                serde_json::json!({"attack":1,"defenses":[2],"index":3}),
+            ),
+            (
+                "game_note",
+                serde_json::json!({"storage_id":"g1","value":"bad\u{0001}note"}),
+            ),
+        ] {
+            let body = serde_json::json!({
+                "protocol_version": 1,
+                "command_id": "invalid-value",
+                "action": action,
+                "payload": payload,
+            })
+            .to_string();
+            assert_eq!(parse_ui_command(&body).unwrap_err().code, "invalid_payload");
+        }
     }
 
     #[test]
