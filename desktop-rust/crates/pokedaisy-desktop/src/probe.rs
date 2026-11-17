@@ -172,9 +172,18 @@ pub fn probe_child(
         use std::os::windows::process::CommandExt;
         command.creation_flags(0x08000000);
     }
-    let mut child = command
+    let child = command
         .spawn()
         .map_err(|e| format!("No se pudo iniciar el proceso de diagnóstico: {e}"))?;
+    let output = wait_for_child(child, timeout)?;
+    serde_json::from_slice(&output.stdout)
+        .map_err(|e| format!("Reporte de diagnóstico inválido: {e}"))
+}
+
+fn wait_for_child(
+    mut child: std::process::Child,
+    timeout: Duration,
+) -> Result<std::process::Output, String> {
     let start = Instant::now();
     loop {
         match child.try_wait().map_err(|e| e.to_string())? {
@@ -185,8 +194,7 @@ pub fn probe_child(
                         "El proceso de diagnóstico terminó sin reporte ({status})"
                     ));
                 }
-                return serde_json::from_slice(&output.stdout)
-                    .map_err(|e| format!("Reporte de diagnóstico inválido: {e}"));
+                return Ok(output);
             }
             None if start.elapsed() >= timeout => {
                 let _ = child.kill();
@@ -212,4 +220,24 @@ pub fn extensions_match(system: &str, extensions: Option<&str>) -> bool {
             .map(|value| value.trim().trim_start_matches('.').to_ascii_lowercase())
             .any(|value| expected.contains(&value.as_str()))
     })
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::wait_for_child;
+    use std::process::{Command, Stdio};
+    use std::time::Duration;
+
+    #[test]
+    fn probe_supervisor_kills_a_child_that_exceeds_its_deadline() {
+        let child = Command::new("cmd.exe")
+            .args(["/C", "ping", "127.0.0.1", "-n", "30"])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+
+        let error = wait_for_child(child, Duration::from_millis(100)).unwrap_err();
+        assert!(error.contains("límite de diagnóstico"));
+    }
 }
