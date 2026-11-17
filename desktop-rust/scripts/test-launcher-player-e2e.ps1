@@ -3,7 +3,9 @@ param(
   [Parameter(Mandatory = $true)][string]$CoreDirectory,
   [string]$DataRoot = (Join-Path ([IO.Path]::GetTempPath()) ("vyntra-launcher-player-" + [DateTime]::UtcNow.Ticks)),
   [string]$Python = "python",
-  [string]$Node = "node"
+  [string]$Node = "node",
+  [string]$ExpectedCoreSha256,
+  [string]$ExpectedRomSha256
 )
 
 $ErrorActionPreference = "Stop"
@@ -213,6 +215,12 @@ try {
   $romHash = (Get-FileHash -LiteralPath $rom -Algorithm SHA256).Hash.ToLowerInvariant()
   $corePath = Join-Path $coreDirPath "pokedaisy_gbc_libretro.dll"
   $coreHash = (Get-FileHash -LiteralPath $corePath -Algorithm SHA256).Hash.ToLowerInvariant()
+  if ($ExpectedCoreSha256 -and $coreHash -ne $ExpectedCoreSha256.ToLowerInvariant()) {
+    throw "Core hash $coreHash does not match the expected provenance hash"
+  }
+  if ($ExpectedRomSha256 -and $romHash -ne $ExpectedRomSha256.ToLowerInvariant()) {
+    throw "ROM fixture hash $romHash does not match the expected fixture hash"
+  }
   $saveDir = Join-Path $data ("data/saves/by-id/" + $romHash.Substring(0, 16))
   $batteryPath = Join-Path $saveDir "battery.sav"
   $manifestPath = Join-Path $saveDir "manifest.json"
