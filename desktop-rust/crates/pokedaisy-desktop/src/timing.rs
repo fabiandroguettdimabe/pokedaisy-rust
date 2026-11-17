@@ -1,6 +1,23 @@
 use std::time::Duration;
 
 const FALLBACK_FPS: f64 = 60.0;
+pub const AUDIO_QUEUE_BUDGET_MS: u32 = 120;
+
+pub fn audio_queue_fits_budget(
+    queued_bytes: u32,
+    incoming_samples: usize,
+    sample_rate: u32,
+    budget_ms: u32,
+) -> bool {
+    let budget_bytes = u64::from(sample_rate)
+        .saturating_mul(4)
+        .saturating_mul(u64::from(budget_ms))
+        / 1000;
+    let incoming_bytes = u64::try_from(incoming_samples)
+        .unwrap_or(u64::MAX)
+        .saturating_mul(std::mem::size_of::<i16>() as u64);
+    u64::from(queued_bytes).saturating_add(incoming_bytes) <= budget_bytes
+}
 
 pub fn frame_interval(fps: f64) -> Duration {
     let fps = if fps.is_finite() && fps > 0.0 {
@@ -125,7 +142,10 @@ impl StereoResampler {
 
 #[cfg(test)]
 mod tests {
-    use super::{AudioQueueDiagnostics, StereoResampler, frame_interval, next_frame_anchor};
+    use super::{
+        AudioQueueDiagnostics, StereoResampler, audio_queue_fits_budget, frame_interval,
+        next_frame_anchor,
+    };
     use std::time::Duration;
 
     #[test]
@@ -206,5 +226,29 @@ mod tests {
         assert_eq!(snapshot.high_water_ms, 100);
         assert_eq!(snapshot.empty_episodes, 2);
         assert_eq!(snapshot.dropped_frames, 12);
+    }
+
+    #[test]
+    fn audio_queue_admission_uses_a_stereo_byte_budget_without_overflow() {
+        let budget_ms = 120;
+        let rate = 48_000;
+        let budget_bytes = rate * 4 * budget_ms / 1000;
+        assert!(audio_queue_fits_budget(
+            budget_bytes - 4,
+            2,
+            rate,
+            budget_ms
+        ));
+        assert!(!audio_queue_fits_budget(budget_bytes, 2, rate, budget_ms));
+        assert!(!audio_queue_fits_budget(0, usize::MAX, rate, budget_ms));
+        assert!(audio_queue_fits_budget(0, 0, rate, budget_ms));
+    }
+
+    #[test]
+    fn audio_queue_budget_scales_with_sample_rate_and_duration() {
+        assert!(audio_queue_fits_budget(3_836, 2, 8_000, 120));
+        assert!(!audio_queue_fits_budget(3_840, 2, 8_000, 120));
+        assert!(audio_queue_fits_budget(46_076, 2, 96_000, 120));
+        assert!(!audio_queue_fits_budget(46_080, 2, 96_000, 120));
     }
 }

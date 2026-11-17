@@ -1294,16 +1294,13 @@ fn sdl_main() -> Result<(), String> {
                                                     as i16
                                             })
                                             .collect();
-                                        let queue_limit_bytes =
-                                            (target_rate as u64 * 4 * 12 / 100) as u32;
                                         let queued = audio_device.size();
-                                        let incoming_bytes = (samples.len() as u64
-                                            * std::mem::size_of::<i16>() as u64)
-                                            .min(u32::MAX as u64)
-                                            as u32;
-                                        if queued.saturating_add(incoming_bytes)
-                                            <= queue_limit_bytes
-                                        {
+                                        if timing::audio_queue_fits_budget(
+                                            queued,
+                                            samples.len(),
+                                            target_rate,
+                                            timing::AUDIO_QUEUE_BUDGET_MS,
+                                        ) {
                                             let _ = audio_device.queue_audio(&samples);
                                         } else {
                                             dropped_audio_frames = (samples.len() / 2) as u64;
