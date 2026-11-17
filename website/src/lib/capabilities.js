@@ -29,7 +29,15 @@ export function readyCapabilitiesMissingEvidence(markdown) {
   const findings = [];
   for (let index = headerIndex + 2; index < lines.length && lines[index].startsWith('|'); index += 1) {
     const row = cells(lines[index]);
-    if (row.length !== headers.length) continue;
+    if (row.length !== headers.length) {
+      findings.push({
+        line: index + 1,
+        system: row[1] || '',
+        capability: 'matrix row shape',
+        status: 'invalid column count',
+      });
+      continue;
+    }
     for (const column of STATUS_COLUMNS) {
       if (!isReady(row[column])) continue;
       if (hasReproducibleEvidence(row[7])) continue;
