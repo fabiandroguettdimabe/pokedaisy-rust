@@ -104,6 +104,7 @@ fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SessionSnapshot {
+    pub protocol_version: u32,
     pub session_id: String,
     pub epoch: u64,
     pub revision: u64,
@@ -112,6 +113,8 @@ pub struct SessionSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SnapshotError {
+    WrongVersion,
+    InvalidPayload,
     WrongSession,
     StaleEpoch,
     StaleRevision,
@@ -148,6 +151,12 @@ impl LatestSnapshot {
             return Err(SnapshotError::TooLarge);
         }
         let mut state = self.state.lock().map_err(|_| SnapshotError::Poisoned)?;
+        if snapshot.protocol_version != crate::domain::CONTRACT_VERSION {
+            return Err(SnapshotError::WrongVersion);
+        }
+        if !snapshot.payload.is_object() {
+            return Err(SnapshotError::InvalidPayload);
+        }
         if snapshot.session_id != state.session_id {
             return Err(SnapshotError::WrongSession);
         }
@@ -261,8 +270,40 @@ mod tests {
     };
     use serde_json::json;
 
+    #[test]
+    fn shared_session_snapshot_fixture_is_supported_v1() {
+        let value: SessionSnapshot = serde_json::from_str(include_str!(
+            "../../../../contracts/vyntra/v1/session-snapshot-v1.json"
+        ))
+        .unwrap();
+        assert_eq!(value.protocol_version, crate::domain::CONTRACT_VERSION);
+        assert_eq!(value.session_id, "fixture-session");
+        assert_eq!(value.epoch, 3);
+        assert_eq!(value.revision, 8);
+        assert_eq!(value.payload["game_code"], "BPRE");
+    }
+
+    #[test]
+    fn shared_session_snapshot_fixture_rejects_incompatible_major() {
+        let value: SessionSnapshot = serde_json::from_str(include_str!(
+            "../../../../contracts/vyntra/v1/session-snapshot-v2-incompatible.json"
+        ))
+        .unwrap();
+        let slot = LatestSnapshot::new("fixture-session", 3);
+        assert_eq!(slot.publish(value), Err(SnapshotError::WrongVersion));
+    }
+
+    #[test]
+    fn snapshot_payload_must_be_an_object() {
+        let mut value = snapshot("fixture-session", 3, 8);
+        value.payload = json!("not-an-object");
+        let slot = LatestSnapshot::new("fixture-session", 3);
+        assert_eq!(slot.publish(value), Err(SnapshotError::InvalidPayload));
+    }
+
     fn snapshot(session_id: &str, epoch: u64, revision: u64) -> SessionSnapshot {
         SessionSnapshot {
+            protocol_version: crate::domain::CONTRACT_VERSION,
             session_id: session_id.into(),
             epoch,
             revision,

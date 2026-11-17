@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vyntra.dev/contracts/v1/session-snapshot.schema.json",
+  "title": "Vyntra session snapshot",
+  "type": "object",
+  "required": ["protocol_version", "session_id", "epoch", "revision", "payload"],
+  "properties": {
+    "protocol_version": { "const": 1, "type": "integer" },
+    "session_id": { "type": "string", "minLength": 1 },
+    "epoch": { "type": "integer", "minimum": 0 },
+    "revision": { "type": "integer", "minimum": 0 },
+    "payload": { "type": "object" }
+  },
+  "additionalProperties": true
+}

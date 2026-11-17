@@ -1,0 +1,7 @@
+{
+  "protocol_version": 1,
+  "session_id": "fixture-session",
+  "epoch": 3,
+  "revision": 8,
+  "payload": { "game_code": "BPRE", "paused": false }
+}
