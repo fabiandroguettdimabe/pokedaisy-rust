@@ -696,6 +696,16 @@ fn sdl_main() -> Result<(), String> {
                                 match c.serialize() {
                                     Ok(bytes) => {
                                         let path = state_path(g, &state_dir);
+                                        if let Err(e) = backup_verified_state(
+                                            g,
+                                            &state_dir,
+                                            active_core_hash.as_deref(),
+                                        ) {
+                                            last_error = Some(format!(
+                                                "No se pudo respaldar el estado anterior; se conserva sin reemplazar: {e}"
+                                            ));
+                                            continue 'app;
+                                        }
                                         match atomic_write(&path, &bytes) {
                                             Ok(()) => write_save_manifest(
                                                 g,
@@ -1324,28 +1334,113 @@ fn load_compatible_state(
     validate_game_identity(game)?;
     let core_hash = core_hash.ok_or("No se pudo verificar el hash del núcleo; estado bloqueado")?;
     let path = preferred_state_path(game, dir);
-    if !path.is_file() {
-        if legacy_state_path(game, dir).is_file() {
-            return Err(
-                "El estado antiguo no tiene metadatos suficientes para verificar ROM y núcleo"
-                    .into(),
-            );
-        }
-        return Err("No se encontró un estado guardado".into());
-    }
-    let bytes = fs::read(&path).map_err(|e| format!("No se pudo leer el estado: {e}"))?;
+    let rom_hash =
+        identity::sha256_file(&game.path).map_err(|e| format!("No se pudo verificar ROM: {e}"))?;
     let manifest_path = path
         .parent()
         .ok_or("Ruta de estado inválida")?
         .join("state.manifest.json");
+    let mut candidates = vec![(path.clone(), manifest_path)];
+    let backup_root = path
+        .parent()
+        .ok_or("Ruta de estado inválida")?
+        .join("backups");
+    if let Ok(entries) = fs::read_dir(&backup_root) {
+        let mut backups: Vec<_> = entries
+            .flatten()
+            .filter(|entry| entry.path().is_dir())
+            .map(|entry| entry.path())
+            .collect();
+        backups.sort();
+        backups.reverse();
+        candidates.extend(
+            backups
+                .into_iter()
+                .take(32)
+                .map(|backup| (backup.join("slot1.ss"), backup.join("state.manifest.json"))),
+        );
+    }
+    let mut last_error = None;
+    for (candidate, manifest_file) in candidates {
+        if !candidate.is_file() {
+            continue;
+        }
+        match validate_state_files(&candidate, &manifest_file, &rom_hash, core_hash) {
+            Ok(bytes) => return Ok(bytes),
+            Err(error) => last_error = Some(error),
+        }
+    }
+    if last_error.is_some() {
+        return Err(last_error.unwrap());
+    }
+    if legacy_state_path(game, dir).is_file() {
+        return Err(
+            "El estado antiguo no tiene metadatos suficientes para verificar ROM y núcleo".into(),
+        );
+    }
+    Err("No se encontró un estado guardado".into())
+}
+
+fn validate_state_files(
+    state_path: &Path,
+    manifest_path: &Path,
+    rom_hash: &str,
+    core_hash: &str,
+) -> Result<Vec<u8>, String> {
+    let bytes = fs::read(state_path).map_err(|e| format!("No se pudo leer el estado: {e}"))?;
     let manifest: domain::SaveManifest = serde_json::from_slice(
-        &fs::read(&manifest_path).map_err(|_| "El estado no tiene un manifiesto verificable")?,
+        &fs::read(manifest_path).map_err(|_| "El estado no tiene un manifiesto verificable")?,
     )
     .map_err(|_| "El manifiesto del estado está dañado")?;
-    let rom_hash =
-        identity::sha256_file(&game.path).map_err(|e| format!("No se pudo verificar ROM: {e}"))?;
-    vault::validate_state(&manifest, &bytes, &rom_hash, core_hash)?;
+    vault::validate_state(&manifest, &bytes, rom_hash, core_hash)?;
     Ok(bytes)
+}
+
+/// Preserve the last committed state before replacement. Each backup is a
+/// self-contained directory; an interrupted copy cannot replace an older one.
+fn backup_verified_state(
+    game: &Game,
+    dir: &Path,
+    core_hash: Option<&str>,
+) -> Result<Option<PathBuf>, String> {
+    let Some(core_hash) = core_hash else {
+        return Ok(None);
+    };
+    let path = preferred_state_path(game, dir);
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let rom_hash = identity::sha256_file(&game.path).map_err(|e| e.to_string())?;
+    let manifest_path = path
+        .parent()
+        .ok_or("Ruta de estado inválida")?
+        .join("state.manifest.json");
+    let bytes = match validate_state_files(&path, &manifest_path, &rom_hash, core_hash) {
+        Ok(bytes) => bytes,
+        // A corrupt primary is not promoted over existing versioned backups.
+        // The new F2 state can replace it while older verified backups remain.
+        Err(_) => return Ok(None),
+    };
+    let manifest = fs::read(&manifest_path).map_err(|e| e.to_string())?;
+    let backup_root = path
+        .parent()
+        .ok_or("Ruta de estado inválida")?
+        .join("backups");
+    fs::create_dir_all(&backup_root).map_err(|e| e.to_string())?;
+    let base = now_unix().to_string();
+    let backup_dir = (0u32..)
+        .find_map(|suffix| {
+            let candidate = backup_root.join(format!("{base}-{suffix:04}"));
+            match fs::create_dir(&candidate) {
+                Ok(()) => Some(Ok(candidate)),
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => None,
+                Err(error) => Some(Err(error.to_string())),
+            }
+        })
+        .ok_or("No se pudo reservar una carpeta de respaldo")??;
+    atomic_write(&backup_dir.join("slot1.ss"), &bytes)?;
+    atomic_write(&backup_dir.join("state.manifest.json"), &manifest)?;
+    Ok(Some(backup_dir))
 }
 
 #[derive(Clone, Copy)]
@@ -2140,7 +2235,17 @@ mod tests {
             super::load_compatible_state(&game, &dir, Some("corehash")).unwrap(),
             b"state"
         );
+        let backup = super::backup_verified_state(&game, &dir, Some("corehash"))
+            .unwrap()
+            .unwrap();
+        assert_eq!(fs::read(backup.join("slot1.ss")).unwrap(), b"state");
+        fs::create_dir(backup.parent().unwrap().join("zz-incomplete-backup")).unwrap();
         fs::write(super::state_path(&game, &dir), b"tampered").unwrap();
+        assert_eq!(
+            super::load_compatible_state(&game, &dir, Some("corehash")).unwrap(),
+            b"state"
+        );
+        fs::write(backup.join("slot1.ss"), b"also tampered").unwrap();
         assert!(super::load_compatible_state(&game, &dir, Some("corehash")).is_err());
         let _ = fs::remove_dir_all(&dir);
     }
