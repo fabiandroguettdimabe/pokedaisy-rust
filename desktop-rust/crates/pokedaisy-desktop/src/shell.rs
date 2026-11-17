@@ -135,6 +135,24 @@ pub fn run() -> Result<(), String> {
                             if !library::set_favorite(&mut imported, id, favorite) { return Err("El juego ya no está en la biblioteca".into()); }
                             library::save(&index_path, &imported)?;
                         },
+                        "library_view" => {
+                            let view = action["value"].as_str().ok_or("Vista inválida")?;
+                            if !matches!(view, "grid" | "list") { return Err("Vista inválida".into()); }
+                            config.library_view = view.into();
+                            config.save(&config_path)?;
+                        },
+                        "library_filter" => {
+                            let filter = action["value"].as_str().ok_or("Filtro inválido")?;
+                            if !matches!(filter, "Todos" | "Favoritos" | "GB" | "GBC" | "GBA" | "DS") { return Err("Filtro inválido".into()); }
+                            config.library_filter = filter.into();
+                            config.save(&config_path)?;
+                        },
+                        "library_selection" => {
+                            let selection = action["value"].as_str().ok_or("Selección inválida")?;
+                            if selection.len() > 64 || !selection.bytes().all(|byte| byte.is_ascii_alphanumeric() || b"-_".contains(&byte)) { return Err("Selección inválida".into()); }
+                            config.library_selection = Some(selection.into());
+                            config.save(&config_path)?;
+                        },
                         "relink" => {
                             let id = action["storage_id"].as_str().ok_or("Juego inválido")?;
                             if let Some(path) = rfd::FileDialog::new().set_title("Volver a localizar esta ROM · debe ser idéntica").add_filter("ROM GB / GBC / GBA / DS", &["gb","gbc","gba","nds"]).pick_file() {

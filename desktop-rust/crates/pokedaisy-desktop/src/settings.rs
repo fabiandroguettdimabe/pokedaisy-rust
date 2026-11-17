@@ -18,6 +18,9 @@ pub struct Settings {
     pub fast_forward: u32,
     pub autosave: u64,
     pub keys: Vec<String>,
+    pub library_view: String,
+    pub library_filter: String,
+    pub library_selection: Option<String>,
 }
 
 #[cfg(test)]
@@ -46,6 +49,23 @@ mod tests {
         fs::remove_file(path.with_extension("json.bak")).unwrap();
         fs::remove_dir(dir).unwrap();
     }
+
+    #[test]
+    fn library_view_filter_and_stable_selection_survive_restart() {
+        let dir = std::env::temp_dir().join(format!("vyntra-library-view-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("settings.json");
+        let mut settings = Settings::load(&path, &dir).unwrap();
+        settings.library_view = "list".into();
+        settings.library_filter = "Favoritos".into();
+        settings.library_selection = Some("content-id-123".into());
+        settings.save(&path).unwrap();
+        let loaded = Settings::load(&path, &dir).unwrap();
+        assert_eq!(loaded.library_view, "list");
+        assert_eq!(loaded.library_filter, "Favoritos");
+        assert_eq!(loaded.library_selection.as_deref(), Some("content-id-123"));
+        let _ = fs::remove_dir_all(dir);
+    }
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -63,6 +83,9 @@ impl Default for Settings {
             fullscreen: false,
             fast_forward: 2,
             autosave: 20,
+            library_view: "grid".into(),
+            library_filter: "Todos".into(),
+            library_selection: None,
             keys: [
                 "Z",
                 "X",
@@ -101,6 +124,23 @@ impl Settings {
         value.volume = value.volume.min(100);
         value.fast_forward = value.fast_forward.clamp(2, 4);
         value.autosave = value.autosave.clamp(10, 120);
+        if !matches!(value.library_view.as_str(), "grid" | "list") {
+            value.library_view = "grid".into();
+        }
+        if !matches!(
+            value.library_filter.as_str(),
+            "Todos" | "Favoritos" | "GB" | "GBC" | "GBA" | "DS"
+        ) {
+            value.library_filter = "Todos".into();
+        }
+        if value.library_selection.as_ref().is_some_and(|id| {
+            id.len() > 64
+                || !id
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || b"-_".contains(&byte))
+        }) {
+            value.library_selection = None;
+        }
         for dir in [
             &mut value.library,
             &mut value.saves,
