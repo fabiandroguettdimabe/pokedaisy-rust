@@ -104,6 +104,15 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
         }
     }
 
+    let invalid_storage_id = || {
+        object["storage_id"].as_str().is_none_or(|id| {
+            id.is_empty()
+                || id.len() > 64
+                || !id
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || b"-_".contains(&byte))
+        })
+    };
     let invalid = match action {
         "reset_settings_section" => !matches!(
             object["section"].as_str(),
@@ -120,12 +129,30 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
                     .bytes()
                     .all(|byte| byte.is_ascii_alphanumeric() || b"-_".contains(&byte))
         }),
-        "game_note" => object["value"].as_str().is_some_and(|note| {
-            note.len() > 2000
-                || note
-                    .chars()
-                    .any(|ch| ch.is_control() && ch != '\n' && ch != '\r' && ch != '\t')
+        "game_note" => {
+            invalid_storage_id()
+                || object["value"].as_str().is_some_and(|note| {
+                    note.len() > 2000
+                        || note
+                            .chars()
+                            .any(|ch| ch.is_control() && ch != '\n' && ch != '\r' && ch != '\t')
+                })
+        }
+        "favorite" | "relink" | "play" => invalid_storage_id(),
+        "choose" => object["field"].as_str().is_some_and(|field| {
+            !["library", "saves", "states", "system"].contains(&field)
+                && !field
+                    .strip_prefix("core")
+                    .and_then(|index| index.parse::<usize>().ok())
+                    .is_some_and(|index| index < 3)
         }),
+        "open_folder" => !matches!(
+            object["field"].as_str(),
+            Some("config" | "library" | "saves" | "states" | "system")
+        ),
+        "export_vault_bundle" | "export_save" => object["file"]
+            .as_str()
+            .is_some_and(|path| path.is_empty() || path.len() > 4096),
         "type_matchup" => {
             object["attack"]
                 .as_u64()
@@ -481,6 +508,9 @@ mod tests {
                 "set",
                 serde_json::json!({"field":"unknown_setting","value":true}),
             ),
+            ("choose", serde_json::json!({"field":"core3"})),
+            ("open_folder", serde_json::json!({"field":"arbitrary"})),
+            ("play", serde_json::json!({"storage_id":"../game"})),
             (
                 "game_note",
                 serde_json::json!({"storage_id":"g1","value":"bad\u{0001}note"}),
@@ -506,6 +536,20 @@ mod tests {
                 "protocol_version": 1,
                 "command_id": "valid-setting",
                 "action": "set",
+                "payload": payload,
+            })
+            .to_string();
+            assert!(parse_ui_command(&body).is_ok());
+        }
+        for (action, payload) in [
+            ("choose", serde_json::json!({"field":"core2"})),
+            ("open_folder", serde_json::json!({"field":"system"})),
+            ("play", serde_json::json!({"storage_id":"a1-b2"})),
+        ] {
+            let body = serde_json::json!({
+                "protocol_version": 1,
+                "command_id": "valid-field",
+                "action": action,
                 "payload": payload,
             })
             .to_string();
