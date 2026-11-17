@@ -44,6 +44,8 @@ const PAPER: Color = Color::RGB(23, 23, 27);
 const BORDER: Color = Color::RGB(57, 52, 60);
 const SIDEBAR: Color = Color::RGB(0, 0, 0);
 const DARK_CRIMSON: Color = Color::RGB(58, 10, 18);
+const MAX_BACKUP_VERSIONS: usize = 16;
+const MAX_BACKUP_BYTES: u64 = 512 * 1024 * 1024;
 
 #[derive(Clone)]
 struct Game {
@@ -1602,6 +1604,16 @@ fn backup_verified_state(
         .ok_or("No se pudo reservar una carpeta de respaldo")??;
     atomic_write(&backup_dir.join("slot1.ss"), &bytes)?;
     atomic_write(&backup_dir.join("state.manifest.json"), &manifest)?;
+    if let Err(error) = prune_backup_root(
+        &backup_root,
+        "slot1.ss",
+        "state.manifest.json",
+        domain::SaveKind::SaveState,
+        MAX_BACKUP_VERSIONS,
+        MAX_BACKUP_BYTES,
+    ) {
+        eprintln!("No se pudo aplicar retención de estados: {error}");
+    }
     Ok(Some(backup_dir))
 }
 
@@ -1646,7 +1658,71 @@ fn backup_verified_battery(
         .ok_or("No se pudo reservar una carpeta de respaldo de SRAM")??;
     atomic_write(&backup_dir.join("battery.sav"), &bytes)?;
     atomic_write(&backup_dir.join("manifest.json"), &manifest)?;
+    if let Err(error) = prune_backup_root(
+        &backup_root,
+        "battery.sav",
+        "manifest.json",
+        domain::SaveKind::BatteryRam,
+        MAX_BACKUP_VERSIONS,
+        MAX_BACKUP_BYTES,
+    ) {
+        eprintln!("No se pudo aplicar retención de SRAM: {error}");
+    }
     Ok(Some(backup_dir))
+}
+
+fn prune_backup_root(
+    root: &Path,
+    data_name: &str,
+    manifest_name: &str,
+    expected_kind: domain::SaveKind,
+    max_versions: usize,
+    max_bytes: u64,
+) -> Result<(), String> {
+    let mut backups = fs::read_dir(root)
+        .map_err(|error| error.to_string())?
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            if !entry.file_type().ok()?.is_dir() {
+                return None;
+            }
+            let path = entry.path();
+            let data = path.join(data_name);
+            let manifest_path = path.join(manifest_name);
+            let metadata = fs::metadata(&data).ok()?;
+            let manifest: domain::SaveManifest =
+                serde_json::from_slice(&fs::read(manifest_path).ok()?).ok()?;
+            let hash = identity::sha256_file(&data).ok()?;
+            if manifest.kind != expected_kind
+                || manifest.status != "committed"
+                || manifest.bytes != Some(metadata.len())
+                || manifest.sha256.as_deref() != Some(&hash)
+            {
+                return None;
+            }
+            Some((
+                entry.file_name().to_string_lossy().into_owned(),
+                metadata.len(),
+                path,
+            ))
+        })
+        .collect::<Vec<_>>();
+    backups.sort_by(|left, right| right.0.cmp(&left.0));
+
+    let mut kept_versions = 0usize;
+    let mut kept_bytes = 0u64;
+    for (_, size, path) in backups {
+        let fits = kept_versions == 0
+            || (kept_versions < max_versions.max(1)
+                && kept_bytes.saturating_add(size) <= max_bytes);
+        if fits {
+            kept_versions += 1;
+            kept_bytes = kept_bytes.saturating_add(size);
+        } else {
+            fs::remove_dir_all(path).map_err(|error| error.to_string())?;
+        }
+    }
+    Ok(())
 }
 
 #[derive(Clone, Copy)]
@@ -2477,5 +2553,46 @@ mod tests {
         fs::write(backup.join("slot1.ss"), b"also tampered").unwrap();
         assert!(super::load_compatible_state(&game, &dir, Some("corehash")).is_err());
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn backup_retention_keeps_newest_verified_copies_only() {
+        let root = std::env::temp_dir().join(format!("vyntra-retention-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        for (name, payload) in [
+            ("001", b"old".as_slice()),
+            ("002", b"middle"),
+            ("003", b"new"),
+        ] {
+            let backup = root.join(name);
+            std::fs::create_dir_all(&backup).unwrap();
+            std::fs::write(backup.join("slot1.ss"), payload).unwrap();
+            let hash = super::identity::sha256_file(&backup.join("slot1.ss")).unwrap();
+            std::fs::write(
+                backup.join("state.manifest.json"),
+                serde_json::json!({
+                    "save_id": name, "kind": "save_state", "status": "committed",
+                    "bytes": payload.len(), "sha256": hash
+                })
+                .to_string(),
+            )
+            .unwrap();
+        }
+
+        super::prune_backup_root(
+            &root,
+            "slot1.ss",
+            "state.manifest.json",
+            super::domain::SaveKind::SaveState,
+            2,
+            1024,
+        )
+        .unwrap();
+
+        assert!(!root.join("001").exists());
+        assert!(root.join("002/slot1.ss").is_file());
+        assert!(root.join("003/slot1.ss").is_file());
+        let _ = std::fs::remove_dir_all(&root);
     }
 }
