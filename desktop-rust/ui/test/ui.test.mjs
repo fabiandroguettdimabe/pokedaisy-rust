@@ -156,6 +156,13 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.getByRole('button',{name:'Calcular',exact:true}).click();
   assert.equal(await page.getByText('Fairy contra Fighting',{exact:true}).isVisible(),true);
   assert.equal(await page.getByText('2×',{exact:true}).isVisible(),true);
+  assert.equal(await page.getByLabel('Fuente del Dex').count(),1);
+  await page.getByLabel('Fuente del Dex').selectOption('pokemon-gen6-rowe-type-chart');
+  await page.getByLabel('Buscar Pokémon').fill('Pikachu');
+  assert.equal(await page.getByRole('heading',{name:'Pikachu',exact:true}).isVisible(),true);
+  await page.getByRole('button',{name:'Analizar efectividad de Pikachu',exact:true}).click();
+  assert.equal(await page.getByLabel('Defensa 1').inputValue(),'13');
+  assert.equal(await page.getByText('Contexto del Dex: Pikachu (#025). Tipos según Pokémon R.O.W.E. v2.1.9.1 Experimental: Electric.',{exact:true}).isVisible(),true);
   await page.evaluate(()=>window.vyntraImportProgress({phase:'scan',member:'Revisando carpetas',completed_bytes:256,total_bytes:100000}));
   assert.equal(await page.locator('.toast strong').getByText('Revisando carpetas',{exact:true}).isVisible(),true);
   await page.evaluate(()=>window.vyntraImportProgress({phase:'import',member:'Pokemon.gba',completed_bytes:512,total_bytes:1024,batch_item:2,batch_total:5}));

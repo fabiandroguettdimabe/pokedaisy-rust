@@ -18,13 +18,63 @@ GEN2_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeCh
 GEN6_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartGlazed.kt"
 ROWE_NAMES = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/TypeChartRowe.kt"
 HACK_CHARTS = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data"
+SPECIES_SOURCES = {
+    "yellow": ("SpeciesNamesYellow.kt", "speciesNamesYellow", "SpeciesTypesYellow.kt", "speciesTypeDataYellow"),
+    "yellow-legacy": ("SpeciesNamesYellow.kt", "speciesNamesYellow", "SpeciesTypesYellow.kt", "speciesTypeDataYellow"),
+    "crystal": ("SpeciesNamesCrystal.kt", "speciesNamesCrystal", "SpeciesTypesCrystal.kt", "speciesTypeDataCrystal"),
+    "glazed": ("SpeciesNamesGlazed.kt", "speciesNamesGlazed", "SpeciesTypesGlazed.kt", "speciesTypeDataGlazed"),
+    "rowe": ("SpeciesNamesRowe.kt", "speciesNamesRowe", "SpeciesTypesRowe.kt", "speciesTypeDataRowe"),
+    "wishes": ("SpeciesNamesWishes.kt", "speciesNamesWishes", "SpeciesTypesWishes.kt", "speciesTypeDataWishes"),
+    "team-rocket": ("SpeciesNamesTeamRocketV3.kt", "speciesNamesTeamRocketV3", "SpeciesTypesTeamRocketV3.kt", "speciesTypeDataTeamRocketV3"),
+    "soul-gold": ("SpeciesNamesSoulGold.kt", "speciesNamesSoulGold", "SpeciesTypesSoulGold.kt", "speciesTypeDataSoulGold"),
+    "rogue": ("SpeciesNamesRogue.kt", "speciesNamesRogue", "SpeciesTypesRogue.kt", "speciesTypeDataRogue"),
+    "quetzal": ("SpeciesNamesQuetzal.kt", "speciesNamesQuetzal", "SpeciesTypesQuetzal.kt", "speciesTypeDataQuetzal"),
+    "lazarus": ("SpeciesNamesLazarus.kt", "speciesNamesLazarus", "SpeciesTypesLazarus.kt", "speciesTypeDataLazarus"),
+    "imperium": ("SpeciesNamesImperium.kt", "speciesNamesImperium", "SpeciesTypesImperium.kt", "speciesTypeDataImperium"),
+    "hns": ("SpeciesNamesHns.kt", "speciesNamesHns", "SpeciesTypesHns.kt", "speciesTypeDataHns"),
+}
 
 
 def kotlin_map(source: str, variable: str) -> str:
-    match = re.search(rf"\b{re.escape(variable)}(?:\s*:[^=]+?)?\s*=\s*mapOf\((.*?)\)", source, re.S)
+    match = re.search(rf"\b{re.escape(variable)}(?:\s*:[^=]+?)?\s*=\s*mapOf\(", source)
     if not match:
         raise ValueError(f"Kotlin map {variable!r} not found")
-    return match.group(1)
+    start = match.end() - 1
+    depth = 1
+    index = start + 1
+    in_string = False
+    line_comment = False
+    block_comment = False
+    while index < len(source):
+        char = source[index]
+        following = source[index + 1] if index + 1 < len(source) else ""
+        if line_comment:
+            line_comment = char != "\n"
+        elif block_comment:
+            if char == "*" and following == "/":
+                block_comment = False
+                index += 1
+        elif in_string:
+            if char == "\\":
+                index += 1
+            elif char == '"':
+                in_string = False
+        elif char == "/" and following == "/":
+            line_comment = True
+            index += 1
+        elif char == "/" and following == "*":
+            block_comment = True
+            index += 1
+        elif char == '"':
+            in_string = True
+        elif char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return source[start + 1:index]
+        index += 1
+    raise ValueError(f"Kotlin map {variable!r} is not closed")
 
 
 def parse_type_chart(names_source: str, chart_source: str, names_variable="typeNames", chart_variable="typeEffectiveness"):
@@ -52,6 +102,34 @@ def parse_type_chart(names_source: str, chart_source: str, names_variable="typeN
         [{"id": key, "name": name} for key, name in sorted(names)],
         sorted(matchups, key=lambda pair: (pair["attack"], pair["defense"])),
     )
+
+
+def parse_species_reference(names_source: str, names_variable: str, types_source: str, types_variable: str, known_type_ids: set[int], strict_type_ids: bool = True):
+    names_body = kotlin_map(names_source, names_variable)
+    types_body = kotlin_map(types_source, types_variable)
+    names = {int(number): json.loads(raw_name) for number, raw_name in re.findall(r'(\d+)\s+to\s+("(?:\\.|[^"\\])*")', names_body)}
+    raw_types = re.findall(r"(\d+)\s+to\s+SpeciesTypes\(\s*(\d+)\s*,\s*(\d+)\s*\)", types_body)
+    types = {int(number): (int(first), int(second)) for number, first, second in raw_types}
+    if len(names) != len(re.findall(r'(\d+)\s+to\s+("(?:\\.|[^"\\])*")', names_body)):
+        raise ValueError(f"duplicate species ID in {names_variable}")
+    if len(types) != len(raw_types):
+        raise ValueError(f"duplicate species ID in {types_variable}")
+    entries = []
+    for number in sorted(names.keys() & types.keys()):
+        name = names[number]
+        pair = types[number]
+        if not name or any(ord(char) < 32 for char in name):
+            raise ValueError(f"invalid species name at game species ID {number}")
+        if any(type_id not in known_type_ids for type_id in pair):
+            if not any(char.isalnum() for char in name):
+                continue  # Some game tables reserve unnamed internal slots with sentinel type bytes.
+            if strict_type_ids:
+                raise ValueError(f"species {number} references an unknown type in {types_variable}")
+            pair = ()  # The species name is still useful, but its unsupported type bytes stay unknown.
+        entries.append({"number": number, "name": name, "types": list(dict.fromkeys(pair))})
+    if not entries:
+        raise ValueError(f"no joined species name/type rows for {names_variable}")
+    return entries
 
 
 def render_dataset() -> str:
@@ -96,7 +174,13 @@ def render_additional_datasets() -> str:
     for generation, game, source_path, names_var, chart_var in definitions:
         source = source_path.read_text(encoding="utf-8")
         types, matchups = parse_type_chart(source, source, names_var, chart_var)
-        datasets.append({
+        species_names_path, species_names_var, species_types_path, species_types_var = SPECIES_SOURCES[game]
+        species_names_path = HACK_CHARTS / species_names_path
+        species_types_path = HACK_CHARTS / species_types_path
+        names_source = species_names_path.read_text(encoding="utf-8")
+        species_types_source = species_types_path.read_text(encoding="utf-8")
+        species = parse_species_reference(names_source, species_names_var, species_types_source, species_types_var, {t["id"] for t in types}, strict_type_ids=False)
+        dataset = {
             "dataset_id": f"pokemon-gen{generation}-{game}-type-chart",
             "generation": generation,
             "reference_game": {
@@ -120,7 +204,12 @@ def render_additional_datasets() -> str:
             "default_percent": 100,
             "types": types,
             "matchups": matchups,
-        })
+            "species_count": len(species),
+            "species": species,
+            "species_source_files": [species_names_path.relative_to(ROOT).as_posix(), species_types_path.relative_to(ROOT).as_posix()],
+            "species_source_sha256": hashlib.sha256((names_source + "\0" + species_types_source).encode("utf-8")).hexdigest(),
+        }
+        datasets.append(dataset)
     return json.dumps({"schema_version": 1, "datasets": datasets}, ensure_ascii=False, indent=2) + "\n"
 
 

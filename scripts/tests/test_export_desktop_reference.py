@@ -59,6 +59,10 @@ class ExportDesktopReferenceTests(unittest.TestCase):
         self.assertEqual((rowe["generation"], rowe["reference_game"]), (6, "Pokémon R.O.W.E. v2.1.9.1 Experimental"))
         self.assertIn({"id": 18, "name": "Fairy"}, rowe["types"])
         self.assertIn({"attack": 18, "defense": 1, "percent": 200}, rowe["matchups"])
+        pikachu = next(species for species in rowe["species"] if species["number"] == 25)
+        self.assertEqual(pikachu, {"number": 25, "name": "Pikachu", "types": [13]})
+        self.assertEqual(rowe["species_count"], len(rowe["species"]))
+        self.assertEqual(len(rowe["species_source_sha256"]), 64)
         self.assertEqual(len(by_id), 13)
         profiles = [(1, "yellow-legacy"), (6, "wishes"), (6, "team-rocket"), (6, "soul-gold"),
                     (6, "rogue"), (6, "quetzal"), (6, "lazarus"), (6, "imperium"), (6, "hns")]
@@ -67,6 +71,31 @@ class ExportDesktopReferenceTests(unittest.TestCase):
             self.assertEqual(len(dataset["source_sha256"]), 64)
             self.assertEqual(dataset["license"], "GPL-3.0-only")
             self.assertTrue(dataset["reference_game"])
+
+    def test_joins_game_species_names_to_source_types_and_rejects_unknown_types(self):
+        entries = MODULE.parse_species_reference(
+            'val speciesNamesRowe = mapOf(25 to "Pikachu", 26 to "Raichu")',
+            "speciesNamesRowe",
+            "val speciesTypeDataRowe = mapOf(25 to SpeciesTypes(13, 13), 26 to SpeciesTypes(13, 13))",
+            "speciesTypeDataRowe",
+            {1, 13},
+        )
+        self.assertEqual(entries, [
+            {"number": 25, "name": "Pikachu", "types": [13]},
+            {"number": 26, "name": "Raichu", "types": [13]},
+        ])
+        with self.assertRaises(ValueError):
+            MODULE.parse_species_reference(
+                'val names = mapOf(1 to "Bulbasaur")', "names",
+                "val types = mapOf(1 to SpeciesTypes(99, 99))", "types", {12, 3},
+            )
+        self.assertEqual(
+            MODULE.parse_species_reference(
+                'val names = mapOf(1 to "Form")', "names",
+                "val types = mapOf(1 to SpeciesTypes(99, 99))", "types", {12, 3}, strict_type_ids=False,
+            ),
+            [{"number": 1, "name": "Form", "types": []}],
+        )
 
 
 if __name__ == "__main__":
