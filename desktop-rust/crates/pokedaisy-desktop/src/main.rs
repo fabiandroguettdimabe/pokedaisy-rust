@@ -636,11 +636,23 @@ fn sdl_main() -> Result<(), String> {
     let mut companion_paused = false;
     let mut audio_resampler = timing::StereoResampler::new();
     let mut audio_queue_diagnostics = timing::AudioQueueDiagnostics::default();
+    #[cfg(windows)]
+    let mut _player_writer_lock = None;
     if let Some(path) = rom_arg {
         if let Some(index) = games.iter().position(|g| g.path == path) {
             selected = index;
         } else {
             games.insert(0, game_from_path(path));
+        }
+        #[cfg(windows)]
+        if args.iter().any(|arg| arg == "--emulator") {
+            let game = games
+                .get(selected)
+                .ok_or("No se encontró la partida para adquirir su bloqueo")?;
+            let game_id = game_storage_key(game);
+            _player_writer_lock = Some(crate::shell::PlayerSaveLock::acquire_player_writer(
+                &save_dir, &state_dir, &game_id,
+            )?);
         }
         if let Some(game) = games.get(selected) {
             match open_game(game, &games, &save_dir, &system_dir, &config) {

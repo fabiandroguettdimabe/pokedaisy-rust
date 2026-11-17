@@ -988,6 +988,7 @@ pub fn run() -> Result<(), String> {
                             fs::create_dir_all(&config.saves).map_err(|error| format!("No se pudo preparar la carpeta de guardados: {error}"))?;
                             fs::create_dir_all(&config.states).map_err(|error| format!("No se pudo preparar la carpeta de estados: {error}"))?;
                             let save_lock = PlayerSaveLock::acquire(&config.saves, &config.states, &game_id)?;
+                            PlayerSaveLock::check_player_writer_available(&config.saves, &config.states, &game_id)?;
                             if library::mark_played(&mut imported, &game_id, now_unix()) {
                                 library::save(&index_path, &imported)?;
                             }
@@ -1441,7 +1442,7 @@ fn reload_external_settings(
 
 struct SettingsMutex(*mut c_void);
 
-struct PlayerSaveLock(Vec<*mut c_void>);
+pub(crate) struct PlayerSaveLock(Vec<*mut c_void>);
 
 #[link(name = "kernel32")]
 unsafe extern "system" {
@@ -1483,13 +1484,39 @@ impl Drop for SettingsMutex {
 
 impl PlayerSaveLock {
     fn acquire(saves: &Path, states: &Path, game_id: &str) -> Result<Self, String> {
+        Self::acquire_for_role(saves, states, game_id, "launcher")
+    }
+
+    pub(crate) fn acquire_player_writer(
+        saves: &Path,
+        states: &Path,
+        game_id: &str,
+    ) -> Result<Self, String> {
+        Self::acquire_for_role(saves, states, game_id, "writer")
+    }
+
+    fn check_player_writer_available(
+        saves: &Path,
+        states: &Path,
+        game_id: &str,
+    ) -> Result<(), String> {
+        drop(Self::acquire_player_writer(saves, states, game_id)?);
+        Ok(())
+    }
+
+    fn acquire_for_role(
+        saves: &Path,
+        states: &Path,
+        game_id: &str,
+        role: &str,
+    ) -> Result<Self, String> {
         let saves = fs::canonicalize(saves)
             .map_err(|error| format!("No se pudo resolver la carpeta de guardados: {error}"))?;
         let states = fs::canonicalize(states)
             .map_err(|error| format!("No se pudo resolver la carpeta de estados: {error}"))?;
         let mut names = [
             format!(
-                "Local\\VyntraPlayerSave-v1-{}",
+                "Local\\VyntraPlayerSave-{role}-v1-{}",
                 crate::identity::sha256_bytes(
                     format!(
                         "battery|{}|{game_id}",
@@ -1499,7 +1526,7 @@ impl PlayerSaveLock {
                 )
             ),
             format!(
-                "Local\\VyntraPlayerSave-v1-{}",
+                "Local\\VyntraPlayerSave-{role}-v1-{}",
                 crate::identity::sha256_bytes(
                     format!(
                         "state|{}|{game_id}",
@@ -2430,13 +2457,23 @@ mod tests {
         const SAVES_ENV: &str = "VYNTRA_PLAYER_SAVE_LOCK_TEST_SAVES";
         const STATES_ENV: &str = "VYNTRA_PLAYER_SAVE_LOCK_TEST_STATES";
         const RESULT_ENV: &str = "VYNTRA_PLAYER_SAVE_LOCK_TEST_RESULT";
+        const ROLE_ENV: &str = "VYNTRA_PLAYER_SAVE_LOCK_TEST_ROLE";
         if let (Some(saves), Some(states), Some(result)) = (
             env::var_os(SAVES_ENV),
             env::var_os(STATES_ENV),
             env::var_os(RESULT_ENV),
         ) {
-            let acquired =
-                PlayerSaveLock::acquire(Path::new(&saves), Path::new(&states), "same-game").is_ok();
+            let writer = env::var_os(ROLE_ENV).is_some_and(|role| role == "writer");
+            let lock = if writer {
+                PlayerSaveLock::acquire_player_writer(
+                    Path::new(&saves),
+                    Path::new(&states),
+                    "same-game",
+                )
+            } else {
+                PlayerSaveLock::acquire(Path::new(&saves), Path::new(&states), "same-game")
+            };
+            let acquired = lock.is_ok();
             fs::write(
                 result,
                 if acquired {
@@ -2446,6 +2483,9 @@ mod tests {
                 },
             )
             .unwrap();
+            if writer && acquired {
+                std::thread::sleep(std::time::Duration::from_millis(500));
+            }
             return;
         }
 
@@ -2461,6 +2501,9 @@ mod tests {
         fs::create_dir_all(&other_saves).unwrap();
         fs::create_dir_all(&other_states).unwrap();
         let lock = PlayerSaveLock::acquire(&saves, &states, "same-game").unwrap();
+        assert!(
+            PlayerSaveLock::check_player_writer_available(&saves, &states, "same-game").is_ok()
+        );
         let other_game = PlayerSaveLock::acquire(&saves, &states, "other-game");
         assert!(
             other_game.is_ok(),
@@ -2496,6 +2539,35 @@ mod tests {
             assert_eq!(fs::read(&result).unwrap(), b"busy");
             assert!(child.wait().unwrap().success());
         }
+
+        let writer_result = root.join("writer-result.txt");
+        let mut writer = std::process::Command::new(env::current_exe().unwrap())
+            .arg("--exact")
+            .arg("shell::tests::player_save_lock_blocks_a_second_process_for_the_same_game_only")
+            .env(SAVES_ENV, &saves)
+            .env(STATES_ENV, &states)
+            .env(RESULT_ENV, &writer_result)
+            .env(ROLE_ENV, "writer")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while !writer_result.exists() && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        assert!(
+            writer_result.exists(),
+            "writer child did not report its lock result"
+        );
+        assert_eq!(fs::read(&writer_result).unwrap(), b"acquired");
+        assert!(
+            PlayerSaveLock::check_player_writer_available(&saves, &states, "same-game").is_err()
+        );
+        assert!(writer.wait().unwrap().success());
+        assert!(
+            PlayerSaveLock::check_player_writer_available(&saves, &states, "same-game").is_ok()
+        );
         drop(lock);
         let _ = fs::remove_dir_all(root);
     }
