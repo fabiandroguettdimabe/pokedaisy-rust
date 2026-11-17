@@ -26,6 +26,7 @@ $listener.Stop()
 $cdpUrl = "http://127.0.0.1:$port"
 $clickScript = Join-Path $data "click-play.mjs"
 $companionScript = Join-Path $data "companion-commands.mjs"
+$secondLauncherScript = Join-Path $data "second-launcher-play.mjs"
 $moduleUrl = ([Uri]::new($playwrightModule)).AbsoluteUri
 @"
 import { chromium } from '$moduleUrl';
@@ -65,6 +66,17 @@ await session.getByRole('button', { name: 'Detener partida' }).click();
 console.log('companion-pause-save-load-stop-passed');
 process.exit(0);
 "@ | Set-Content -LiteralPath $companionScript -Encoding utf8
+@"
+import { chromium } from '$moduleUrl';
+const browser = await chromium.connectOverCDP(process.env.VYNTRA_E2E_CDP_URL);
+const launcher = browser.contexts().flatMap(context => context.pages())[0];
+if (!launcher) throw new Error('Second Launcher WebView2 page is missing');
+await launcher.getByRole('heading', { name: 'PD INPUT GBA' }).waitFor({ timeout: 15000 });
+await launcher.getByRole('button', { name: 'Jugar', exact: true }).click();
+await launcher.getByRole('alert').filter({ hasText: 'Este juego ya está abierto en otra instancia de Vyntra' }).waitFor({ timeout: 5000 });
+console.log('second-launcher-save-lock-rejected-play');
+process.exit(0);
+"@ | Set-Content -LiteralPath $secondLauncherScript -Encoding utf8
 
 if (-not ("VyntraLauncherPlayerSmoke" -as [type])) {
   Add-Type -TypeDefinition @'
@@ -85,6 +97,48 @@ function Invoke-CompanionCommands {
   $env:VYNTRA_E2E_CDP_URL = $cdpUrl
   & $Node $companionScript
   if ($LASTEXITCODE -ne 0) { throw "Companion commands did not complete successfully" }
+}
+function Invoke-SecondLauncherLockCheck {
+  $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 0)
+  $listener.Start()
+  $secondPort = ([Net.IPEndPoint]$listener.LocalEndpoint).Port
+  $listener.Stop()
+  $secondCdpUrl = "http://127.0.0.1:$secondPort"
+  $secondStart = [Diagnostics.ProcessStartInfo]::new($playerExePath)
+  $secondStart.UseShellExecute = $false
+  $secondStart.ArgumentList.Add("--data")
+  $secondStart.ArgumentList.Add($data)
+  $secondStart.Environment["VYNTRA_CORE_DIR"] = $coreDirPath
+  $secondStart.Environment["WEBVIEW2_USER_DATA_FOLDER"] = Join-Path $data "webview-second-launcher"
+  $secondStart.Environment["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = "--remote-debugging-port=$secondPort"
+  $secondLauncher = [Diagnostics.Process]::Start($secondStart)
+  try {
+    $targets = $null
+    for ($attempt = 0; $attempt -lt 120; $attempt++) {
+      $secondLauncher.Refresh()
+      if ($secondLauncher.HasExited) { throw "Second Launcher exited before WebView2 started" }
+      try {
+        $targets = Invoke-RestMethod -Uri "$secondCdpUrl/json/list" -TimeoutSec 1
+        if ($targets | Where-Object { $_.type -eq "page" }) { break }
+      } catch { }
+      Start-Sleep -Milliseconds 250
+    }
+    if (-not ($targets | Where-Object { $_.type -eq "page" })) { throw "Second Launcher CDP endpoint did not become ready" }
+    $env:VYNTRA_E2E_CDP_URL = $secondCdpUrl
+    & $Node $secondLauncherScript
+    if ($LASTEXITCODE -ne 0) { throw "Second Launcher did not reject Play for the locked save" }
+    $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $($secondLauncher.Id)" |
+      Where-Object { $_.Name -eq "vyntra-desktop.exe" -and $_.CommandLine -like "*--emulator*" })
+    if ($children.Count -ne 0) { throw "Second Launcher created a Player despite the active save lock" }
+  }
+  finally {
+    if (-not $secondLauncher.HasExited) {
+      [void]$secondLauncher.CloseMainWindow()
+      if (-not $secondLauncher.WaitForExit(5000)) { $secondLauncher.Kill() }
+    }
+    $secondLauncher.Dispose()
+    $env:VYNTRA_E2E_CDP_URL = $cdpUrl
+  }
 }
 function Wait-PlayerChild([int]$ParentId) {
   for ($attempt = 0; $attempt -lt 120; $attempt++) {
@@ -144,6 +198,7 @@ try {
   Start-Sleep -Milliseconds 400
   [void][VyntraLauncherPlayerSmoke]::SendMessage($playerProcess.MainWindowHandle, 0x0101, [IntPtr]0x5A, [IntPtr]0xC02C0001)
   Start-Sleep -Milliseconds 400
+  Invoke-SecondLauncherLockCheck
   Invoke-CompanionCommands
   $activePlayers = @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $($launcherProcess.Id)" |
     Where-Object { $_.Name -eq "vyntra-desktop.exe" -and $_.CommandLine -like "*--emulator*" })
