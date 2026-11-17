@@ -49,6 +49,10 @@ fn synthetic_core_runs_video_audio_and_runtime_av_through_libretro_api() {
     )
     .unwrap();
     let initial = core.load_game(&rom).unwrap();
+    let core_info = core.system_info();
+    assert_eq!(core_info.library_name.as_deref(), Some("Vyntra AV Fixture"));
+    assert_eq!(core_info.library_version.as_deref(), Some("1.0"));
+    assert!(!core.supports_save_states());
     assert_eq!(initial.geometry.base_width, 2);
     assert_eq!(initial.geometry.base_height, 1);
     assert_eq!(initial.fps, 60.0);

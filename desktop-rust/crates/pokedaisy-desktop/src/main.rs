@@ -1296,11 +1296,25 @@ fn sdl_main() -> Result<(), String> {
         #[cfg(target_os = "windows")]
         if last_pipe_snapshot.elapsed() >= Duration::from_millis(500) {
             if let Some(pipe) = player_pipe.as_mut() {
+                let core_info = core.as_ref().map(|core| core.system_info());
+                let supports_save_states = core
+                    .as_ref()
+                    .is_some_and(LibretroCore::supports_save_states);
                 let snapshot = serde_json::json!({
                     "title": active_game.as_ref().map(|game| game.title.as_str()),
                     "system": active_game.as_ref().map(|game| game.system),
                     "screen": if matches!(screen, Screen::Playing) { "playing" } else { "menu" },
                     "paused": companion_paused,
+                    "core": {
+                        "name": core_info.as_ref().and_then(|info| info.library_name.as_deref()),
+                        "version": core_info.as_ref().and_then(|info| info.library_version.as_deref()),
+                    },
+                    "capabilities": {
+                        "pause": core.is_some(),
+                        "stop": core.is_some(),
+                        "save_state": supports_save_states,
+                        "load_state": supports_save_states,
+                    },
                     "audio": {
                         "depth_ms": audio_queue_diagnostics.snapshot().depth_ms,
                         "high_water_ms": audio_queue_diagnostics.snapshot().high_water_ms,

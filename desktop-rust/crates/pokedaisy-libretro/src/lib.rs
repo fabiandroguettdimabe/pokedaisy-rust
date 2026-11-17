@@ -780,6 +780,11 @@ impl LibretroCore {
         Ok(state)
     }
 
+    pub fn supports_save_states(&self) -> bool {
+        let size = unsafe { (self.api.serialize_size)() };
+        size > 0 && size <= MAX_FRAME_BYTES
+    }
+
     pub fn unserialize(&mut self, bytes: &[u8]) -> Result<(), CoreError> {
         if self.loaded_rom.is_none() {
             return Err(CoreError::NoGameLoaded);

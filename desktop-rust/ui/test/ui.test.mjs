@@ -95,10 +95,13 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.evaluate(()=>window.vyntraImportDone({imported:0,duplicates:0,rejected:0,cancelled:true}));
   assert.equal(await page.getByText('Importación cancelada · Importadas: 0 · duplicadas: 0 · rechazadas: 0').isVisible(),true);
   await page.getByRole('button',{name:'Cerrar aviso'}).click();
-  await page.evaluate(()=>{window.testState={...window.testState,session:{session_id:'test-session',epoch:2},command_revision:7};window.vyntraState(window.testState);window.vyntraPlayerSnapshot({title:'Synthetic GBA fixture',system:'GBA',screen:'playing',paused:false,audio:{depth_ms:42,high_water_ms:100,empty_episodes:2,dropped_frames:12}});});
+  await page.evaluate(()=>{window.testState={...window.testState,session:{session_id:'test-session',epoch:2},command_revision:7};window.vyntraState(window.testState);window.vyntraPlayerSnapshot({title:'Synthetic GBA fixture',system:'GBA',screen:'playing',paused:false,core:{name:'Synthetic Core',version:'1.0'},capabilities:{pause:true,stop:true,save_state:false,load_state:false},audio:{depth_ms:42,high_water_ms:100,empty_episodes:2,dropped_frames:12}});});
   const audioMetrics=page.locator('[role="status"]').filter({hasText:'Audio'});
   await audioMetrics.waitFor();
   await page.setViewportSize({width:1440,height:900});
+  assert.ok((await audioMetrics.textContent()).includes('Synthetic Core 1.0'));
+  assert.equal(await page.getByRole('button',{name:'Guardar estado',exact:true}).isDisabled(),true);
+  assert.equal(await page.getByRole('button',{name:'Cargar estado',exact:true}).isDisabled(),true);
   await page.screenshot({path:resolve('../../.taste-skill/companion/companion-desktop.png'),fullPage:true});
   await page.setViewportSize({width:390,height:840});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
@@ -108,6 +111,8 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
   const audioMetricsText=await audioMetrics.textContent();
   for(const metric of ['cola 42 ms','máximo 100 ms','episodios vacíos 2','descartes 12 frames'])assert.ok(audioMetricsText.includes(metric),`missing ${metric} in ${audioMetricsText}`);
+  await page.evaluate(()=>window.vyntraPlayerSnapshot({title:'Synthetic GBA fixture',system:'GBA',screen:'playing',paused:false,core:{name:'Synthetic Core',version:'1.0'},capabilities:{pause:true,stop:true,save_state:true,load_state:true},audio:{depth_ms:42,high_water_ms:100,empty_episodes:2,dropped_frames:12}}));
+  assert.equal(await page.getByRole('button',{name:'Guardar estado',exact:true}).isEnabled(),true);
   await page.getByRole('button',{name:'Pausar',exact:true}).click();
   await expectCommand('pause_player',{value:true},{session_id:'test-session',epoch:2,expected_revision:7});
   await page.getByRole('button',{name:'Guardar estado',exact:true}).click();
