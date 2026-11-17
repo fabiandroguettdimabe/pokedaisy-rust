@@ -208,7 +208,37 @@ pub fn run() -> Result<(), String> {
                                 let mut summary = crate::import::ImportSummary::default();
                                 for path in paths {
                                     let result = if path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("zip")) {
-                                        crate::import::import_archive(&mut imported, &path, &data.join("import-cache"), crate::import::ArchivePolicy::default())
+                                        let policy = crate::import::ArchivePolicy::default();
+                                        match crate::import::archive_rom_members(&path, policy) {
+                                            Ok(candidates) => {
+                                                let mut selected = Vec::new();
+                                                let mut cancelled = false;
+                                                for member in candidates.iter() {
+                                                    if candidates.len() == 1 {
+                                                        selected.push(member.clone());
+                                                    } else {
+                                                        match rfd::MessageDialog::new()
+                                                            .set_parent(&window)
+                                                            .set_title("Seleccionar ROM del ZIP")
+                                                            .set_description(format!("¿Importar {}?", member))
+                                                            .set_buttons(rfd::MessageButtons::YesNoCancel)
+                                                            .show()
+                                                        {
+                                                            rfd::MessageDialogResult::Yes => selected.push(member.clone()),
+                                                            rfd::MessageDialogResult::Cancel => { cancelled = true; break; },
+                                                            _ => {},
+                                                        }
+                                                    }
+                                                }
+                                                if cancelled { selected.clear(); }
+                                                crate::import::import_archive_members(&mut imported, &path, &data.join("import-cache"), policy, &selected)
+                                            }
+                                            Err(_) => {
+                                                let mut rejected = crate::import::ImportSummary::default();
+                                                rejected.rejected = 1;
+                                                rejected
+                                            }
+                                        }
                                     } else {
                                         crate::import::import_paths(&mut imported, [path])
                                     };

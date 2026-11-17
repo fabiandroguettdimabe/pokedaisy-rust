@@ -42,6 +42,72 @@ pub fn import_archive(
     library_dir: &Path,
     policy: ArchivePolicy,
 ) -> ImportSummary {
+    import_archive_selected(entries, archive_path, library_dir, policy, None)
+}
+
+pub fn import_archive_members(
+    entries: &mut Vec<LibraryEntry>,
+    archive_path: &Path,
+    library_dir: &Path,
+    policy: ArchivePolicy,
+    selected: &[String],
+) -> ImportSummary {
+    import_archive_selected(entries, archive_path, library_dir, policy, Some(selected))
+}
+
+pub fn archive_rom_members(
+    archive_path: &Path,
+    policy: ArchivePolicy,
+) -> Result<Vec<String>, String> {
+    let metadata = fs::metadata(archive_path).map_err(|error| error.to_string())?;
+    if metadata.len() > MAX_ARCHIVE_BYTES {
+        return Err("El archivo ZIP supera el límite comprimido".into());
+    }
+    let file = fs::File::open(archive_path).map_err(|error| error.to_string())?;
+    let mut archive = ZipArchive::new(file).map_err(|error| error.to_string())?;
+    if archive.len() > policy.max_entries {
+        return Err("El ZIP contiene demasiadas entradas".into());
+    }
+    let mut total = 0u64;
+    let mut members = Vec::new();
+    for index in 0..archive.len() {
+        let member = archive.by_index(index).map_err(|error| error.to_string())?;
+        if member.is_dir() {
+            continue;
+        }
+        let path = member
+            .enclosed_name()
+            .ok_or("El ZIP contiene una ruta no permitida")?;
+        let is_rom = path
+            .extension()
+            .and_then(|value| value.to_str())
+            .is_some_and(|ext| {
+                matches!(
+                    ext.to_ascii_lowercase().as_str(),
+                    "gb" | "gbc" | "gba" | "nds"
+                )
+            });
+        if is_rom {
+            if member.size() > policy.max_entry_bytes {
+                return Err("Una ROM del ZIP supera el límite por archivo".into());
+            }
+            total = total.saturating_add(member.size());
+            if total > policy.max_total_bytes {
+                return Err("Las ROMs del ZIP superan la cuota total".into());
+            }
+            members.push(member.name().to_owned());
+        }
+    }
+    Ok(members)
+}
+
+fn import_archive_selected(
+    entries: &mut Vec<LibraryEntry>,
+    archive_path: &Path,
+    library_dir: &Path,
+    policy: ArchivePolicy,
+    selected: Option<&[String]>,
+) -> ImportSummary {
     let mut summary = ImportSummary::default();
     let Ok(metadata) = fs::metadata(archive_path) else {
         summary.rejected = 1;
@@ -85,6 +151,9 @@ pub fn import_archive(
                     "gb" | "gbc" | "gba" | "nds"
                 )
             });
+        if is_rom && selected.is_some_and(|names| !names.iter().any(|name| name == member.name())) {
+            continue;
+        }
         if is_rom {
             if member.size() > policy.max_entry_bytes {
                 summary.rejected = 1;
@@ -118,6 +187,9 @@ pub fn import_archive(
             summary.rejected += 1;
             continue;
         };
+        if selected.is_some_and(|names| !names.iter().any(|name| name == member.name())) {
+            continue;
+        }
         if member.size() > policy.max_entry_bytes {
             summary.rejected += 1;
             continue;
@@ -274,7 +346,10 @@ fn import_paths_with_limit(
 
 #[cfg(test)]
 mod tests {
-    use super::{ArchivePolicy, import_archive, import_paths, import_paths_with_limit};
+    use super::{
+        ArchivePolicy, archive_rom_members, import_archive, import_archive_members, import_paths,
+        import_paths_with_limit,
+    };
     use crate::library::LibraryEntry;
     use std::fs;
     use std::io::Write;
@@ -374,6 +449,42 @@ mod tests {
                 .starts_with(root.join("library").canonicalize().unwrap())
         );
         assert_eq!(fs::read(&entries[0].path).unwrap(), valid_gba());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn archive_candidate_selection_imports_only_the_chosen_member() {
+        let root = std::env::temp_dir().join(format!("vyntra-zip-choice-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let archive_path = root.join("games.zip");
+        let file = fs::File::create(&archive_path).unwrap();
+        let mut writer = zip::ZipWriter::new(file);
+        writer
+            .start_file("A/Pokemon.gba", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(&valid_gba()).unwrap();
+        let mut other = valid_gba();
+        other[0xa0] = b'B';
+        writer
+            .start_file("B/Pokemon.gba", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(&other).unwrap();
+        writer.finish().unwrap();
+        let members = archive_rom_members(&archive_path, ArchivePolicy::default()).unwrap();
+        assert_eq!(members, vec!["A/Pokemon.gba", "B/Pokemon.gba"]);
+        let selected = vec![members[1].clone()];
+
+        let summary = import_archive_members(
+            &mut Vec::new(),
+            &archive_path,
+            &root.join("library"),
+            ArchivePolicy::default(),
+            &selected,
+        );
+
+        assert_eq!(summary.imported, 1);
+        assert_eq!(fs::read_dir(root.join("library")).unwrap().count(), 1);
         let _ = fs::remove_dir_all(root);
     }
 
