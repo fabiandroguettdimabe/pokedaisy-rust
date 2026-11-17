@@ -41,6 +41,9 @@ EXPORT void retro_set_audio_sample_batch(retro_audio_sample_batch_t callback) { 
 EXPORT void retro_set_input_poll(retro_input_poll_t callback) { (void)callback; }
 EXPORT void retro_set_input_state(retro_input_state_t callback) { (void)callback; }
 EXPORT void retro_init(void) {
+#ifdef PROBE_HANG
+    for (;;) {}
+#endif
 #ifdef PROBE_CRASH
     abort();
 #endif

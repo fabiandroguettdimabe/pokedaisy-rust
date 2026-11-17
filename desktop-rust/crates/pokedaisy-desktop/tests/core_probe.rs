@@ -1,4 +1,14 @@
 #[cfg(windows)]
+#[path = "../src/identity.rs"]
+mod identity;
+#[cfg(windows)]
+#[path = "../src/probe.rs"]
+mod probe;
+#[cfg(windows)]
+#[path = "../src/probe_pe.rs"]
+mod probe_pe;
+
+#[cfg(windows)]
 #[test]
 fn core_probe_child_reports_loadable_fixture_and_system_mismatch() {
     use std::process::Command;
@@ -125,5 +135,29 @@ fn core_probe_child_reports_loadable_fixture_and_system_mismatch() {
         .output()
         .unwrap();
     assert!(!output.status.success());
+
+    let hang_dll = root.join("vyntra-hang-fixture.dll");
+    let hang_build = Command::new(compiler)
+        .arg("-shared")
+        .arg("-O2")
+        .arg("-DPROBE_HANG")
+        .arg("-o")
+        .arg(&hang_dll)
+        .arg(&source)
+        .output()
+        .unwrap();
+    assert!(
+        hang_build.status.success(),
+        "{}",
+        String::from_utf8_lossy(&hang_build.stderr)
+    );
+    let error = probe::probe_child(
+        std::path::Path::new(launcher),
+        &hang_dll,
+        "GBA",
+        std::time::Duration::from_millis(500),
+    )
+    .unwrap_err();
+    assert!(error.contains("límite de diagnóstico"));
     let _ = std::fs::remove_dir_all(root);
 }
