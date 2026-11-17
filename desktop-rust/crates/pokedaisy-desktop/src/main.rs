@@ -2848,6 +2848,20 @@ mod tests {
         assert!(!error.contains("cores"));
     }
 
+    fn exercise_real_core_frame_and_state(core: &mut super::LibretroCore) {
+        let first = core.run_frame(super::JoypadState::default()).unwrap();
+        assert!(first.video.as_ref().is_some_and(|frame| {
+            frame.width > 0 && frame.height > 0 && !frame.pixels.is_empty()
+        }));
+        let state = core
+            .serialize()
+            .expect("core must serialize a loaded homebrew game");
+        assert!(!state.is_empty());
+        let _ = core.run_frame(super::JoypadState::default()).unwrap();
+        core.unserialize(&state)
+            .expect("core must restore its serialized homebrew state");
+    }
+
     #[test]
     #[ignore = "smoke manual de ROM homebrew/core local; requiere VYNTRA_CORE_GAME_SMOKE_PATH y VYNTRA_CORE_GAME_SMOKE_ROM"]
     fn configured_core_opens_the_homebrew_gba_diagnostic_rom() {
@@ -2868,9 +2882,11 @@ mod tests {
         let mut config = super::Settings::default();
         config.cores[1] = Some(core_path);
         let game = super::game_from_path(rom_path);
-        let core = super::open_game(&game, std::slice::from_ref(&game), &saves, &system, &config)
-            .expect("mGBA must load the homebrew ROM through the production open_game path");
+        let mut core =
+            super::open_game(&game, std::slice::from_ref(&game), &saves, &system, &config)
+                .expect("mGBA must load the homebrew ROM through the production open_game path");
         assert_eq!(core.system_info().library_name.as_deref(), Some("mGBA"));
+        exercise_real_core_frame_and_state(&mut core);
         drop(core);
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -2904,10 +2920,13 @@ mod tests {
             config.core("DS").unwrap(),
             std::path::PathBuf::from(std::env::var_os("VYNTRA_CORE_GAME_SMOKE_PATH").unwrap())
         );
-        let core = super::open_game(&game, std::slice::from_ref(&game), &saves, &system, &config)
-            .expect("melonDS must load the homebrew NDS ROM through the production open_game path");
+        let mut core =
+            super::open_game(&game, std::slice::from_ref(&game), &saves, &system, &config).expect(
+                "melonDS must load the homebrew NDS ROM through the production open_game path",
+            );
         let info = core.system_info();
         assert!(info.valid_extensions.unwrap_or_default().contains("nds"));
+        exercise_real_core_frame_and_state(&mut core);
         drop(core);
         std::fs::remove_dir_all(root).unwrap();
     }
