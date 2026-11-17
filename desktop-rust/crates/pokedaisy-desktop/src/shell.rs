@@ -131,9 +131,9 @@ pub fn run() -> Result<(), String> {
                         "ready" | "scan" => refresh=true,
                         "import" => {
                             if let Some(paths)=rfd::FileDialog::new().set_title("Importar ROMs a Vyntra").add_filter("ROMs GB / GBC / GBA / DS", &["gb","gbc","gba","nds"]).pick_files() {
-                                for path in paths { if supported(&path) && !imported.iter().any(|e| e.path==path){ imported.push(library::LibraryEntry::from_path(path)); } }
-                                library::save(&index_path, &imported)?;
-                                refresh=true;
+                                let summary = crate::import::import_paths(&mut imported, paths);
+                                if summary.imported > 0 { library::save(&index_path, &imported)?; refresh=true; }
+                                command_result = Some(json!({"import":{"imported":summary.imported,"duplicates":summary.duplicates,"rejected":summary.rejected}}));
                             }
                         },
                         "choose" => {

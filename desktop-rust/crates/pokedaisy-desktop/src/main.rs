@@ -1,5 +1,6 @@
 mod domain;
 mod identity;
+mod import;
 mod inspect;
 mod library;
 mod migration;
