@@ -1657,4 +1657,74 @@ mod tests {
         assert_eq!(fs::read(&state_path).unwrap(), payload);
         let _ = fs::remove_dir_all(root);
     }
+
+    #[test]
+    #[ignore = "smoke manual de restauración Vault con core mGBA local; requiere VYNTRA_CORE_GAME_SMOKE_PATH y VYNTRA_CORE_GAME_SMOKE_ROM"]
+    fn configured_mgba_roundtrips_a_verified_vault_battery_restore() {
+        let core_path = std::path::PathBuf::from(
+            std::env::var_os("VYNTRA_CORE_GAME_SMOKE_PATH")
+                .expect("define VYNTRA_CORE_GAME_SMOKE_PATH"),
+        );
+        let rom_path = std::path::PathBuf::from(
+            std::env::var_os("VYNTRA_CORE_GAME_SMOKE_ROM")
+                .expect("define VYNTRA_CORE_GAME_SMOKE_ROM"),
+        );
+        let root =
+            std::env::temp_dir().join(format!("vyntra-vault-mgba-smoke-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let saves = root.join("saves");
+        let states = root.join("states");
+        let system = root.join("system");
+        fs::create_dir_all(&saves).unwrap();
+        fs::create_dir_all(&states).unwrap();
+        fs::create_dir_all(&system).unwrap();
+
+        let mut config = Settings::default();
+        config.cores[1] = Some(core_path.clone());
+        config.saves = saves.clone();
+        config.states = states;
+        let game = crate::game_from_path(rom_path);
+        let games = std::slice::from_ref(&game);
+        let mut core = crate::open_game(&game, games, &saves, &system, &config)
+            .expect("open_game must start the homebrew ROM in mGBA");
+        let original = core
+            .read_save_ram()
+            .expect("mGBA must expose battery RAM for Vault smoke");
+        assert!(!original.is_empty());
+        let core_hash = identity::sha256_file(&core_path).unwrap();
+        crate::save_battery(&mut core, &game, &saves, Some(&core_hash));
+        drop(core);
+
+        let mut restored = original;
+        restored[0] ^= 0xa5;
+        let manifest = crate::vault::SaveBundleManifest {
+            schema_version: 1,
+            storage_id: crate::game_storage_key(&game),
+            kind: domain::SaveKind::BatteryRam,
+            rom_sha256: identity::sha256_file(&game.path).unwrap(),
+            core_hash,
+            state_format: None,
+            bytes: restored.len() as u64,
+            sha256: identity::sha256_bytes(&restored),
+        };
+        let archive = crate::vault::encode_bundle(&manifest, &restored).unwrap();
+        let (manifest, payload) = crate::vault::decode_bundle(&archive).unwrap();
+        let prepared = prepare_bundle_restore(manifest, payload, games, &config)
+            .expect("Vault must validate the same ROM, core, and battery payload");
+        commit_bundle_restore(prepared, &config)
+            .expect("Vault must commit the backup and restored payload/manifest");
+
+        let restored = crate::load_compatible_battery(&game, &saves, &core_path)
+            .unwrap()
+            .expect("restored Vault battery must validate against the committed manifest");
+        let mut reopened = crate::open_game(&game, games, &saves, &system, &config)
+            .expect("open_game must load the Vault-restored battery into mGBA");
+        assert_eq!(
+            reopened.read_save_ram().unwrap(),
+            restored,
+            "the real core must receive the bytes committed by Vault"
+        );
+        drop(reopened);
+        fs::remove_dir_all(root).unwrap();
+    }
 }
