@@ -55,6 +55,9 @@ pub struct MigrationReport {
 pub fn preview(items: &[MigrationItem]) -> Result<MigrationReport, String> {
     let mut destinations = std::collections::HashMap::<String, (&str, &str, &str)>::new();
     let mut ambiguous = std::collections::HashSet::<String>::new();
+    let mut source_targets =
+        std::collections::HashMap::<String, (String, String, String, String)>::new();
+    let mut ambiguous_sources = std::collections::HashSet::<String>::new();
     for item in items {
         let key = item.destination.to_string_lossy().to_lowercase();
         if let Some((game_id, kind, hash)) = destinations.get(&key) {
@@ -64,6 +67,21 @@ pub fn preview(items: &[MigrationItem]) -> Result<MigrationReport, String> {
         } else {
             destinations.insert(key, (&item.game_id, &item.kind, &item.sha256));
         }
+        let source_key = item.source.to_string_lossy().to_lowercase();
+        let target = (
+            item.destination.to_string_lossy().to_lowercase(),
+            item.game_id.clone(),
+            item.kind.clone(),
+            item.sha256.clone(),
+        );
+        if source_targets
+            .get(&source_key)
+            .is_some_and(|existing| existing != &target)
+        {
+            ambiguous_sources.insert(source_key);
+        } else {
+            source_targets.insert(source_key, target);
+        }
     }
     let mut report = MigrationReport {
         schema: 1,
@@ -71,7 +89,14 @@ pub fn preview(items: &[MigrationItem]) -> Result<MigrationReport, String> {
     };
     for item in items {
         let key = item.destination.to_string_lossy().to_lowercase();
-        if ambiguous.contains(&key) {
+        let source_key = item.source.to_string_lossy().to_lowercase();
+        if ambiguous_sources.contains(&source_key) {
+            report.items.push(PreviewItem {
+                item: item.clone(),
+                status: MigrationStatus::Conflict,
+                reason: Some("El mismo archivo de origen apunta a varios juegos o destinos".into()),
+            });
+        } else if ambiguous.contains(&key) {
             report.items.push(PreviewItem {
                 item: item.clone(),
                 status: MigrationStatus::Conflict,
@@ -245,6 +270,49 @@ mod tests {
         );
         assert_eq!(fs::read(&source).unwrap(), b"save changed after preview");
         assert!(!destination.exists());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn preview_marks_one_legacy_source_for_distinct_games_as_conflict() {
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-migration-shared-source-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("Same.gb.sav");
+        fs::write(&source, b"legacy battery").unwrap();
+        let items = [
+            MigrationItem::new(
+                source.clone(),
+                root.join("by-id/game-a/battery.sav"),
+                "game-a".into(),
+                "battery".into(),
+            ),
+            MigrationItem::new(
+                source,
+                root.join("by-id/game-b/battery.sav"),
+                "game-b".into(),
+                "battery".into(),
+            ),
+        ];
+
+        let report = preview(&items).unwrap();
+
+        assert!(
+            report
+                .items
+                .iter()
+                .all(|item| item.status == MigrationStatus::Conflict)
+        );
+        assert!(report.items.iter().all(|item| {
+            item.reason
+                .as_deref()
+                .is_some_and(|reason| reason.contains("origen"))
+        }));
+        assert!(!root.join("by-id/game-a/battery.sav").exists());
+        assert!(!root.join("by-id/game-b/battery.sav").exists());
         let _ = fs::remove_dir_all(root);
     }
 

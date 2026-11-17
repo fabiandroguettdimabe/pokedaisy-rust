@@ -189,6 +189,42 @@ mod migration_contract_tests {
     }
 
     #[test]
+    fn legacy_sram_is_not_assigned_to_homonymous_different_roms() {
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-legacy-sram-ambiguity-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        let first_path = root.join("first/Same.gb");
+        let second_path = root.join("second/Same.gb");
+        std::fs::create_dir_all(first_path.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(second_path.parent().unwrap()).unwrap();
+        std::fs::write(&first_path, b"first ROM content").unwrap();
+        std::fs::write(&second_path, b"second ROM content").unwrap();
+        let first = super::game_from_path(first_path.clone());
+        let second = super::game_from_path(second_path);
+
+        assert!(super::legacy_battery_is_unambiguous(
+            &first,
+            std::slice::from_ref(&first)
+        ));
+        assert!(!super::legacy_battery_is_unambiguous(
+            &first,
+            &[first.clone(), second]
+        ));
+        let identical_path = root.join("backup/Same.gb");
+        std::fs::create_dir_all(identical_path.parent().unwrap()).unwrap();
+        std::fs::write(&identical_path, b"first ROM content").unwrap();
+        let identical = super::game_from_path(identical_path);
+        assert!(super::legacy_battery_is_unambiguous(
+            &first,
+            &[first.clone(), identical]
+        ));
+
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn migration_preview_marks_homonymous_destinations_as_conflicts() {
         let root = std::env::temp_dir().join(format!("vyntra-conflict-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
@@ -556,7 +592,7 @@ fn sdl_main() -> Result<(), String> {
             games.insert(0, game_from_path(path));
         }
         if let Some(game) = games.get(selected) {
-            match open_game(game, &save_dir, &system_dir, &config) {
+            match open_game(game, &games, &save_dir, &system_dir, &config) {
                 Ok(c) => {
                     core = Some(c);
                     active_game = Some(game.clone());
@@ -722,7 +758,7 @@ fn sdl_main() -> Result<(), String> {
                     }
                     if x >= right && x < w as i32 - 24 && (360..404).contains(&y) {
                         if let Some(game) = games.get(selected).cloned() {
-                            match open_game(&game, &save_dir, &system_dir, &config) {
+                            match open_game(&game, &games, &save_dir, &system_dir, &config) {
                                 Ok(c) => {
                                     core = Some(c);
                                     active_game = Some(game.clone());
@@ -749,7 +785,8 @@ fn sdl_main() -> Result<(), String> {
                             }
                             if clicks >= 1 {
                                 if let Some(game) = games.get(selected).cloned() {
-                                    match open_game(&game, &save_dir, &system_dir, &config) {
+                                    match open_game(&game, &games, &save_dir, &system_dir, &config)
+                                    {
                                         Ok(c) => {
                                             core = Some(c);
                                             active_game = Some(game.clone());
@@ -770,7 +807,8 @@ fn sdl_main() -> Result<(), String> {
                             selected = index;
                             if clicks >= 2 {
                                 if let Some(game) = games.get(selected).cloned() {
-                                    match open_game(&game, &save_dir, &system_dir, &config) {
+                                    match open_game(&game, &games, &save_dir, &system_dir, &config)
+                                    {
                                         Ok(c) => {
                                             core = Some(c);
                                             screen = Screen::Playing;
@@ -841,7 +879,7 @@ fn sdl_main() -> Result<(), String> {
                         Keycode::Up | Keycode::K => selected = selected.saturating_sub(1),
                         Keycode::Return | Keycode::Space => {
                             if let Some(game) = games.get(selected).cloned() {
-                                match open_game(&game, &save_dir, &system_dir, &config) {
+                                match open_game(&game, &games, &save_dir, &system_dir, &config) {
                                     Ok(c) => {
                                         core = Some(c);
                                         active_game = Some(game.clone());
@@ -878,7 +916,7 @@ fn sdl_main() -> Result<(), String> {
                         Keycode::Escape | Keycode::G | Keycode::Home => screen = Screen::Library,
                         Keycode::Return | Keycode::Space => {
                             if let Some(game) = games.get(selected).cloned() {
-                                match open_game(&game, &save_dir, &system_dir, &config) {
+                                match open_game(&game, &games, &save_dir, &system_dir, &config) {
                                     Ok(c) => {
                                         core = Some(c);
                                         screen = Screen::Playing;
@@ -1354,6 +1392,7 @@ fn atomic_write_with(
 
 fn open_game(
     game: &Game,
+    games: &[Game],
     saves: &Path,
     system: &Path,
     config: &Settings,
@@ -1384,7 +1423,18 @@ fn open_game(
             }
         }
     } else {
-        fs::read(legacy_battery_path(game, saves)).ok()
+        let legacy_path = legacy_battery_path(game, saves);
+        if legacy_path.is_file() && legacy_battery_is_unambiguous(game, games) {
+            fs::read(legacy_path).ok()
+        } else {
+            if legacy_path.is_file() {
+                eprintln!(
+                    "Se omitió SRAM legacy ambigua para {}",
+                    safe_log_file_name(&game.path)
+                );
+            }
+            None
+        }
     };
     if let Some(bytes) = save_bytes {
         if let Err(error) = core.write_save_ram(&bytes) {
@@ -1395,6 +1445,22 @@ fn open_game(
         }
     }
     Ok(core)
+}
+
+fn legacy_battery_is_unambiguous(game: &Game, games: &[Game]) -> bool {
+    let Some(file_name) = game.path.file_name() else {
+        return false;
+    };
+    let Ok(game_hash) = identity::sha256_file(&game.path) else {
+        return false;
+    };
+    games
+        .iter()
+        .filter(|candidate| candidate.path.file_name() == Some(file_name))
+        .all(|candidate| {
+            identity::sha256_file(&candidate.path)
+                .is_ok_and(|candidate_hash| candidate_hash == game_hash)
+        })
 }
 
 fn load_compatible_battery(
