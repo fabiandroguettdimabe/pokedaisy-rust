@@ -228,6 +228,7 @@ pub fn run() -> Result<(), String> {
     let mut player_commands: Option<crate::transport::PlayerCommandSender> = None;
     let mut player_cancellation: Option<crate::player_pipe::PipeCancellation> = None;
     let mut player_authenticated = false;
+    let mut player_save_lock: Option<PlayerSaveLock> = None;
     let mut player_command_generation = 0u64;
     let mut import_generation = 0u64;
     let mut active_import: Option<Arc<AtomicBool>> = None;
@@ -459,6 +460,7 @@ pub fn run() -> Result<(), String> {
                             }
                             player_authenticated = false;
                             if exit_status.is_some() {
+                                player_save_lock = None;
                                 if let Some(cancellation) = &player_cancellation {
                                     cancellation.cancel();
                                 }
@@ -969,7 +971,7 @@ pub fn run() -> Result<(), String> {
                             if field=="recursive"{refresh=true;}
                         },
                         "play"=> {
-                            ensure_player_stopped(&mut child, "Ya hay una partida abierta. Vuelve a su ventana para continuar.")?;
+                            ensure_player_stopped(&mut child, &mut player_save_lock, "Ya hay una partida abierta. Vuelve a su ventana para continuar.")?;
                             session = None;
                             let game = if let Some(storage_id) = action["storage_id"].as_str() {
                                 let source_index = action["source_index"].as_u64().ok_or("Selecciona una copia del juego")? as usize;
@@ -983,6 +985,9 @@ pub fn run() -> Result<(), String> {
                             let core=config.core(game.system)?;
                             if !core.is_file(){return Err("La DLL seleccionada no existe. Revisa Ajustes > Núcleos.".into());}
                             let game_id = game_storage_key(game);
+                            fs::create_dir_all(&config.saves).map_err(|error| format!("No se pudo preparar la carpeta de guardados: {error}"))?;
+                            fs::create_dir_all(&config.states).map_err(|error| format!("No se pudo preparar la carpeta de estados: {error}"))?;
+                            let save_lock = PlayerSaveLock::acquire(&config.saves, &config.states, &game_id)?;
                             if library::mark_played(&mut imported, &game_id, now_unix()) {
                                 library::save(&index_path, &imported)?;
                             }
@@ -1001,7 +1006,10 @@ pub fn run() -> Result<(), String> {
                                 .arg("--session-id").arg(&session_id).arg("--session-epoch").arg(next_epoch.to_string())
                                 .spawn();
                             match spawn_result {
-                                Ok(process) => child = Some(process),
+                                Ok(process) => {
+                                    child = Some(process);
+                                    player_save_lock = Some(save_lock);
+                                }
                                 Err(error) => {
                                     cancellation.cancel();
                                     player_commands = None;
@@ -1027,6 +1035,7 @@ pub fn run() -> Result<(), String> {
                                 player_commands = None;
                                 player_cancellation = None;
                                 player_authenticated = false;
+                                player_save_lock = None;
                                 session = None;
                                 session_epoch = session_epoch.saturating_add(1);
                                 return Ok(());
@@ -1041,6 +1050,7 @@ pub fn run() -> Result<(), String> {
                                 player_commands = None;
                                 player_cancellation = None;
                                 player_authenticated = false;
+                                player_save_lock = None;
                                 session = None;
                                 session_epoch = session_epoch.saturating_add(1);
                             }
@@ -1071,7 +1081,7 @@ pub fn run() -> Result<(), String> {
                         },
                         "export_vault_bundle" => {
                             if vault_busy { return Err("Ya hay una operación Vault en curso".into()); }
-                            ensure_player_stopped(&mut child, "Cierra la partida antes de empaquetar un guardado.")?;
+                            ensure_player_stopped(&mut child, &mut player_save_lock, "Cierra la partida antes de empaquetar un guardado.")?;
                             let requested = PathBuf::from(action["file"].as_str().ok_or("Guardado inválido")?);
                             let source = save_files(&config).into_iter().find(|path| *path == requested)
                                 .ok_or("El guardado ya no está disponible; actualiza la lista")?;
@@ -1102,7 +1112,7 @@ pub fn run() -> Result<(), String> {
                         },
                         "import_vault_bundle" => {
                             if vault_busy { return Err("Ya hay una operación Vault en curso".into()); }
-                            ensure_player_stopped(&mut child, "Cierra la partida antes de importar un guardado.")?;
+                            ensure_player_stopped(&mut child, &mut player_save_lock, "Cierra la partida antes de importar un guardado.")?;
                             if let Some(bundle_path) = rfd::FileDialog::new()
                                 .set_title("Elegir paquete verificado de Vyntra Vault")
                                 .add_filter("Paquete Vault", &["zip"])
@@ -1126,7 +1136,7 @@ pub fn run() -> Result<(), String> {
                             }
                         },
                         "export_save"=> {
-                            ensure_player_stopped(&mut child, "Cierra la partida antes de exportar para evitar copiar un guardado durante su escritura.")?;
+                            ensure_player_stopped(&mut child, &mut player_save_lock, "Cierra la partida antes de exportar para evitar copiar un guardado durante su escritura.")?;
                             let files=save_files(&config);
                             let requested=PathBuf::from(action["file"].as_str().ok_or("Guardado inválido")?);
                             let source=files.iter().find(|path|**path==requested).ok_or("El guardado ya no está disponible; actualiza la lista")?;
@@ -1342,9 +1352,11 @@ fn stop_player_child(
 
 fn ensure_player_stopped(
     child: &mut Option<std::process::Child>,
+    save_lock: &mut Option<PlayerSaveLock>,
     message: &str,
 ) -> Result<(), String> {
     let Some(process) = child.as_mut() else {
+        *save_lock = None;
         return Ok(());
     };
     if process
@@ -1355,6 +1367,7 @@ fn ensure_player_stopped(
         return Err(message.to_owned());
     }
     *child = None;
+    *save_lock = None;
     Ok(())
 }
 
@@ -1428,6 +1441,8 @@ fn reload_external_settings(
 
 struct SettingsMutex(*mut c_void);
 
+struct PlayerSaveLock(Vec<*mut c_void>);
+
 #[link(name = "kernel32")]
 unsafe extern "system" {
     fn CreateMutexW(attributes: *mut c_void, initial_owner: i32, name: *const u16) -> *mut c_void;
@@ -1463,6 +1478,76 @@ impl Drop for SettingsMutex {
             ReleaseMutex(self.0);
             CloseHandle(self.0);
         }
+    }
+}
+
+impl PlayerSaveLock {
+    fn acquire(saves: &Path, states: &Path, game_id: &str) -> Result<Self, String> {
+        let saves = fs::canonicalize(saves)
+            .map_err(|error| format!("No se pudo resolver la carpeta de guardados: {error}"))?;
+        let states = fs::canonicalize(states)
+            .map_err(|error| format!("No se pudo resolver la carpeta de estados: {error}"))?;
+        let mut names = [
+            format!(
+                "Local\\VyntraPlayerSave-v1-{}",
+                crate::identity::sha256_bytes(
+                    format!(
+                        "battery|{}|{game_id}",
+                        saves.to_string_lossy().to_lowercase()
+                    )
+                    .as_bytes()
+                )
+            ),
+            format!(
+                "Local\\VyntraPlayerSave-v1-{}",
+                crate::identity::sha256_bytes(
+                    format!(
+                        "state|{}|{game_id}",
+                        states.to_string_lossy().to_lowercase()
+                    )
+                    .as_bytes()
+                )
+            ),
+        ];
+        names.sort();
+        let mut handles = Vec::with_capacity(names.len());
+        for name in names {
+            let name: Vec<u16> = name.encode_utf16().chain(std::iter::once(0)).collect();
+            let handle = unsafe { CreateMutexW(std::ptr::null_mut(), 0, name.as_ptr()) };
+            if handle.is_null() {
+                Self::release_handles(&mut handles);
+                return Err("No se pudo abrir el bloqueo de la partida".into());
+            }
+            match unsafe { WaitForSingleObject(handle, 0) } {
+                0 | 0x80 => handles.push(handle),
+                0x102 => {
+                    unsafe { CloseHandle(handle) };
+                    Self::release_handles(&mut handles);
+                    return Err("Este juego ya está abierto en otra instancia de Vyntra".into());
+                }
+                _ => {
+                    unsafe { CloseHandle(handle) };
+                    Self::release_handles(&mut handles);
+                    return Err("No se pudo adquirir el bloqueo de los guardados".into());
+                }
+            }
+        }
+        Ok(Self(handles))
+    }
+
+    fn release_handles(handles: &mut Vec<*mut c_void>) {
+        for handle in handles.drain(..).rev() {
+            unsafe {
+                ReleaseMutex(handle);
+                CloseHandle(handle);
+            }
+        }
+    }
+}
+
+impl Drop for PlayerSaveLock {
+    fn drop(&mut self) {
+        Self::release_handles(&mut self.0);
     }
 }
 
@@ -1993,8 +2078,9 @@ mod tests {
         }
         assert!(ready_path.exists(), "child process did not start");
         let mut child = Some(child);
+        let mut save_lock = None;
 
-        assert!(ensure_player_stopped(&mut child, "player activo").is_err());
+        assert!(ensure_player_stopped(&mut child, &mut save_lock, "player activo").is_err());
         assert!(child.is_some(), "guard must preserve the live child handle");
 
         terminate_child_process(&mut child).unwrap();
@@ -2003,6 +2089,13 @@ mod tests {
 
     #[test]
     fn exited_player_is_reaped_before_sensitive_operations() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-exited-player-lock-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let saves = root.join("saves");
+        let states = root.join("states");
+        fs::create_dir_all(&saves).unwrap();
+        fs::create_dir_all(&states).unwrap();
         let mut child = Some(
             std::process::Command::new("cmd.exe")
                 .args(["/C", "exit", "0"])
@@ -2010,9 +2103,12 @@ mod tests {
                 .unwrap(),
         );
         child.as_mut().unwrap().wait().unwrap();
+        let mut save_lock = Some(PlayerSaveLock::acquire(&saves, &states, "exited-game").unwrap());
 
-        assert!(ensure_player_stopped(&mut child, "player activo").is_ok());
+        assert!(ensure_player_stopped(&mut child, &mut save_lock, "player activo").is_ok());
         assert!(child.is_none());
+        assert!(save_lock.is_none());
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
@@ -2327,6 +2423,81 @@ mod tests {
         assert!(started.elapsed() >= std::time::Duration::from_millis(300));
         assert!(child.wait().unwrap().success());
         let _ = fs::remove_file(ready);
+    }
+
+    #[test]
+    fn player_save_lock_blocks_a_second_process_for_the_same_game_only() {
+        const SAVES_ENV: &str = "VYNTRA_PLAYER_SAVE_LOCK_TEST_SAVES";
+        const STATES_ENV: &str = "VYNTRA_PLAYER_SAVE_LOCK_TEST_STATES";
+        const RESULT_ENV: &str = "VYNTRA_PLAYER_SAVE_LOCK_TEST_RESULT";
+        if let (Some(saves), Some(states), Some(result)) = (
+            env::var_os(SAVES_ENV),
+            env::var_os(STATES_ENV),
+            env::var_os(RESULT_ENV),
+        ) {
+            let acquired =
+                PlayerSaveLock::acquire(Path::new(&saves), Path::new(&states), "same-game").is_ok();
+            fs::write(
+                result,
+                if acquired {
+                    &b"acquired"[..]
+                } else {
+                    &b"busy"[..]
+                },
+            )
+            .unwrap();
+            return;
+        }
+
+        let root =
+            std::env::temp_dir().join(format!("vyntra-player-save-lock-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let saves = root.join("saves");
+        let states = root.join("states");
+        let other_saves = root.join("other-saves");
+        let other_states = root.join("other-states");
+        fs::create_dir_all(&saves).unwrap();
+        fs::create_dir_all(&states).unwrap();
+        fs::create_dir_all(&other_saves).unwrap();
+        fs::create_dir_all(&other_states).unwrap();
+        let lock = PlayerSaveLock::acquire(&saves, &states, "same-game").unwrap();
+        let other_game = PlayerSaveLock::acquire(&saves, &states, "other-game");
+        assert!(
+            other_game.is_ok(),
+            "different saves must remain independent"
+        );
+        drop(other_game);
+
+        for (child_saves, child_states, result_name) in [
+            (&saves, &other_states, "same-saves-result.txt"),
+            (&other_saves, &states, "same-states-result.txt"),
+        ] {
+            let result = root.join(result_name);
+            let mut child = std::process::Command::new(env::current_exe().unwrap())
+                .arg("--exact")
+                .arg(
+                    "shell::tests::player_save_lock_blocks_a_second_process_for_the_same_game_only",
+                )
+                .env(SAVES_ENV, child_saves)
+                .env(STATES_ENV, child_states)
+                .env(RESULT_ENV, &result)
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .spawn()
+                .unwrap();
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            while !result.exists() && std::time::Instant::now() < deadline {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            assert!(
+                result.exists(),
+                "child process did not report its lock result"
+            );
+            assert_eq!(fs::read(&result).unwrap(), b"busy");
+            assert!(child.wait().unwrap().success());
+        }
+        drop(lock);
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
