@@ -1238,6 +1238,7 @@ mod tests {
             title: "Same".into(),
             system: "GB",
             storage_key: std::sync::OnceLock::new(),
+            rom_sha256: std::sync::OnceLock::new(),
         };
         let mut config = Settings::default();
         config.saves = root.join("custom/saves");
@@ -1286,6 +1287,7 @@ mod tests {
             title: "Fixture".into(),
             system: "GB",
             storage_key: std::sync::OnceLock::new(),
+            rom_sha256: std::sync::OnceLock::new(),
         };
         let state_root = root.join("states");
         let state_path = preferred_state_path(&game, &state_root);
@@ -1329,6 +1331,7 @@ mod tests {
             title: "Fixture".into(),
             system: "GB",
             storage_key: std::sync::OnceLock::new(),
+            rom_sha256: std::sync::OnceLock::new(),
         };
         let mut config = Settings::default();
         config.states = root.join("states");

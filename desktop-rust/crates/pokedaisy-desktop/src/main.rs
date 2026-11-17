@@ -54,6 +54,7 @@ struct Game {
     title: String,
     system: &'static str,
     storage_key: std::sync::OnceLock<String>,
+    rom_sha256: std::sync::OnceLock<String>,
 }
 
 #[cfg(test)]
@@ -258,6 +259,30 @@ mod migration_contract_tests {
         let game = super::game_from_path(path.clone());
         let _published_id = super::game_storage_key(&game);
         std::fs::write(&path, b"changed").unwrap();
+        assert!(super::validate_game_identity(&game).is_err());
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn rom_identity_validation_checks_the_full_hash_after_storage_key_prefix_matches() {
+        let path =
+            std::env::temp_dir().join(format!("vyntra-rom-prefix-{}.gb", std::process::id()));
+        std::fs::write(&path, b"original ROM").unwrap();
+        let game = super::game_from_path(path.clone());
+        let current = super::identity::sha256_file(&path).unwrap();
+        let mut forged_expected = current.clone().into_bytes();
+        let last = forged_expected.len() - 1;
+        forged_expected[last] = if forged_expected[last] == b'0' {
+            b'1'
+        } else {
+            b'0'
+        };
+        game.storage_key.set(current[..16].to_string()).unwrap();
+        game.rom_sha256
+            .set(String::from_utf8(forged_expected).unwrap())
+            .unwrap();
+
+        assert!(current.starts_with(&super::game_storage_key(&game)));
         assert!(super::validate_game_identity(&game).is_err());
         let _ = std::fs::remove_file(path);
     }
@@ -1213,7 +1238,13 @@ fn pressed_key(key: Keycode) -> sdl2::keyboard::Scancode {
 
 fn game_storage_key(game: &Game) -> String {
     game.storage_key
-        .get_or_init(|| identity::storage_key(&game.path))
+        .get_or_init(|| match identity::sha256_file(&game.path) {
+            Ok(hash) => {
+                let _ = game.rom_sha256.set(hash.clone());
+                hash[..16].to_string()
+            }
+            Err(_) => identity::storage_key(&game.path),
+        })
         .clone()
 }
 
@@ -1226,9 +1257,14 @@ fn resolve_game_by_storage_id<'a>(games: &'a [Game], id: &str) -> Option<&'a Gam
 }
 
 fn validate_game_identity(game: &Game) -> Result<(), String> {
+    let _ = game_storage_key(game);
     let current = identity::sha256_file(&game.path)
         .map_err(|_| "No se pudo verificar la ROM. Vuelve a escanear la biblioteca.".to_string())?;
-    if current.starts_with(&game_storage_key(game)) {
+    if game
+        .rom_sha256
+        .get()
+        .is_some_and(|expected| expected == &current)
+    {
         Ok(())
     } else {
         Err(
@@ -1544,6 +1580,7 @@ fn game_from_path(path: PathBuf) -> Game {
         title,
         system,
         storage_key: std::sync::OnceLock::new(),
+        rom_sha256: std::sync::OnceLock::new(),
     }
 }
 fn now_unix() -> u64 {
@@ -2731,6 +2768,7 @@ mod tests {
             title: "game".into(),
             system: "GB",
             storage_key: std::sync::OnceLock::new(),
+            rom_sha256: std::sync::OnceLock::new(),
         };
         let core_path = dir.join("fixture-core.dll");
         fs::write(&core_path, b"core bytes").unwrap();
