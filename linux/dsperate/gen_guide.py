@@ -8,7 +8,7 @@ import sys
 
 
 def rows(path, prefix):
-    text = path.read_text()
+    text = path.read_text(encoding='utf-8')
     block = re.search(rf'{prefix}_WILD_RAW: List<String> = listOf\((.*?)^\)', text, re.S | re.M)
     return [line.strip().split('|') for line in block[1].splitlines()
             if line.strip().startswith(('M|', 'E|'))]
@@ -51,7 +51,7 @@ def emit(folder, filename, game):
     maps, sets, rates = {}, {}, {}
     gen4 = game in ('PT', 'HG', 'SS')
     variants = 3 if gen4 else 4
-    reader = (folder / ('GuideGen4.kt' if gen4 else 'GuideGen5.kt')).read_text()
+    reader = (folder / ('GuideGen4.kt' if gen4 else 'GuideGen5.kt')).read_text(encoding='utf-8')
     odds = {name: [int(n) for n in numbers.split(',')]
             for name, numbers in re.findall(r'val (\w+_ODDS) = listOf\(([\d, ]+)\)', reader)}
     for fields in rows(folder / f'{filename}.kt', game):
@@ -109,19 +109,19 @@ def csv_constant(text, name):
 
 def place_map(folder, game):
     if game == 'PT':
-        text = (folder / 'Gen4TownMapPlatinum.kt').read_text()
+        text = (folder / 'Gen4TownMapPlatinum.kt').read_text(encoding='utf-8')
         body = text.split('val mapPlaceIdsPlatinum:', 1)[1].split('\n)', 1)[0]
         return [tuple(map(int, row)) for row in re.findall(r'(\d+) to (\d+)', body)]
     if game == 'HG':
-        text = (folder / 'GuideGen4HeartGoldGen.kt').read_text()
+        text = (folder / 'GuideGen4HeartGoldGen.kt').read_text(encoding='utf-8')
         return [tuple(map(int, row.split(':'))) for row in csv_constant(text, 'HG_HEADER_PLACES').split(',')]
     suffix = 'Black2' if game.endswith('2') else 'Black'
-    text = (folder / f'Gen5Tables{suffix}.kt').read_text()
+    text = (folder / f'Gen5Tables{suffix}.kt').read_text(encoding='utf-8')
     return list(enumerate(map(int, csv_constant(text, f'MAP_PLACE_IDS_{suffix.upper()}').split(','))))
 
 
 def area_items(folder, filename, game):
-    text = (folder / f'{filename}.kt').read_text()
+    text = (folder / f'{filename}.kt').read_text(encoding='utf-8')
     block = re.search(rf'\b{game}_AREAS_RAW: List<String> = listOf\((.*?)^\)', text, re.S | re.M)[1]
     kinds = {'ITEM': 0, 'HIDDEN': 1}
     items = []
@@ -157,7 +157,7 @@ def arguments(call):
 
 def guide_page(folder, game, label, soul_silver=False):
     suffix = {'PT': 'Platinum', 'HG': 'HeartGold', 'BLACK': 'Black', 'BLACK2': 'Black2'}[game]
-    text = (folder / f'Guide{suffix}.kt').read_text()
+    text = (folder / f'Guide{suffix}.kt').read_text(encoding='utf-8')
     constants = {k: int(v, 0) for k, v in re.findall(r'const val (\w+) = (0x[0-9a-fA-F]+|\d+)', text)}
     strings = {}
     if game == 'HG':
@@ -218,7 +218,7 @@ def emit_rows(name, kind, records):
 
 
 def fly_spots(folder, suffix, filename):
-    text = (folder / f'{filename}.kt').read_text()
+    text = (folder / f'{filename}.kt').read_text(encoding='utf-8')
     body = re.search(rf'val flySpots{suffix}: List<FlySpot> = listOf\((.*?)^\)', text, re.S | re.M)[1]
     for call in re.findall(r'FlySpot\([^\n]+?\)', body):
         header, x, z, *options = arguments(call)
@@ -230,7 +230,7 @@ def fly_spots(folder, suffix, filename):
 
 def boss_data(folder, filename, game):
     """Keep Android's order, progress gates and trainer-team variants."""
-    raw = (folder / f'{filename}.kt').read_text()
+    raw = (folder / f'{filename}.kt').read_text(encoding='utf-8')
     block = re.search(rf'\b{game}_BOSSES_RAW: List<String> = listOf\((.*?)^\)', raw, re.S | re.M)[1]
     teams, members = {}, []
     for line in block.splitlines():
@@ -247,8 +247,8 @@ def boss_data(folder, filename, game):
 
     suffix = {'PT':'Platinum','HG':'HeartGold','BLACK':'Black','WHITE':'Black',
               'BLACK2':'Black2','WHITE2':'Black2'}[game]
-    source = (folder / f'Guide{suffix}.kt').read_text()
-    readers = ''.join((folder / f'{name}.kt').read_text() for name in ('Gen4Reader','Gen5Reader'))
+    source = (folder / f'Guide{suffix}.kt').read_text(encoding='utf-8')
+    readers = ''.join((folder / f'{name}.kt').read_text(encoding='utf-8') for name in ('Gen4Reader','Gen5Reader'))
     constants = {k:int(v,0) for k,v in re.findall(r'const val (\w+) = (0x[0-9a-fA-F]+|\d+)', raw+source+readers)}
     league = 'POKéMON LEAGUE'
     start = {'PT':'BOSSES_PLATINUM = listOf(', 'HG':'hgBosses(w: Gen4World) = listOf('}
@@ -348,9 +348,9 @@ def main():
                              ('White2','Gen5TownMapWhite2')]:
         lines += emit_rows(suffix.lower()+'Fly', 'DsFlySpot', fly_spots(folder, suffix, filename))
     for name,file in [('GEN4_BADGE_FLAG','Gen4Reader'),('GEN5_NATIONAL_DEX_FLAG','Gen5Reader')]:
-        value = re.search(rf'const val {name} = (0x[0-9a-fA-F]+|\d+)',(folder/f'{file}.kt').read_text())[1]
+        value = re.search(rf'const val {name} = (0x[0-9a-fA-F]+|\d+)',(folder/f'{file}.kt').read_text(encoding='utf-8'))[1]
         lines.append(f'inline constexpr int {name} = {value};')
-    out.write_text('\n'.join([*lines, '}', '']))
+    out.write_text('\n'.join([*lines, '}', '']), encoding='utf-8')
 
 
 if __name__ == '__main__':
