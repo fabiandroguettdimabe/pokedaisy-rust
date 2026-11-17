@@ -33,6 +33,7 @@
 - [x] Mark T19 partial with the missing legal fixture/runtime memory owner, commit, and push the milestone.
 - [x] Add a bounded Gen III live-party decoder that validates captured Pokémon checksums, party count, level, and HP using synthetic bytes only.
 - [x] Bind the party-count and party ranges to an exact-identity Gen III adapter; test the capture-to-decoder path and reject mismatched identity or missing segments.
+- [x] Add a session/epoch/revision `MemoryPoller` that resolves only registered exact identities and emits decoded snapshots; test registered and unsupported identities.
 - [ ] Wire the exact-identity adapter into runtime Player polling and the pipe; verify with a legally redistributable fixture for one concrete revision before advertising live data.
 
 

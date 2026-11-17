@@ -229,6 +229,15 @@ impl crate::memory_adapter::MemoryAdapter for Gen3PartyMemoryAdapter {
     fn ranges(&self) -> &[crate::memory_adapter::MemoryRange] {
         &self.ranges
     }
+
+    fn snapshot(
+        &self,
+        capture: &crate::memory_adapter::MemoryCapture,
+    ) -> Result<serde_json::Value, crate::memory_adapter::CaptureError> {
+        self.decode(capture)
+            .map(|party| serde_json::json!({ "party_count": party.len(), "party": party }))
+            .map_err(|_| crate::memory_adapter::CaptureError::DecodeRejected)
+    }
 }
 
 pub fn read(bytes: &[u8], format: Gen3Format) -> Result<Snapshot, String> {
@@ -554,6 +563,55 @@ mod tests {
         capture.identity = adapter.identity.clone();
         capture.segments.pop();
         assert!(adapter.decode(&capture).unwrap_err().contains("party"));
+    }
+
+    #[test]
+    fn memory_poller_emits_decoded_snapshot_only_for_registered_exact_identity() {
+        use crate::memory_adapter::{
+            GameIdentity, MemoryAdapterRegistry, MemoryPoller, MemoryReader,
+        };
+        let identity = GameIdentity {
+            system: "GBA".into(),
+            rom_sha256: "rom-sha256".into(),
+            core_sha256: "core-sha256".into(),
+            game_revision: "BPEE-rev0".into(),
+        };
+        let adapter = Gen3PartyMemoryAdapter::new(identity.clone(), 0x0200_1000, 0x0200_2000);
+        let mut registry = MemoryAdapterRegistry::default();
+        registry.register(Box::new(adapter)).unwrap();
+        struct FixtureReader(Vec<u8>);
+        impl MemoryReader for FixtureReader {
+            fn read(
+                &mut self,
+                address: usize,
+                length: usize,
+            ) -> Result<Vec<u8>, crate::memory_adapter::CaptureError> {
+                let offset = address
+                    .checked_sub(0x0200_1000)
+                    .ok_or(crate::memory_adapter::CaptureError::OutOfBounds)?;
+                let end = offset
+                    .checked_add(length)
+                    .ok_or(crate::memory_adapter::CaptureError::OutOfBounds)?;
+                self.0
+                    .get(offset..end)
+                    .map(|bytes| bytes.to_vec())
+                    .ok_or(crate::memory_adapter::CaptureError::OutOfBounds)
+            }
+        }
+        let reader = || FixtureReader(vec![0; 0x1000 + 600]);
+        let mut reader = reader();
+        let mut poller = MemoryPoller::new("session-1", identity.clone(), 4);
+        assert_eq!(
+            poller.poll(&registry, &mut reader).unwrap(),
+            Some(serde_json::json!({ "party_count": 0, "party": [] }))
+        );
+
+        let other = GameIdentity {
+            rom_sha256: "other-rom".into(),
+            ..identity.clone()
+        };
+        poller.reset("session-1", other, 5);
+        assert_eq!(poller.poll(&registry, &mut reader).unwrap(), None);
     }
 
     fn fixture() -> Vec<u8> {

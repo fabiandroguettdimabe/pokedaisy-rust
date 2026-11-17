@@ -41,6 +41,7 @@ pub enum CaptureError {
     StaleEpoch,
     StaleRevision,
     ReaderUnavailable,
+    DecodeRejected,
 }
 
 /// Owner-scoped read capability. Implementations return copied bytes only.
@@ -73,6 +74,9 @@ impl MemoryReader for LibretroMemoryReader<'_> {
 pub trait MemoryAdapter {
     fn identity(&self) -> &GameIdentity;
     fn ranges(&self) -> &[MemoryRange];
+    fn snapshot(&self, _capture: &MemoryCapture) -> Result<serde_json::Value, CaptureError> {
+        Err(CaptureError::ReaderUnavailable)
+    }
 }
 
 pub fn capture(
@@ -132,6 +136,57 @@ pub struct CaptureEpochGate {
     epoch: u64,
     last_revision: u64,
 }
+
+/// Session-scoped poller. It resolves only the exact active identity and publishes
+/// decoded JSON snapshots; captured byte ranges stay inside the adapter boundary.
+pub struct MemoryPoller {
+    session_id: String,
+    identity: GameIdentity,
+    epoch: u64,
+    revision: u64,
+    gate: CaptureEpochGate,
+}
+
+impl MemoryPoller {
+    pub fn new(session_id: impl Into<String>, identity: GameIdentity, epoch: u64) -> Self {
+        let session_id = session_id.into();
+        Self {
+            gate: CaptureEpochGate::new(session_id.clone(), identity.clone(), epoch),
+            session_id,
+            identity,
+            epoch,
+            revision: 0,
+        }
+    }
+
+    pub fn reset(&mut self, session_id: impl Into<String>, identity: GameIdentity, epoch: u64) {
+        self.session_id = session_id.into();
+        self.identity = identity.clone();
+        self.epoch = epoch;
+        self.revision = 0;
+        self.gate.advance(self.session_id.clone(), identity, epoch);
+    }
+
+    pub fn poll(
+        &mut self,
+        registry: &MemoryAdapterRegistry,
+        reader: &mut dyn MemoryReader,
+    ) -> Result<Option<serde_json::Value>, CaptureError> {
+        let Some(adapter) = registry.resolve(&self.identity) else {
+            return Ok(None);
+        };
+        let revision = self
+            .revision
+            .checked_add(1)
+            .ok_or(CaptureError::StaleRevision)?;
+        let capture = capture(adapter, reader, self.epoch, revision)?;
+        self.gate.accept(&self.session_id, &capture)?;
+        let snapshot = adapter.snapshot(&capture)?;
+        self.revision = revision;
+        Ok(Some(snapshot))
+    }
+}
+
 impl CaptureEpochGate {
     pub fn new(session_id: impl Into<String>, identity: GameIdentity, epoch: u64) -> Self {
         Self {
