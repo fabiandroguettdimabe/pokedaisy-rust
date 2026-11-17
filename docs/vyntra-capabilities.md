@@ -1,6 +1,6 @@
 # Matriz de capacidades y evidencia de Vyntra (baseline)
 
-Actualizado: 2026-11-16. Este documento inicia la ejecución del plan técnico (`docs/VYNTRA_PLAN_TECNICO.md`, T01/QA-02). Es una matriz de **evidencia**, no una promesa de soporte.
+Actualizado: 2026-11-17. Este documento inicia la ejecución del plan técnico (`docs/VYNTRA_PLAN_TECNICO.md`, T01/QA-02). Es una matriz de **evidencia**, no una promesa de soporte.
 
 ## Convenciones
 
@@ -78,11 +78,12 @@ Las filas siguientes son verificaciones adicionales posteriores al baseline del 
 |---|---|---|---|---|---|---|---|
 | 2026-11-17 | `87f51fc` (código T19: límites `select`/`disconnect` y espacios de dirección) | Windows x86_64 GNU / Desktop Rust | Core sintético `av_core_fixture.c` | Party sintética GBA, identidad exacta de fixture | `synthetic_libretro_map_flows_through_gen3_party_adapter_and_poller` (rechazo `select`/`disconnect` y selección exacta de `addrspace`); `cargo fmt --manifest-path desktop-rust/Cargo.toml --all -- --check`; `cargo test --manifest-path desktop-rust/Cargo.toml --workspace --target x86_64-pc-windows-gnu --message-format short` | Formato OK; suite Desktop 171 passed, 0 failed, 4 ignored; `core_probe` 5 passed/1 ignored; Libretro A/V 1/1; `vyntra-libretro` 4/4 | Prueba contrato y decoder con bytes sintéticos; no acredita perfil de juego ni datos live. Registro de producción vacío. |
 | 2026-11-17 | `6c02a60` | Web/manual | No aplica | Corpus de pruebas del sitio | `node --test test/*.test.js` en `website/` | 82/82 passed | No incluye build en esta ejecución; el build anterior generó 146 páginas. |
+| 2026-11-17 | `5fd0d64` | Docs/QA | No aplica | Matriz `docs/vyntra-capabilities.md` | `ready capabilities require a reproducible test ID and commit`; `a malformed capability row cannot hide a ready status`; `the checked-in capability matrix has no ready claim without test evidence`; `node --test test/*.test.js` | Suite web 85/85 passed; los fixtures rechazan estados listos sin evidencia y filas malformadas; se exigen `testId` y commit. | Solo valida estados de capacidades; aún falta evidencia granular por celda. |
 | 2026-11-17 | `6c02a60` | Android Pocket | NDK 28.2.13676358 | `RomIntakeTest`, `SaveStatesTest` | `:app:testDebugUnitTest --no-daemon` | No ejecutado: Gradle detuvo la configuración en `LicenceNotAcceptedException` | No se aceptó la licencia solicitada; sin resultado de compilación Kotlin, firma ni validación en dispositivo. |
 
 ## Próximos pasos inmediatos (alineados al plan)
 
-1. **T01/QA-02:** mantener el inventario por feature y añadir una fila por ejecución reproducible; runtime, hashes de cores y pruebas manuales deben conservar identidad concreta.
+1. **T01/QA-02:** mantener el inventario por feature y añadir una fila por ejecución reproducible; el test integrado rechaza capacidades Ready sin `testId`+commit, pero falta evidencia granular por celda.
 2. **T02/INFRA-01:** introducir contratos de dominio/protocolo versionados en Desktop (`domain.rs`, `protocol.rs`) sin romper el flujo actual.
 3. **T03/T05/T08:** abordar identidad por hash, guardados atómicos/aislados y sesión inmutable (P0) con fixtures sintéticos antes de ampliar UI.
 4. **Baseline de checks:** el sitio web y Desktop Rust tienen verificaciones recientes registradas; Android sigue pendiente de licencia NDK y entorno de hardware/firma, y el baseline completo de generadores aún requiere repetir equivalencia sin dejar diffs.
