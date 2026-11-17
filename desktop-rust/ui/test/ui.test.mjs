@@ -111,6 +111,10 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.getByRole('button',{name:'Vyntra Vault',exact:true}).click();
   await page.getByRole('button',{name:'Importar paquete',exact:true}).click();
   await expectCommand('import_vault_bundle');
+  await page.evaluate(()=>window.vyntraAck({ok:false,error:{code:'vault_bundle_invalid',reason:'El paquete Vault no coincide con esta ROM o núcleo.'}}));
+  assert.equal(await page.getByRole('alert').getByText('El paquete Vault no coincide con esta ROM o núcleo.').isVisible(),true);
+  await page.getByRole('alert').getByRole('button',{name:'Cerrar aviso'}).click();
+  assert.equal(await page.getByRole('alert').count(),0);
   await page.getByRole('button',{name:'Revisar migración antigua'}).click();
   await expectCommand('migration_preview');
   await page.evaluate(()=>window.vyntraAck({ok:true,result:{migration:{schema:1,items:[]}}}));
