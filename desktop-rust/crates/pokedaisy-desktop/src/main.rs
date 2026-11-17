@@ -3214,7 +3214,12 @@ mod tests {
 
     #[test]
     fn configured_keyboard_bindings_map_to_libretro_buttons() {
-        let mut config = super::Settings::default();
+        let config = super::Settings::default();
+        let defaults = super::keyboard_joypad_state(&config, |key| key == super::Keycode::Z);
+        assert!(defaults.contains(super::JoypadButton::A));
+        assert!(!defaults.contains(super::JoypadButton::B));
+
+        let mut config = config;
         config.keys[0] = "A".into();
         let input = super::keyboard_joypad_state(&config, |key| key == super::Keycode::A);
         assert!(input.contains(super::JoypadButton::A));

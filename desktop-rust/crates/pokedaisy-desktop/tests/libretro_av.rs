@@ -242,3 +242,65 @@ fn configured_local_core_runs_generated_gba_diagnostic_rom() {
     drop(core);
     fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+#[ignore = "GBA core input smoke: set VYNTRA_GBA_CORE_SMOKE_PATH"]
+fn configured_local_gba_core_receives_a_button_from_libretro_input() {
+    let core_path = std::env::var_os("VYNTRA_GBA_CORE_SMOKE_PATH").expect("core path");
+    let root = std::env::temp_dir().join(format!("vyntra-gba-input-smoke-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(&root).unwrap();
+    let rom_path = root.join("diagnostic-input.gba");
+    let generator =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../linux/make_diagnostic_gba_input.py");
+    let generated = Command::new("python")
+        .arg(generator)
+        .arg(&rom_path)
+        .output()
+        .unwrap();
+    assert!(
+        generated.status.success(),
+        "{}",
+        String::from_utf8_lossy(&generated.stderr)
+    );
+    let save_dir = root.join("saves");
+    let system_dir = root.join("system");
+    fs::create_dir_all(&save_dir).unwrap();
+    fs::create_dir_all(&system_dir).unwrap();
+    let mut core = LibretroCore::load(
+        Path::new(&core_path),
+        CorePaths {
+            save_dir,
+            system_dir,
+            panel_width: 640,
+            panel_height: 480,
+        },
+    )
+    .expect("GBA core loads");
+    core.load_game(&rom_path)
+        .expect("input diagnostic ROM loads");
+    let mut released = None;
+    for _ in 0..4 {
+        released = core.run_frame(JoypadState::default()).unwrap().video;
+    }
+    let released = released.expect("released frame exists");
+    let mut pressed = JoypadState::default();
+    pressed.set(JoypadButton::A, true);
+    let mut pressed_video = None;
+    for _ in 0..4 {
+        pressed_video = core.run_frame(pressed).unwrap().video;
+    }
+    let pressed_video = pressed_video.expect("pressed frame exists");
+    assert_eq!(
+        &released.pixels[..2],
+        &[0, 248],
+        "released A must render the red diagnostic screen"
+    );
+    assert_eq!(
+        &pressed_video.pixels[..2],
+        &[192, 7],
+        "pressed A must render the green diagnostic screen"
+    );
+    drop(core);
+    fs::remove_dir_all(root).unwrap();
+}
