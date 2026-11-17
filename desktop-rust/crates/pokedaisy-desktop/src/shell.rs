@@ -562,10 +562,10 @@ pub fn run() -> Result<(), String> {
                             } else {
                                 games.get(action["id"].as_u64().ok_or("Selecciona un juego")? as usize).ok_or("Juego no encontrado")?
                             };
-                            if !game.path.is_file(){return Err("La ROM ya no estǭ en su ubicaci��n. Imp��rtala desde su carpeta actual.".into());}
+                            if !game.path.is_file(){return Err("La ROM ya no está en su ubicación. Impórtala desde su carpeta actual.".into());}
                             crate::validate_game_identity(game)?;
                             let core=config.core(game.system)?;
-                            if !core.is_file(){return Err("La DLL seleccionada no existe. Revisa Ajustes > Nǧcleos.".into());}
+                            if !core.is_file(){return Err("La DLL seleccionada no existe. Revisa Ajustes > Núcleos.".into());}
                             let game_id = game_storage_key(game);
                             if library::mark_played(&mut imported, &game_id, now_unix()) {
                                 library::save(&index_path, &imported)?;
