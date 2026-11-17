@@ -503,13 +503,24 @@ fn sdl_main() -> Result<(), String> {
         }
     }
     #[cfg(target_os = "windows")]
-    let mut player_pipe = match (pipe_name, pipe_nonce, pipe_session, pipe_epoch) {
+    let player_connection = match (pipe_name, pipe_nonce, pipe_session, pipe_epoch) {
         (Some(name), Some(nonce), Some(session), Some(epoch)) => {
-            Some(player_pipe::connect(&name, &nonce, &session, epoch)?)
+            Some((name, nonce, session, epoch))
         }
         (None, None, None, None) => None,
         _ => return Err("Contexto de named pipe Player incompleto".into()),
     };
+    #[cfg(target_os = "windows")]
+    let mut player_pipe = match player_connection.as_ref() {
+        Some((name, nonce, session, epoch)) => {
+            Some(player_pipe::connect(name, nonce, session, *epoch)?)
+        }
+        None => None,
+    };
+    #[cfg(target_os = "windows")]
+    let mut pipe_reconnect_started = None;
+    #[cfg(target_os = "windows")]
+    let mut last_pipe_connect_attempt = Instant::now();
     #[cfg(not(target_os = "windows"))]
     let _ = (pipe_name, pipe_nonce, pipe_session, pipe_epoch);
     let data = root.join("data");
@@ -646,6 +657,22 @@ fn sdl_main() -> Result<(), String> {
 
     'app: loop {
         #[cfg(target_os = "windows")]
+        if player_pipe.is_none() {
+            if let Some((name, nonce, session, epoch)) = player_connection.as_ref() {
+                let disconnected_at = pipe_reconnect_started.get_or_insert_with(Instant::now);
+                if disconnected_at.elapsed() >= player_pipe::RECONNECT_TIMEOUT {
+                    break 'app;
+                }
+                if last_pipe_connect_attempt.elapsed() >= Duration::from_millis(250) {
+                    last_pipe_connect_attempt = Instant::now();
+                    if let Ok(reconnected) = player_pipe::connect(name, nonce, session, *epoch) {
+                        player_pipe = Some(reconnected);
+                        pipe_reconnect_started = None;
+                    }
+                }
+            }
+        }
+        #[cfg(target_os = "windows")]
         if let Some(pipe) = player_pipe.as_ref() {
             match pipe.try_command() {
                 Ok(Some(transport::PlayerCommand::Stop)) => break 'app,
@@ -702,7 +729,10 @@ fn sdl_main() -> Result<(), String> {
                     last_auto = Instant::now();
                 }
                 Ok(None) => {}
-                Err(_) => break 'app,
+                Err(_) => {
+                    player_pipe = None;
+                    pipe_reconnect_started = Some(Instant::now());
+                }
             }
         }
         let (logical_w, logical_h) = canvas.window().size();

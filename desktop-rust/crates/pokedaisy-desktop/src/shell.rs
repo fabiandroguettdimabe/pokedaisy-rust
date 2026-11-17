@@ -236,7 +236,6 @@ pub fn run() -> Result<(), String> {
                     match event.kind {
                         crate::player_pipe::PipeEventKind::Authenticated => {
                             player_authenticated = true;
-                            player_cancellation = None;
                         },
                         crate::player_pipe::PipeEventKind::Cancelled => {
                             player_commands = None;
@@ -270,7 +269,7 @@ pub fn run() -> Result<(), String> {
                             let notice = match exit_status {
                                 Some(status) => player_exit_notice(status.success(), status.code()),
                                 None if child.is_some() => Some(
-                                    "Se perdió el canal de Player, pero su ventana sigue activa. Usa Detener para cerrarla.".into(),
+                                    "Se perdió el canal local; Player intentará reconectar automáticamente.".into(),
                                 ),
                                 None => None,
                             };
@@ -280,11 +279,16 @@ pub fn run() -> Result<(), String> {
                                     json!(notice)
                                 ));
                             }
-                            player_commands = None;
-                            player_cancellation = None;
                             player_authenticated = false;
-                            session = None;
-                            session_epoch = session_epoch.saturating_add(1);
+                            if exit_status.is_some() {
+                                if let Some(cancellation) = &player_cancellation {
+                                    cancellation.cancel();
+                                }
+                                player_commands = None;
+                                player_cancellation = None;
+                                session = None;
+                                session_epoch = session_epoch.saturating_add(1);
+                            }
                             publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
                         },
                         crate::player_pipe::PipeEventKind::Failed(reason) => {

@@ -14,13 +14,14 @@ use interprocess::os::windows::{
 };
 use serde_json::{Value, json};
 use std::io;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 use widestring::U16CString;
 
 const AUTH_TIMEOUT: Duration = Duration::from_secs(10);
+pub const RECONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_REJECTED_PIPE_CLIENTS: usize = 8;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -65,10 +66,17 @@ type PipeSendHalf =
 pub struct PlayerPipeClient {
     send: PipeSendHalf,
     commands: PlayerCommandQueue,
+    reader_cancel: Arc<AtomicBool>,
     session_id: String,
     nonce: String,
     epoch: u64,
     sequence: u64,
+}
+
+impl Drop for PlayerPipeClient {
+    fn drop(&mut self) {
+        self.reader_cancel.store(true, Ordering::Release);
+    }
 }
 
 impl PlayerPipeClient {
@@ -86,7 +94,7 @@ impl PlayerPipeClient {
             sequence: self.sequence,
             payload: json!({"kind":"snapshot","data":payload}),
         };
-        write_frame(&mut self.send, &frame)
+        write_frame_cancellable(&mut self.send, &frame, &self.reader_cancel)
             .map_err(|error| format!("No se pudo enviar snapshot Player: {error:?}"))
     }
 
@@ -113,7 +121,7 @@ impl PlayerPipeClient {
             sequence: self.sequence,
             payload,
         };
-        write_frame(&mut self.send, &frame)
+        write_frame_cancellable(&mut self.send, &frame, &self.reader_cancel)
             .map_err(|error| format!("No se pudo confirmar comando Player: {error:?}"))
     }
 }
@@ -156,8 +164,11 @@ fn start_with_timeout(
         .set_nonblocking(ListenerNonblockingMode::Accept)
         .map_err(|error| error.to_string())?;
 
-    let command_queue = PlayerCommandQueue::new(16);
-    let command_sender = command_queue.sender();
+    let command_queue = Arc::new(Mutex::new(PlayerCommandQueue::new(16)));
+    let command_sender = command_queue
+        .lock()
+        .map_err(|_| "Cola de comandos Player envenenada".to_owned())?
+        .sender();
     let cancellation = PipeCancellation::default();
     let worker_cancellation = Arc::clone(&cancellation.0);
     let pipe_nonce = nonce.clone();
@@ -220,16 +231,21 @@ pub fn connect(
     if ack.sequence != 1 || ack.payload["kind"] != "hello_ack" {
         return Err("ACK del launcher inesperado".into());
     }
+    stream
+        .set_nonblocking(true)
+        .map_err(|error| format!("No se pudo habilitar lectura cancelable: {error}"))?;
     let (mut recv, send) = stream.split();
     let commands = PlayerCommandQueue::new(16);
     let command_sender = commands.sender();
+    let reader_cancel = Arc::new(AtomicBool::new(false));
+    let worker_cancel = Arc::clone(&reader_cancel);
     let reader_session = session_id.to_owned();
     let reader_nonce = nonce.to_owned();
     thread::Builder::new()
         .name("vyntra-player-command-reader".into())
         .spawn(move || {
             let mut last_sequence = 1;
-            while let Ok(frame) = read_frame(&mut recv) {
+            while let Ok(Some(frame)) = read_frame_cancellable(&mut recv, &worker_cancel) {
                 if validate_frame(
                     &frame,
                     &reader_session,
@@ -254,6 +270,7 @@ pub fn connect(
     Ok(PlayerPipeClient {
         send,
         commands,
+        reader_cancel,
         session_id: session_id.into(),
         nonce: nonce.into(),
         epoch,
@@ -267,16 +284,35 @@ fn serve_session(
     epoch: u64,
     nonce: String,
     timeout: Duration,
-    command_queue: PlayerCommandQueue,
+    command_queue: Arc<Mutex<PlayerCommandQueue>>,
     cancellation: Arc<AtomicBool>,
     on_event: impl Fn(PipeEvent),
 ) {
-    let deadline = Instant::now() + timeout;
+    let mut deadline = Instant::now() + timeout;
     let mut rejected_clients = 0;
-    while Instant::now() < deadline
-        && rejected_clients < MAX_REJECTED_PIPE_CLIENTS
-        && !cancellation.load(Ordering::Acquire)
-    {
+    let mut authenticated_once = false;
+    loop {
+        if cancellation.load(Ordering::Acquire) {
+            on_event(PipeEvent {
+                session_id,
+                epoch,
+                kind: PipeEventKind::Cancelled,
+            });
+            return;
+        }
+        if Instant::now() >= deadline || rejected_clients >= MAX_REJECTED_PIPE_CLIENTS {
+            let message = if authenticated_once {
+                "No se restableció el canal de Player dentro del plazo"
+            } else {
+                "No se autenticó el proceso Player dentro del plazo"
+            };
+            on_event(PipeEvent {
+                session_id,
+                epoch,
+                kind: PipeEventKind::Failed(message.into()),
+            });
+            return;
+        }
         let mut stream = match listener.accept() {
             Ok(stream) => stream,
             Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
@@ -326,17 +362,23 @@ fn serve_session(
             epoch,
             kind: PipeEventKind::Authenticated,
         });
+        authenticated_once = true;
         let (mut recv, send) = stream.split();
         let alive = Arc::new(AtomicBool::new(true));
         let writer_alive = Arc::clone(&alive);
         let writer_session = session_id.clone();
         let writer_nonce = nonce.clone();
+        let writer_queue = Arc::clone(&command_queue);
         let writer = thread::Builder::new()
             .name("vyntra-player-command-writer".into())
             .spawn(move || {
                 let mut sequence = 1u64;
                 while writer_alive.load(Ordering::Acquire) {
-                    match command_queue.try_next() {
+                    let next_command = match writer_queue.lock() {
+                        Ok(queue) => queue.try_next(),
+                        Err(_) => break,
+                    };
+                    match next_command {
                         Ok(Some(command)) => {
                             sequence = sequence.saturating_add(1);
                             let stop = command == PlayerCommand::Stop;
@@ -417,22 +459,13 @@ fn serve_session(
             let _ = writer.join();
         }
         on_event(PipeEvent {
-            session_id,
+            session_id: session_id.clone(),
             epoch,
             kind: PipeEventKind::Disconnected,
         });
-        return;
+        deadline = Instant::now() + RECONNECT_TIMEOUT;
+        rejected_clients = 0;
     }
-    let kind = if cancellation.load(Ordering::Acquire) {
-        PipeEventKind::Cancelled
-    } else {
-        PipeEventKind::Failed("No se autenticó el proceso Player dentro del plazo".into())
-    };
-    on_event(PipeEvent {
-        session_id,
-        epoch,
-        kind,
-    });
 }
 
 fn parse_player_command(payload: &Value) -> Option<PlayerCommand> {
@@ -510,6 +543,86 @@ fn read_frame_with_deadline(
     }
 }
 
+fn read_frame_cancellable(
+    stream: &mut impl io::Read,
+    cancellation: &AtomicBool,
+) -> Result<Option<TransportFrame>, String> {
+    let mut prefix = [0u8; 4];
+    if !read_exact_cancellable(stream, &mut prefix, cancellation)? {
+        return Ok(None);
+    }
+    let size = u32::from_le_bytes(prefix) as usize;
+    if size == 0 || size > crate::transport::MAX_FRAME_BYTES {
+        return Err("longitud de frame inválida".into());
+    }
+    let mut body = vec![0; size];
+    if !read_exact_cancellable(stream, &mut body, cancellation)? {
+        return Ok(None);
+    }
+    serde_json::from_slice(&body)
+        .map(Some)
+        .map_err(|error| format!("frame JSON inválido: {error}"))
+}
+
+fn read_exact_cancellable(
+    stream: &mut impl io::Read,
+    bytes: &mut [u8],
+    cancellation: &AtomicBool,
+) -> Result<bool, String> {
+    let mut filled = 0;
+    while filled < bytes.len() {
+        if cancellation.load(Ordering::Acquire) {
+            return Ok(false);
+        }
+        match stream.read(&mut bytes[filled..]) {
+            Ok(0) => thread::sleep(Duration::from_millis(5)),
+            Ok(count) => filled += count,
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                thread::sleep(Duration::from_millis(5));
+            }
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+            Err(error) => return Err(error.to_string()),
+        }
+    }
+    Ok(true)
+}
+
+fn write_frame_cancellable(
+    writer: &mut impl io::Write,
+    frame: &TransportFrame,
+    cancellation: &AtomicBool,
+) -> Result<(), String> {
+    let body = serde_json::to_vec(frame).map_err(|error| error.to_string())?;
+    if body.is_empty() || body.len() > crate::transport::MAX_FRAME_BYTES {
+        return Err("tamaño de frame inválido".into());
+    }
+    write_all_cancellable(writer, &(body.len() as u32).to_le_bytes(), cancellation)?;
+    write_all_cancellable(writer, &body, cancellation)
+}
+
+fn write_all_cancellable(
+    writer: &mut impl io::Write,
+    bytes: &[u8],
+    cancellation: &AtomicBool,
+) -> Result<(), String> {
+    let mut written = 0;
+    while written < bytes.len() {
+        if cancellation.load(Ordering::Acquire) {
+            return Err("pipe cancelado".into());
+        }
+        match writer.write(&bytes[written..]) {
+            Ok(0) => return Err("el pipe dejó de aceptar datos".into()),
+            Ok(count) => written += count,
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                thread::sleep(Duration::from_millis(5));
+            }
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+            Err(error) => return Err(error.to_string()),
+        }
+    }
+    Ok(())
+}
+
 fn encode_hex(bytes: &[u8]) -> String {
     const HEX: &[u8; 16] = b"0123456789abcdef";
     let mut result = String::with_capacity(bytes.len() * 2);
@@ -569,6 +682,54 @@ mod tests {
             }
         );
         drop(stream);
+    }
+
+    #[test]
+    fn authenticated_player_can_reconnect_and_keep_session_commands() {
+        let (sender, receiver) = mpsc::channel();
+        let launch = start("session-reconnect".into(), 8, move |event| {
+            sender.send(event).unwrap()
+        })
+        .unwrap();
+        let first = connect(&launch.name, &launch.nonce, "session-reconnect", 8).unwrap();
+        assert_eq!(
+            receiver.recv_timeout(Duration::from_secs(2)).unwrap().kind,
+            PipeEventKind::Authenticated
+        );
+
+        drop(first);
+        assert_eq!(
+            receiver.recv_timeout(Duration::from_secs(2)).unwrap().kind,
+            PipeEventKind::Disconnected
+        );
+
+        let second = connect(&launch.name, &launch.nonce, "session-reconnect", 8).unwrap();
+        assert_eq!(
+            receiver.recv_timeout(Duration::from_secs(2)).unwrap().kind,
+            PipeEventKind::Authenticated
+        );
+        launch.commands.send(PlayerCommand::Pause(true)).unwrap();
+        let until = std::time::Instant::now() + Duration::from_secs(2);
+        loop {
+            if second.try_command().unwrap() == Some(PlayerCommand::Pause(true)) {
+                break;
+            }
+            assert!(
+                std::time::Instant::now() < until,
+                "comando no sobrevivió a la reconexión"
+            );
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        drop(second);
+        assert_eq!(
+            receiver.recv_timeout(Duration::from_secs(2)).unwrap().kind,
+            PipeEventKind::Disconnected
+        );
+        launch.cancellation.cancel();
+        assert_eq!(
+            receiver.recv_timeout(Duration::from_secs(2)).unwrap().kind,
+            PipeEventKind::Cancelled
+        );
     }
 
     #[test]
