@@ -3,6 +3,8 @@ mod identity;
 mod inspect;
 mod library;
 mod migration;
+mod probe;
+mod probe_pe;
 mod protocol;
 mod settings;
 #[cfg(target_os = "windows")]
@@ -210,6 +212,44 @@ mod migration_contract_tests {
             super::vault::validate_state(&manifest, b"state", "rom-hash", "other-core").is_err()
         );
     }
+
+    #[test]
+    fn pe_probe_reports_architecture_and_missing_libretro_exports() {
+        let mut pe = vec![0u8; 0x600];
+        pe[0..2].copy_from_slice(b"MZ");
+        pe[0x3c..0x40].copy_from_slice(&0x80u32.to_le_bytes());
+        pe[0x80..0x84].copy_from_slice(b"PE\0\0");
+        pe[0x84..0x86].copy_from_slice(&0x8664u16.to_le_bytes());
+        pe[0x86..0x88].copy_from_slice(&1u16.to_le_bytes());
+        pe[0x94..0x96].copy_from_slice(&0xF0u16.to_le_bytes());
+        pe[0x98..0x9A].copy_from_slice(&0x20Bu16.to_le_bytes());
+        pe[0x98 + 108..0x98 + 112].copy_from_slice(&16u32.to_le_bytes());
+        pe[0x98 + 112..0x98 + 116].copy_from_slice(&0x1000u32.to_le_bytes());
+        let section = 0x98 + 0xF0;
+        pe[section + 8..section + 12].copy_from_slice(&0x400u32.to_le_bytes());
+        pe[section + 12..section + 16].copy_from_slice(&0x1000u32.to_le_bytes());
+        pe[section + 16..section + 20].copy_from_slice(&0x400u32.to_le_bytes());
+        pe[section + 20..section + 24].copy_from_slice(&0x200u32.to_le_bytes());
+        pe[0x200 + 24..0x200 + 28].copy_from_slice(&1u32.to_le_bytes());
+        pe[0x200 + 32..0x200 + 36].copy_from_slice(&0x1040u32.to_le_bytes());
+        pe[0x240..0x244].copy_from_slice(&0x1050u32.to_le_bytes());
+        pe[0x250..0x250 + 18].copy_from_slice(b"retro_api_version\0");
+        let report = super::probe_pe::inspect_bytes(&pe).unwrap();
+        assert_eq!(report.architecture, "x86_64");
+        assert!(
+            report
+                .exports
+                .iter()
+                .any(|name| name == "retro_api_version")
+        );
+        assert!(
+            report
+                .missing_exports
+                .contains(&"retro_get_system_info".to_string())
+        );
+        assert!(super::probe::extensions_match("GBA", Some("gba|bin")));
+        assert!(!super::probe::extensions_match("DS", Some("gba|bin")));
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -221,6 +261,9 @@ enum Screen {
 }
 
 fn main() -> Result<(), String> {
+    if env::args().nth(1).as_deref() == Some("--probe-core") {
+        return probe::run_child();
+    }
     #[cfg(target_os = "windows")]
     if !env::args().any(|s| s == "--emulator" || s == "--sdl") {
         return shell::run();

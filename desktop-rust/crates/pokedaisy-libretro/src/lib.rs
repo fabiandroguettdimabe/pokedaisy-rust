@@ -129,6 +129,15 @@ pub struct SystemAvInfo {
     pub sample_rate: f64,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CoreSystemInfo {
+    pub library_name: Option<String>,
+    pub library_version: Option<String>,
+    pub valid_extensions: Option<String>,
+    pub need_fullpath: bool,
+    pub block_extract: bool,
+}
+
 #[derive(Clone, Debug)]
 pub struct VideoFrame {
     pub width: u32,
@@ -304,6 +313,28 @@ struct RetroAvInfo {
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
+struct RetroSystemInfo {
+    library_name: *const c_char,
+    library_version: *const c_char,
+    valid_extensions: *const c_char,
+    need_fullpath: bool,
+    block_extract: bool,
+}
+
+impl Default for RetroSystemInfo {
+    fn default() -> Self {
+        Self {
+            library_name: ptr::null(),
+            library_version: ptr::null(),
+            valid_extensions: ptr::null(),
+            need_fullpath: false,
+            block_extract: false,
+        }
+    }
+}
+
+#[repr(C)]
 struct RetroThrottleState {
     mode: u32,
     rate: f32,
@@ -329,6 +360,7 @@ type LoadGame = unsafe extern "C" fn(*const RetroGameInfo) -> bool;
 type UnloadGame = unsafe extern "C" fn();
 type Run = unsafe extern "C" fn();
 type GetAvInfo = unsafe extern "C" fn(*mut RetroAvInfo);
+type GetSystemInfo = unsafe extern "C" fn(*mut RetroSystemInfo);
 type SerializeSize = unsafe extern "C" fn() -> usize;
 type Serialize = unsafe extern "C" fn(*mut c_void, usize) -> bool;
 type Unserialize = unsafe extern "C" fn(*const c_void, usize) -> bool;
@@ -350,6 +382,7 @@ struct Api {
     unload_game: UnloadGame,
     run: Run,
     get_av_info: GetAvInfo,
+    get_system_info: GetSystemInfo,
     serialize_size: SerializeSize,
     serialize: Serialize,
     unserialize: Unserialize,
@@ -494,6 +527,14 @@ impl Api {
                     path,
                     b"retro_get_system_av_info\0",
                     "retro_get_system_av_info",
+                )?
+            },
+            get_system_info: unsafe {
+                required_symbol(
+                    library,
+                    path,
+                    b"retro_get_system_info\0",
+                    "retro_get_system_info",
                 )?
             },
             serialize_size: unsafe {
@@ -657,6 +698,22 @@ impl LibretroCore {
             },
         };
         Ok(self.av)
+    }
+
+    pub fn system_info(&self) -> CoreSystemInfo {
+        let mut info = RetroSystemInfo::default();
+        unsafe { (self.api.get_system_info)(&mut info) };
+        CoreSystemInfo {
+            library_name: parse_cstr(info.library_name),
+            library_version: parse_cstr(info.library_version),
+            valid_extensions: parse_cstr(info.valid_extensions),
+            need_fullpath: info.need_fullpath,
+            block_extract: info.block_extract,
+        }
+    }
+
+    pub fn api_version(&self) -> u32 {
+        unsafe { (self.api.api_version)() }
     }
 
     pub fn run_frame(&mut self, input: JoypadState) -> Result<CoreFrame, CoreError> {

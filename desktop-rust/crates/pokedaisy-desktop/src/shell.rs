@@ -13,6 +13,7 @@ use wry::WebViewBuilder;
 enum Message {
     Action(String),
     Scanned(u64, Vec<Game>),
+    CoreProbed(u64, serde_json::Value),
 }
 
 pub fn run() -> Result<(), String> {
@@ -82,6 +83,8 @@ pub fn run() -> Result<(), String> {
     let mut session_epoch: u64 = 0;
     let mut command_revision: u64 = 0;
     let mut pending_migration: Option<migration::MigrationReport> = None;
+    let mut probe_generation = 0u64;
+    let mut core_probe: Option<serde_json::Value> = None;
     event_loop.run(move |event,_,flow| {
         *flow=ControlFlow::Wait;
         match event {
@@ -107,7 +110,11 @@ pub fn run() -> Result<(), String> {
                 if catalog_changed {
                     let _ = library::save(&index_path, &imported);
                 }
-                publish(&webview,&config,&games,scanning,&session,session_epoch,command_revision);
+                publish(&webview,&config,&games,scanning,&session,session_epoch,command_revision,&core_probe);
+            },
+            TaoEvent::UserEvent(Message::CoreProbed(id, report)) if id == probe_generation => {
+                core_probe = Some(report);
+                publish(&webview,&config,&games,scanning,&session,session_epoch,command_revision,&core_probe);
             },
             TaoEvent::UserEvent(Message::Action(body)) => {
                 let cmd = match protocol::parse_legacy_action(&body) {
@@ -230,6 +237,23 @@ pub fn run() -> Result<(), String> {
                             pending_migration = Some(refreshed);
                             refresh = true;
                         },
+                        "probe_core" => {
+                            let index = action["index"].as_u64().filter(|i| *i < 3).ok_or("Núcleo inválido")? as usize;
+                            let system = ["GBC", "GBA", "DS"][index];
+                            let expected_system = system.to_string();
+                            let core_path = config.core(system)?;
+                            if !core_path.is_file() { return Err("El archivo del núcleo no existe".into()); }
+                            probe_generation = probe_generation.saturating_add(1);
+                            let id = probe_generation;
+                            core_probe = Some(json!({"path":core_path,"status":"probing","reason":null}));
+                            let exe = env::current_exe().map_err(|e|e.to_string())?;
+                            let tx = proxy.clone();
+                            std::thread::spawn(move || {
+                                let report = crate::probe::probe_child(&exe,&core_path,&expected_system,std::time::Duration::from_secs(8))
+                                    .unwrap_or_else(|reason| json!({"path":core_path,"status":"process_failed","reason":reason}));
+                                let _ = tx.send_event(Message::CoreProbed(id,report));
+                            });
+                        },
                         _=>return Err("Acción no disponible".into()),
                     } Ok(())
                 })();
@@ -254,7 +278,7 @@ pub fn run() -> Result<(), String> {
                 let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
                 if let Err(error)=result { let _=webview.evaluate_script(&format!("window.vyntraError({});",json!(error))); }
                 if refresh {generation+=1; scanning=true; let id=generation; let cfg=config.clone(); let tx=proxy.clone(); std::thread::spawn(move||{let found=scan_games(&cfg.library,cfg.recursive);let _=tx.send_event(Message::Scanned(id,found));});}
-                publish(&webview,&config,&games,scanning,&session,session_epoch,command_revision);
+                publish(&webview,&config,&games,scanning,&session,session_epoch,command_revision,&core_probe);
             },
             _=>{}
         }
@@ -389,6 +413,7 @@ fn publish(
     session: &Option<domain::SessionIdentity>,
     session_epoch: u64,
     command_revision: u64,
+    core_probe: &Option<serde_json::Value>,
 ) {
     let games:Vec<_>=games.iter().enumerate().map(|(id,g)|json!({"id":id,"storage_id":game_storage_key(g),"title":g.title,"system":g.system,"path":g.path,"missing":!g.path.is_file(),"core":config.core(g.system).is_ok_and(|p|p.is_file())})).collect();
     let cores:Vec<_>=["GBC","GBA","DS"].iter().enumerate().map(|(id,s)| {let path=config.core(s).ok();json!({"id":id,"system":s,"path":path,"installed":path.as_ref().is_some_and(|p|p.is_file())})}).collect();
@@ -401,7 +426,8 @@ fn publish(
         "scanning": scanning,
         "session": session,
         "session_epoch": session_epoch,
-        "command_revision": command_revision
+        "command_revision": command_revision,
+        "core_probe": core_probe
     });
     let _ = webview.evaluate_script(&format!("window.vyntraState({value});"));
 }
