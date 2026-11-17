@@ -2919,9 +2919,16 @@ mod tests {
             b"orphan state without manifest",
         )
         .unwrap();
-        // Model a crash after the replacement payload lands but before its
-        // matching manifest can be committed.
-        fs::write(super::state_path(&game, &dir), b"tampered").unwrap();
+        const INTERRUPT_PATH_ENV: &str = "VYNTRA_STATE_PAYLOAD_INTERRUPT_PATH";
+        let child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "tests::interrupt_after_state_payload_write_before_manifest",
+            ])
+            .env(INTERRUPT_PATH_ENV, super::state_path(&game, &dir))
+            .status()
+            .unwrap();
+        assert_eq!(child.code(), Some(74));
         assert_eq!(fs::read(&state_manifest_path).unwrap(), committed_manifest);
         assert_eq!(
             super::load_compatible_state(&game, &dir, Some("corehash")).unwrap(),
@@ -2930,6 +2937,20 @@ mod tests {
         fs::write(backup.join("slot1.ss"), b"also tampered").unwrap();
         assert!(super::load_compatible_state(&game, &dir, Some("corehash")).is_err());
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn interrupt_after_state_payload_write_before_manifest() {
+        const INTERRUPT_PATH_ENV: &str = "VYNTRA_STATE_PAYLOAD_INTERRUPT_PATH";
+        let Some(path) = std::env::var_os(INTERRUPT_PATH_ENV) else {
+            return;
+        };
+        atomic_write(
+            &std::path::PathBuf::from(path),
+            b"new state without its manifest",
+        )
+        .unwrap();
+        std::process::exit(74);
     }
 
     #[test]
