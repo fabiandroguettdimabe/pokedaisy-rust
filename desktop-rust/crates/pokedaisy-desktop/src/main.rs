@@ -625,6 +625,13 @@ fn sdl_main() -> Result<(), String> {
     let mut last_auto = Instant::now();
     let mut last_save = Instant::now();
     let mut last_pipe_snapshot = Instant::now();
+    #[cfg(windows)]
+    // Keep live reads disabled until a concrete game/core profile has passed identity and fixture review.
+    let memory_adapters = memory_adapter::MemoryAdapterRegistry::default();
+    #[cfg(windows)]
+    let mut memory_adapter_identity: Option<memory_adapter::GameIdentity> = None;
+    #[cfg(windows)]
+    let mut memory_poller: Option<memory_adapter::MemoryPoller> = None;
     let mut companion_paused = false;
     let mut audio_resampler = timing::StereoResampler::new();
     let mut audio_queue_diagnostics = timing::AudioQueueDiagnostics::default();
@@ -1329,6 +1336,29 @@ fn sdl_main() -> Result<(), String> {
         #[cfg(target_os = "windows")]
         if last_pipe_snapshot.elapsed() >= Duration::from_millis(500) {
             if let Some(pipe) = player_pipe.as_mut() {
+                let next_memory_identity = if let (Some(game), Some(core_hash)) =
+                    (active_game.as_ref(), active_core_hash.as_deref())
+                {
+                    adapter_identity_for_game(game, core_hash)
+                } else {
+                    None
+                };
+                if next_memory_identity != memory_adapter_identity {
+                    memory_adapter_identity = next_memory_identity.clone();
+                    memory_poller = next_memory_identity.and_then(|identity| {
+                        player_connection.as_ref().map(|(_, _, session_id, epoch)| {
+                            memory_adapter::MemoryPoller::new(session_id.clone(), identity, *epoch)
+                        })
+                    });
+                }
+                let companion_memory =
+                    memory_poller
+                        .as_mut()
+                        .zip(core.as_mut())
+                        .and_then(|(poller, core)| {
+                            let mut reader = memory_adapter::LibretroMemoryReader::new(core);
+                            poller.poll(&memory_adapters, &mut reader).ok().flatten()
+                        });
                 let core_info = core.as_ref().map(|core| core.system_info());
                 let supports_save_states = core
                     .as_ref()
@@ -1354,6 +1384,7 @@ fn sdl_main() -> Result<(), String> {
                         "empty_episodes": audio_queue_diagnostics.snapshot().empty_episodes,
                         "dropped_frames": audio_queue_diagnostics.snapshot().dropped_frames,
                     },
+                    "companion_memory": companion_memory,
                 });
                 let _ = pipe.send_snapshot(snapshot);
             }
@@ -1426,6 +1457,28 @@ fn game_storage_key(game: &Game) -> String {
             Err(_) => identity::storage_key(&game.path),
         })
         .clone()
+}
+
+/// Exact identity offered to the memory registry for a currently playing GBA game.
+/// This does not create/register an adapter: the ROM and core must already match one.
+fn adapter_identity_for_game(
+    game: &Game,
+    core_sha256: &str,
+) -> Option<memory_adapter::GameIdentity> {
+    if game.system != "GBA" {
+        return None;
+    }
+    let _ = game_storage_key(game);
+    let rom_sha256 = game.rom_sha256.get()?.clone();
+    let inspection = inspect::inspect_file(&game.path)?;
+    let game_code = inspection.game_code?;
+    let revision = inspection.revision?;
+    Some(memory_adapter::GameIdentity {
+        system: inspection.system.into(),
+        rom_sha256,
+        core_sha256: core_sha256.into(),
+        game_revision: format!("{game_code}-rev{revision}"),
+    })
 }
 
 fn session_save_owner(active: &Option<Game>) -> Option<&Game> {
@@ -2912,6 +2965,41 @@ mod tests {
     use std::fs;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn memory_adapter_identity_uses_rom_core_and_concrete_gba_revision() {
+        let root = std::env::temp_dir().join(format!("vyntra-memory-id-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let rom = root.join("identity.gba");
+        let mut bytes = vec![0; 0xc0];
+        bytes[0xa0..0xac].copy_from_slice(b"TEST GAME   ");
+        bytes[0xac..0xb0].copy_from_slice(b"BPEE");
+        bytes[0xb2] = 0x96;
+        bytes[0xbc] = 1;
+        fs::write(&rom, bytes).unwrap();
+        let game = super::game_from_path(rom);
+
+        let identity = super::adapter_identity_for_game(&game, "core-hash").unwrap();
+        assert_eq!(identity.system, "GBA");
+        assert_eq!(identity.rom_sha256.len(), 64);
+        assert_eq!(identity.core_sha256, "core-hash");
+        assert_eq!(identity.game_revision, "BPEE-rev1");
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn memory_adapter_identity_is_not_created_for_non_gba_roms() {
+        let root = std::env::temp_dir().join(format!("vyntra-memory-id-gb-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let rom = root.join("identity.gb");
+        fs::write(&rom, [0; 0x150]).unwrap();
+        let game = super::game_from_path(rom);
+        assert!(super::adapter_identity_for_game(&game, "core-hash").is_none());
+        fs::remove_dir_all(root).unwrap();
+    }
 
     #[cfg(windows)]
     #[test]
