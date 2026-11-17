@@ -39,6 +39,7 @@ const RETRO_PIXEL_FORMAT_RGB565: u32 = 2;
 const RETRO_THROTTLE_VSYNC: u32 = 5;
 const RETRO_API_VERSION: u32 = 1;
 const MAX_FRAME_BYTES: usize = 128 * 1024 * 1024;
+const MAX_AUDIO_SAMPLES_PER_FRAME: usize = 65_536;
 const MAX_OPTION_DEFINITIONS: usize = 2048;
 const OPTION_VALUES_MAX: usize = 128;
 
@@ -127,6 +128,40 @@ pub struct SystemAvInfo {
     pub geometry: Geometry,
     pub fps: f64,
     pub sample_rate: f64,
+}
+
+fn normalize_av_info(av: RetroAvInfo) -> SystemAvInfo {
+    let base_width = av.geometry.base_width.max(1);
+    let base_height = av.geometry.base_height.max(1);
+    SystemAvInfo {
+        geometry: Geometry {
+            base_width,
+            base_height,
+            max_width: av.geometry.max_width.max(base_width),
+            max_height: av.geometry.max_height.max(base_height),
+            aspect_ratio: if av.geometry.aspect_ratio.is_finite() && av.geometry.aspect_ratio > 0.0
+            {
+                av.geometry.aspect_ratio
+            } else {
+                base_width as f32 / base_height as f32
+            },
+        },
+        fps: if av.timing.fps.is_finite() && av.timing.fps > 0.0 {
+            av.timing.fps
+        } else {
+            60.0
+        },
+        sample_rate: if av.timing.sample_rate.is_finite() && av.timing.sample_rate > 0.0 {
+            av.timing.sample_rate
+        } else {
+            32_768.0
+        },
+    }
+}
+
+fn accepted_audio_frames(current_samples: usize, requested_frames: usize) -> usize {
+    let capacity = MAX_AUDIO_SAMPLES_PER_FRAME.saturating_sub(current_samples);
+    requested_frames.min(capacity / 2)
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -674,29 +709,7 @@ impl LibretroCore {
                 }
             }
         }
-        self.av = SystemAvInfo {
-            geometry: Geometry {
-                base_width: av.geometry.base_width.max(1),
-                base_height: av.geometry.base_height.max(1),
-                max_width: av.geometry.max_width.max(av.geometry.base_width).max(1),
-                max_height: av.geometry.max_height.max(av.geometry.base_height).max(1),
-                aspect_ratio: if av.geometry.aspect_ratio > 0.0 {
-                    av.geometry.aspect_ratio
-                } else {
-                    av.geometry.base_width as f32 / av.geometry.base_height.max(1) as f32
-                },
-            },
-            fps: if av.timing.fps > 0.0 {
-                av.timing.fps
-            } else {
-                60.0
-            },
-            sample_rate: if av.timing.sample_rate > 0.0 {
-                av.timing.sample_rate
-            } else {
-                32768.0
-            },
-        };
+        self.av = normalize_av_info(av);
         Ok(self.av)
     }
 
@@ -733,6 +746,7 @@ impl LibretroCore {
             .lock()
             .map_err(|_| CoreError::PoisonedContext)?;
         let state = state.as_mut().ok_or(CoreError::PoisonedContext)?;
+        self.av = normalize_av_info(state.av);
         Ok(CoreFrame {
             video: state.video.clone(),
             audio: std::mem::take(&mut state.audio),
@@ -1104,25 +1118,31 @@ unsafe extern "C" fn audio_sample(left: i16, right: i16) {
     let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         if let Ok(mut guard) = callback_state().lock() {
             if let Some(state) = guard.as_mut().filter(|state| state.active) {
-                state.audio.extend([left, right]);
+                if accepted_audio_frames(state.audio.len(), 1) == 1 {
+                    state.audio.extend([left, right]);
+                }
             }
         }
     }));
 }
 
 unsafe extern "C" fn audio_batch(data: *const i16, frames: usize) -> usize {
-    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        if data.is_null() || frames > MAX_FRAME_BYTES / 4 {
-            return;
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        if data.is_null() {
+            return 0;
         }
         if let Ok(mut guard) = callback_state().lock() {
             if let Some(state) = guard.as_mut().filter(|state| state.active) {
-                let samples = unsafe { std::slice::from_raw_parts(data, frames.saturating_mul(2)) };
+                let accepted = accepted_audio_frames(state.audio.len(), frames);
+                let samples =
+                    unsafe { std::slice::from_raw_parts(data, accepted.saturating_mul(2)) };
                 state.audio.extend_from_slice(samples);
+                return accepted;
             }
         }
-    }));
-    frames
+        0
+    }))
+    .unwrap_or(0)
 }
 
 unsafe extern "C" fn input_poll() {}
@@ -1144,5 +1164,47 @@ unsafe extern "C" fn input_state(port: u32, device: u32, _index: u32, id: u32) -
         1
     } else {
         0
+    }
+}
+
+#[cfg(test)]
+mod av_contract_tests {
+    use super::{
+        RetroAvInfo, RetroGeometry, RetroTiming, accepted_audio_frames, normalize_av_info,
+    };
+
+    #[test]
+    fn runtime_av_updates_preserve_core_frame_and_sample_rates() {
+        let av = normalize_av_info(RetroAvInfo {
+            geometry: RetroGeometry {
+                base_width: 320,
+                base_height: 240,
+                max_width: 640,
+                max_height: 480,
+                aspect_ratio: 4.0 / 3.0,
+            },
+            timing: RetroTiming {
+                fps: 50.0,
+                sample_rate: 22_050.0,
+            },
+        });
+        assert_eq!(av.fps, 50.0);
+        assert_eq!(av.sample_rate, 22_050.0);
+        assert_eq!(av.geometry.base_width, 320);
+    }
+
+    #[test]
+    fn invalid_runtime_timing_uses_safe_defaults() {
+        let av = normalize_av_info(RetroAvInfo::default());
+        assert_eq!(av.fps, 60.0);
+        assert_eq!(av.sample_rate, 32_768.0);
+        assert_eq!(av.geometry.base_width, 1);
+    }
+
+    #[test]
+    fn audio_batch_is_capped_to_remaining_per_frame_budget() {
+        assert_eq!(accepted_audio_frames(0, 100_000), 32_768);
+        assert_eq!(accepted_audio_frames(65_536, 1), 0);
+        assert_eq!(accepted_audio_frames(0, 100), 100);
     }
 }
