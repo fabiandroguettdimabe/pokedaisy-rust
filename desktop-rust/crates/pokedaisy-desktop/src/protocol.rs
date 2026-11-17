@@ -40,6 +40,72 @@ const SUPPORTED_ACTIONS: &[&str] = &[
     "open_folder",
 ];
 
+#[derive(Clone, Copy)]
+enum PayloadFieldType {
+    String,
+    Boolean,
+    Number,
+    Array,
+    Any,
+}
+
+fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppError> {
+    let Some(object) = payload.as_object() else {
+        return Err(AppError::new(
+            "invalid_payload",
+            "El payload del comando debe ser un objeto JSON",
+        ));
+    };
+    let schema: &[(&str, PayloadFieldType)] = match action {
+        "reset_settings_section" => &[("section", PayloadFieldType::String)],
+        "favorite" => &[
+            ("storage_id", PayloadFieldType::String),
+            ("value", PayloadFieldType::Boolean),
+        ],
+        "game_note" => &[
+            ("storage_id", PayloadFieldType::String),
+            ("value", PayloadFieldType::String),
+        ],
+        "library_view" | "library_filter" | "library_selection" => {
+            &[("value", PayloadFieldType::String)]
+        }
+        "relink" | "play" => &[("storage_id", PayloadFieldType::String)],
+        "type_matchup" => &[
+            ("attack", PayloadFieldType::Number),
+            ("defenses", PayloadFieldType::Array),
+            ("index", PayloadFieldType::Number),
+        ],
+        "choose" | "open_folder" => &[("field", PayloadFieldType::String)],
+        "set" => &[
+            ("field", PayloadFieldType::String),
+            ("value", PayloadFieldType::Any),
+        ],
+        "pause_player" => &[("value", PayloadFieldType::Boolean)],
+        "export_vault_bundle" | "export_save" => &[("file", PayloadFieldType::String)],
+        _ => &[],
+    };
+
+    for (field, field_type) in schema {
+        let value = object
+            .get(*field)
+            .ok_or_else(|| AppError::new("invalid_payload", format!("Falta el campo `{field}`")))?;
+        let matches_type = match field_type {
+            PayloadFieldType::String => value.is_string(),
+            PayloadFieldType::Boolean => value.is_boolean(),
+            PayloadFieldType::Number => value.as_u64().is_some(),
+            PayloadFieldType::Array => value.is_array(),
+            PayloadFieldType::Any => !value.is_null(),
+        };
+        if !matches_type {
+            return Err(AppError::new(
+                "invalid_payload",
+                format!("El campo `{field}` tiene un tipo inválido"),
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// Application-level error with a stable code for UI handling and diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AppError {
@@ -234,6 +300,7 @@ pub fn parse_ui_command(body: &str) -> Result<UiCommandEnvelope, AppError> {
         if !SUPPORTED_ACTIONS.contains(&action) {
             return Err(AppError::new("unknown_action", "Acción no disponible"));
         }
+        validate_versioned_payload(action, &command.payload)?;
         return Ok(command);
     }
     let action = payload
@@ -308,6 +375,27 @@ mod tests {
         ] {
             assert_eq!(parse_ui_command(body).unwrap_err().code, code);
         }
+    }
+
+    #[test]
+    fn versioned_payloads_validate_object_shape_and_action_fields() {
+        let valid = r#"{"protocol_version":1,"command_id":"ok","action":"favorite","payload":{"storage_id":"g1","value":true}}"#;
+        assert!(parse_ui_command(valid).is_ok());
+
+        for body in [
+            r#"{"protocol_version":1,"command_id":"x","action":"favorite","payload":[]}"#,
+            r#"{"protocol_version":1,"command_id":"x","action":"favorite","payload":{"storage_id":"g1"}}"#,
+            r#"{"protocol_version":1,"command_id":"x","action":"favorite","payload":{"storage_id":"g1","value":"yes"}}"#,
+        ] {
+            assert_eq!(parse_ui_command(body).unwrap_err().code, "invalid_payload");
+        }
+
+        assert!(
+            parse_ui_command(
+                r#"{"protocol_version":1,"command_id":"ready","action":"ready","payload":{}}"#
+            )
+            .is_ok()
+        );
     }
 
     #[test]
