@@ -27,6 +27,15 @@ class ExportDesktopDexTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             MODULE.parse_species_names('mapOf(1 to "Bulbasaur", 1 to "Duplicate")', max_dex=1)
 
+    def test_gen3_mapping_preserves_internal_species_ids_and_rejects_truncation(self):
+        source = "speciesNationalDex: IntArray = intArrayOf(" + ",".join(map(str, range(412))) + ")"
+        mapping = MODULE.parse_gen3_species_dex(source)
+        self.assertEqual(len(mapping), 412)
+        self.assertEqual(mapping[0], 0)
+        self.assertEqual(mapping[25], 25)
+        with self.assertRaises(ValueError):
+            MODULE.parse_gen3_species_dex("speciesNationalDex: IntArray = intArrayOf(0, 1)")
+
     def test_shipped_dataset_covers_all_generation_boundaries_and_source_hash(self):
         source = (ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/SpeciesNamesNationalDex.kt").read_bytes()
         dataset = MODULE.build_dataset(source)
@@ -41,6 +50,11 @@ class ExportDesktopDexTests(unittest.TestCase):
              (649, 5), (650, 6), (721, 6), (722, 7), (809, 7), (810, 8), (905, 8), (906, 9), (1025, 9)],
         )
         self.assertEqual(dataset["species"][-1]["name"], "Pecharunt")
+        self.assertEqual(len(dataset["gen3_species_map"]), 412)
+        self.assertEqual(dataset["gen3_species_map"][277], 252)
+        self.assertEqual(dataset["gen3_species_source_sha256"], MODULE.hashlib.sha256(
+            (ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/save/SpeciesDexGen.kt").read_bytes()
+        ).hexdigest())
 
 
 if __name__ == "__main__":

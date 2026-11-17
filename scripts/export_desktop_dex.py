@@ -8,6 +8,7 @@ import re
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/SpeciesNamesNationalDex.kt"
+GEN3_SPECIES_SOURCE = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/save/SpeciesDexGen.kt"
 OUTPUT = ROOT / "desktop-rust/ui/src/data/pokedex-gen9.json"
 GENERATION_ENDS = (151, 251, 386, 493, 649, 721, 809, 905, 1025)
 
@@ -50,6 +51,8 @@ def build_dataset(source_bytes: bytes) -> dict:
     for number, last in enumerate(GENERATION_ENDS, 1):
         generations.append({"generation": number, "first": first, "last": last})
         first = last + 1
+    gen3_map_bytes = GEN3_SPECIES_SOURCE.read_bytes()
+    gen3_map = parse_gen3_species_dex(gen3_map_bytes.decode("utf-8"))
     return {
         "schema_version": 1,
         "dataset_id": "pokemon-national-dex-gen9",
@@ -60,7 +63,21 @@ def build_dataset(source_bytes: bytes) -> dict:
         "license": "BSD-3-Clause",
         "attribution": "PokeAPI contributors",
         "species": species,
+        "gen3_species_map": gen3_map,
+        "gen3_species_source_sha256": hashlib.sha256(gen3_map_bytes).hexdigest(),
     }
+
+
+def parse_gen3_species_dex(source: str) -> list[int]:
+    match = re.search(r"speciesNationalDex:\s*IntArray\s*=\s*intArrayOf\((.*?)\)", source, re.S)
+    if not match:
+        raise ValueError("missing generated Gen III species-to-National-Dex map")
+    values = [int(value) for value in re.findall(r"\d+", match.group(1))]
+    if len(values) != 412 or values[0] != 0:
+        raise ValueError(f"invalid Gen III species map size or sentinel: {len(values)}")
+    if any(number < 0 or number > 411 for number in values):
+        raise ValueError("Gen III species map contains an invalid National Dex number")
+    return values
 
 
 def main() -> None:

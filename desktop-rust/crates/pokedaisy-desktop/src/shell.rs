@@ -669,6 +669,20 @@ pub fn run() -> Result<(), String> {
                             let cancellation = active_import.as_ref().ok_or("No hay una importación activa")?;
                             cancellation.store(true, Ordering::Release);
                         },
+                        "read_gen3_save" => {
+                            let format=match action["format"].as_str().unwrap_or_default(){
+                                "ruby_sapphire"=>crate::gen3_save::Gen3Format::RubySapphire,
+                                "emerald"=>crate::gen3_save::Gen3Format::Emerald,
+                                "firered_leafgreen"=>crate::gen3_save::Gen3Format::FireRedLeafGreen,
+                                _=>return Err("Perfil de guardado Gen 3 no compatible".into()),
+                            };
+                            let Some(path)=rfd::FileDialog::new().set_title("Abrir guardado GBA · lectura solamente").add_filter("Guardados GBA", &["sav","srm","dat"]).pick_file() else { return Ok(()); };
+                            let metadata=fs::metadata(&path).map_err(|error|format!("No se pudo leer el archivo: {error}"))?;
+                            if metadata.len()>1024*1024{return Err("El guardado supera el límite de lectura de 1 MiB".into());}
+                            let bytes=fs::read(&path).map_err(|error|format!("No se pudo leer el guardado: {error}"))?;
+                            let snapshot=crate::gen3_save::read(&bytes,format)?;
+                            command_result=Some(json!({"gen3_save":snapshot,"file_name":path.file_name().unwrap_or_default().to_string_lossy()}));
+                        },
                         "choose" => {
                             let field=action["field"].as_str().unwrap_or("");
                             let mut next=config.clone();

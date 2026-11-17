@@ -29,6 +29,7 @@ const SUPPORTED_ACTIONS: &[&str] = &[
     "library_selection",
     "relink",
     "type_matchup",
+    "read_gen3_save",
     "import",
     "import_roots",
     "cancel_import",
@@ -156,6 +157,7 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
             ],
             &["attack", "defenses"],
         ),
+        "read_gen3_save" => (&[("format", PayloadFieldType::String)], &["format"]),
         "choose" | "open_folder" => (&[("field", PayloadFieldType::String)], &["field"]),
         "set" => (
             &[
@@ -307,6 +309,10 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
                 })
         }
         "probe_core" => object["index"].as_u64().is_none_or(|index| index >= 3),
+        "read_gen3_save" => !matches!(
+            object["format"].as_str(),
+            Some("ruby_sapphire" | "emerald" | "firered_leafgreen")
+        ),
         "set" => {
             let field = object["field"].as_str().unwrap_or_default();
             let value = &object["value"];
@@ -786,6 +792,7 @@ mod tests {
                 "relink" => serde_json::json!({"storage_id":"g1"}),
                 "play" => serde_json::json!({"storage_id":"g1","source_index":0}),
                 "type_matchup" => serde_json::json!({"attack":10,"defenses":[12,8]}),
+                "read_gen3_save" => serde_json::json!({"format":"emerald"}),
                 "choose" => serde_json::json!({"field":"library"}),
                 "set" => serde_json::json!({"field":"volume","value":80}),
                 "pause_player" => serde_json::json!({"value":false}),

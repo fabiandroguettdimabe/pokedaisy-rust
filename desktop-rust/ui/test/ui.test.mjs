@@ -32,7 +32,7 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.waitForFunction(()=>typeof window.vyntraState==='function');
   await page.evaluate(()=>window.vyntraState(window.testState={
    config:{library:'C:/fixtures/roms',saves:'C:/fixtures/saves',states:'C:/fixtures/states',system:'C:/fixtures/bios',cores:[null,null,null],volume:80,smooth:true,fullscreen:false,recursive:true,fast_forward:2,autosave:20,reduced_motion:false,keys:['Z','X','F','Tab','Return','Backspace','Up','Down','Left','Right','Q','E','1','2']},
-   games:[{id:0,storage_id:'gb-fixture',title:'Synthetic GB fixture',system:'GB',path:'C:/fixtures/test.gb',missing:false,core:false,note:''},{id:1,storage_id:'gba-fixture',title:'Synthetic GBA fixture',system:'GBA',path:'C:/fixtures/test.gba',missing:false,core:true,note:'',identity:{game_code:'ABCD',revision:1,confidence:'partial'}},{id:2,storage_id:'gba-fixture',title:'Synthetic GBA fixture',system:'GBA',path:'D:/backup/test.gba',missing:false,core:true,note:''}],
+   games:[{id:0,storage_id:'gb-fixture',title:'Synthetic GB fixture',system:'GB',path:'C:/fixtures/test.gb',missing:false,core:false,note:''},{id:1,storage_id:'gba-fixture',title:'Synthetic GBA fixture',system:'GBA',path:'C:/fixtures/test.gba',missing:false,core:true,note:'',identity:{game_code:'ABCD',revision:1,confidence:'partial'}},{id:2,storage_id:'gba-fixture',title:'Synthetic GBA fixture',system:'GBA',path:'D:/backup/test.gba',missing:false,core:true,note:'',identity:{game_code:'BPEE',revision:0,confidence:'exact'}}],
    cores:[{id:0,system:'GBC',path:null,installed:false},{id:1,system:'GBA',path:'C:/cores/test.dll',installed:true},{id:2,system:'DS',path:null,installed:false}],saves:[],scanning:false,
    reference_type_chart:{schema_version:1,dataset_id:'pokemon-gen3-type-chart',generation:3,source_sha256:'a'.repeat(64),license:'GPL-3.0-only',default_percent:100,types:[{id:8,name:'Steel'},{id:10,name:'Fire'},{id:12,name:'Grass'}],matchups:[]},
   }));
@@ -107,7 +107,24 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.getByRole('button',{name:'Núcleos',exact:true}).last().click();
   await page.getByRole('button',{name:'Probar',exact:true}).nth(1).click();
   await expectCommand('probe_core',{index:1});
+  await page.getByRole('button',{name:'Biblioteca',exact:true}).click();
+  await page.locator('.game-card').filter({hasText:'Synthetic GBA fixture'}).nth(1).click();
   await page.getByRole('button',{name:'Acompañante',exact:true}).click();
+  assert.equal(await page.getByText('Código BPEE · Emerald',{exact:true}).isVisible(),true,await page.locator('.companion-grid').textContent());
+  await page.getByRole('button',{name:'Abrir guardado',exact:true}).click();
+  await expectCommand('read_gen3_save',{format:'emerald'});
+  await page.evaluate(()=>window.vyntraAck({ok:true,result:{gen3_save:{format:'Emerald',counter:7,sha256:'a'.repeat(64),party:[{species_id:25,level:12,is_egg:false}],bag:[[{item_id:13,quantity:5}],[],[],[],[]]}}}));
+  await page.getByRole('button',{name:'Ver Pikachu en Dex'}).click();
+  assert.equal(await page.getByRole('heading',{name:'Pikachu',exact:true}).isVisible(),true);
+  await page.getByLabel('Buscar objeto por ID').fill('13');
+  await page.getByLabel('Categoría de mochila').selectOption('0');
+  await page.getByRole('button',{name:/Objeto ID 13/}).click();
+  assert.equal(await page.getByText('Detalle del objeto ID 13',{exact:true}).isVisible(),true);
+  assert.equal(await page.getByText('Objeto ID 13',{exact:true}).isVisible(),true);
+  assert.equal(await page.getByText('×5',{exact:true}).isVisible(),true);
+  assert.equal(await page.getByText('Catálogo separado',{exact:true}).count(),0);
+  await page.getByRole('button',{name:'Cerrar aviso'}).scrollIntoViewIfNeeded();
+  await page.getByRole('button',{name:'Cerrar aviso'}).click();
   await page.getByLabel('Ataque').selectOption('10');
   await page.getByLabel('Defensa 1').selectOption('12');
   await page.getByLabel('Defensa 2').selectOption('8');
@@ -203,6 +220,9 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await expectCommand('load_player_state',{}, {session_id:'test-session',epoch:2,expected_revision:7});
   await page.evaluate(()=>window.vyntraAck({ok:false,revision:8,error:{code:'stale_revision',reason:'La configuración cambió en otra ventana.'}}));
   assert.equal(await page.getByText('La configuración cambió en otra ventana. Se actualizó el estado; revisa los valores y vuelve a aplicar.').isVisible(),true);
+  await page.getByRole('button',{name:'Cerrar aviso'}).evaluate(element=>element.click());
+  await page.evaluate(()=>window.vyntraState({command_revision:9,config:{library_view:'grid',library_filter:'Todos',library_selection:'different-game'},games:[]}));
+  assert.equal(await page.getByText('Sin guardado verificado. El planificador manual permanece separado.',{exact:true}).isVisible(),true);
   assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 });
