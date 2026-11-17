@@ -94,6 +94,7 @@ pub fn run() -> Result<(), String> {
     let mut child: Option<std::process::Child> = None;
     let mut generation = 0u64;
     let mut scanning = false;
+    let mut active_scan: Option<Arc<AtomicBool>> = None;
     let mut session: Option<domain::SessionIdentity> = None;
     let mut session_epoch: u64 = 0;
     let mut player_commands: Option<crate::transport::PlayerCommandSender> = None;
@@ -111,6 +112,7 @@ pub fn run() -> Result<(), String> {
                 *flow=ControlFlow::Exit
             },
             TaoEvent::UserEvent(Message::Scanned(id,mut found)) if id==generation => {
+                active_scan = None;
                 for entry in &imported { if !found.iter().any(|g| g.path==entry.path) && (!entry.path.is_file() || supported(&entry.path)) { found.push(game_from_path(entry.path.clone())); } }
                 games=found; scanning=false;
                 let mut catalog_changed = false;
@@ -557,7 +559,21 @@ pub fn run() -> Result<(), String> {
                 };
                 let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
                 if let Err(error)=result { let _=webview.evaluate_script(&format!("window.vyntraError({});",json!(error))); }
-                if refresh {generation+=1; scanning=true; let id=generation; let cfg=config.clone(); let tx=proxy.clone(); std::thread::spawn(move||{let found=scan_games(&cfg.library,cfg.recursive);let _=tx.send_event(Message::Scanned(id,found));});}
+                if refresh {
+                    if let Some(previous) = active_scan.take() { previous.store(true, Ordering::Release); }
+                    generation = generation.saturating_add(1);
+                    scanning = true;
+                    let id = generation;
+                    let cancelled = Arc::new(AtomicBool::new(false));
+                    let worker_cancelled = Arc::clone(&cancelled);
+                    active_scan = Some(cancelled);
+                    let cfg = config.clone();
+                    let tx = proxy.clone();
+                    std::thread::spawn(move || {
+                        let found = scan_games_controlled(&cfg.library, cfg.recursive, &worker_cancelled);
+                        let _ = tx.send_event(Message::Scanned(id, found));
+                    });
+                }
                 publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
             },
             _=>{}

@@ -30,6 +30,7 @@ use std::env;
 use std::fs;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 use vyntra_libretro::{
     CorePaths, JoypadButton, JoypadState, LibretroCore, PixelFormat, VideoFrame,
@@ -1309,13 +1310,20 @@ fn core_names(system: &str) -> &'static [&'static str] {
 }
 
 fn scan_games(root: &Path, recursive: bool) -> Vec<Game> {
+    scan_games_controlled(root, recursive, &AtomicBool::new(false))
+}
+
+fn scan_games_controlled(root: &Path, recursive: bool, cancelled: &AtomicBool) -> Vec<Game> {
     let mut out = Vec::new();
     let mut stack = vec![root.to_path_buf()];
-    while let Some(dir) = stack.pop() {
+    while let Some(dir) = stack.pop().filter(|_| !cancelled.load(Ordering::Acquire)) {
         let Ok(entries) = fs::read_dir(dir) else {
             continue;
         };
         for entry in entries.flatten() {
+            if cancelled.load(Ordering::Acquire) {
+                return Vec::new();
+            }
             let p = entry.path();
             if p.is_symlink() {
                 continue;
@@ -2414,9 +2422,21 @@ fn text(c: &mut Canvas<Window>, font: &Font, s: &str, x: i32, y: i32, size: u32,
 
 #[cfg(test)]
 mod tests {
-    use super::{core_names, find_core_in_dirs};
+    use super::{core_names, find_core_in_dirs, scan_games_controlled};
     use std::fs;
+    use std::sync::atomic::AtomicBool;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn cancelled_library_scan_discards_partial_results() {
+        let dir = std::env::temp_dir().join(format!("vyntra-cancel-scan-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let rom = dir.join("fixture.gba");
+        fs::write(&rom, vec![0u8; 0xc0]).unwrap();
+        let cancelled = AtomicBool::new(true);
+        assert!(scan_games_controlled(&dir, true, &cancelled).is_empty());
+        let _ = fs::remove_dir_all(dir);
+    }
 
     #[test]
     fn each_system_prefers_vyntra_core_names_and_keeps_legacy_aliases() {
