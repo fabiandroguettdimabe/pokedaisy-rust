@@ -6,7 +6,7 @@ import { readyCapabilitiesMissingEvidence } from '../src/lib/capabilities.js';
 
 const root = join(import.meta.dirname, '../..');
 
-test('ready capabilities require a reproducible test ID and commit', () => {
+test('ready capabilities require complete reproducible evidence', () => {
   const header = '| Plataforma | Sistema | Núcleo/ruta observada | Arranque A/V/input | SRAM/estados/FF/rewind | Companion / datos live | Link | Evidencia | Próxima verificación |';
   const separator = '|---|---|---|---|---|---|---|---|---|';
   const valid = `| Windows | GB | mGBA | Ready | No probado | No probado | No probado | cell=av testId=gb.boot build=v1.2.3 commit=abcdef1 coreHash=${'a'.repeat(64)} | - |`;
@@ -51,6 +51,14 @@ test('ready capabilities require a build and exact core hash', () => {
 
   assert.equal(readyCapabilitiesMissingEvidence([header, separator, missingBuild].join('\n')).length, 1);
   assert.equal(readyCapabilitiesMissingEvidence([header, separator, missingCoreHash].join('\n')).length, 1);
+});
+
+test('required evidence fields cannot be split across semicolon records', () => {
+  const header = '| Plataforma | Sistema | Núcleo/ruta observada | Arranque A/V/input | SRAM/estados/FF/rewind | Companion / datos live | Link | Evidencia | Próxima verificación |';
+  const separator = '|---|---|---|---|---|---|---|---|---|';
+  const splitEvidence = `| Windows | GB | mGBA | Ready | No probado | No probado | No probado | cell=av testId=gb.boot build=v1.2.3 commit=abcdef1; coreHash=${'a'.repeat(64)} | - |`;
+
+  assert.equal(readyCapabilitiesMissingEvidence([header, separator, splitEvidence].join('\n')).length, 1);
 });
 
 test('the checked-in capability matrix has no ready claim without test evidence', () => {
