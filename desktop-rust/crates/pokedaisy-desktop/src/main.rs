@@ -2695,7 +2695,7 @@ mod tests {
     }
 
     #[test]
-    fn failed_atomic_write_after_partial_staging_preserves_existing_target() {
+    fn failed_atomic_staging_preserves_existing_target_for_storage_and_permission_errors() {
         let root = std::env::temp_dir().join(format!("vyntra-atomic-full-{}", std::process::id()));
         let target = root.join("save.sav");
         let _ = fs::remove_dir_all(&root);
@@ -2709,6 +2709,13 @@ mod tests {
         });
 
         assert!(error.is_err());
+        assert_eq!(fs::read(&target).unwrap(), b"committed-save");
+        assert!(!root.join("save.tmp").exists());
+
+        let denied = super::atomic_write_with(&target, b"replacement", |_, _| {
+            Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
+        });
+        assert!(denied.is_err());
         assert_eq!(fs::read(&target).unwrap(), b"committed-save");
         assert!(!root.join("save.tmp").exists());
         let _ = fs::remove_dir_all(root);
