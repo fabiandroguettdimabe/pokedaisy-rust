@@ -625,6 +625,7 @@ fn sdl_main() -> Result<(), String> {
     let mut last_save = Instant::now();
     let mut last_pipe_snapshot = Instant::now();
     let mut companion_paused = false;
+    let mut audio_resampler = timing::StereoResampler::new();
     if let Some(path) = rom_arg {
         if let Some(index) = games.iter().position(|g| g.path == path) {
             selected = index;
@@ -1215,20 +1216,24 @@ fn sdl_main() -> Result<(), String> {
                                 if !f.audio.is_empty() {
                                     if fast_forward {
                                         audio_device.clear();
+                                        audio_resampler.reset();
                                     } else {
                                         let target_rate = audio_device.spec().freq.max(1) as u32;
                                         let source_rate = core
                                             .as_ref()
                                             .map(|core| core.av_info().sample_rate)
                                             .unwrap_or(target_rate as f64);
-                                        let samples: Vec<i16> = timing::resample_stereo(
+                                        let resampled = audio_resampler.process(
                                             &f.audio,
                                             source_rate,
                                             target_rate,
-                                        )
-                                        .iter()
-                                        .map(|s| (*s as i32 * config.volume as i32 / 100) as i16)
-                                        .collect();
+                                        );
+                                        let samples: Vec<i16> = resampled
+                                            .iter()
+                                            .map(|s| {
+                                                (*s as i32 * config.volume as i32 / 100) as i16
+                                            })
+                                            .collect();
                                         let queue_limit_bytes =
                                             (target_rate as u64 * 4 * 12 / 100) as u32;
                                         let queued = audio_device.size();

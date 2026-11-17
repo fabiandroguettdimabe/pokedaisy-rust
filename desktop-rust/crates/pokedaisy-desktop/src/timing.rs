@@ -24,39 +24,71 @@ pub fn next_frame_anchor(
     }
 }
 
-pub fn resample_stereo(input: &[i16], source_rate: f64, target_rate: u32) -> Vec<i16> {
-    if input.is_empty() || !source_rate.is_finite() || source_rate <= 0.0 || target_rate == 0 {
-        return input.to_vec();
+#[derive(Default)]
+pub struct StereoResampler {
+    rates: Option<(f64, u32)>,
+    phase: f64,
+    carry: Vec<i16>,
+}
+
+impl StereoResampler {
+    pub fn new() -> Self {
+        Self::default()
     }
 
-    let input_frames = input.len() / 2;
-    if input_frames == 0 {
-        return Vec::new();
+    pub fn reset(&mut self) {
+        self.rates = None;
+        self.phase = 0.0;
+        self.carry.clear();
     }
-    let output_frames =
-        ((input_frames as f64 * target_rate as f64 / source_rate).round() as usize).max(1);
-    let mut output = Vec::with_capacity(output_frames.saturating_mul(2));
-    for frame in 0..output_frames {
-        let source_position = frame as f64 * source_rate / target_rate as f64;
-        let first = (source_position.floor() as usize).min(input_frames - 1);
-        let second = (first + 1).min(input_frames - 1);
-        let fraction = (source_position - first as f64).clamp(0.0, 1.0);
-        for channel in 0..2 {
-            let a = input[first * 2 + channel] as f64;
-            let b = input[second * 2 + channel] as f64;
-            output.push(
-                (a + (b - a) * fraction)
-                    .round()
-                    .clamp(i16::MIN as f64, i16::MAX as f64) as i16,
-            );
+
+    pub fn process(&mut self, input: &[i16], source_rate: f64, target_rate: u32) -> Vec<i16> {
+        if input.is_empty() {
+            return Vec::new();
         }
+        if !source_rate.is_finite() || source_rate <= 0.0 || target_rate == 0 {
+            self.reset();
+            return input.to_vec();
+        }
+        let input_frames = input.len() / 2;
+        if input_frames == 0 {
+            return Vec::new();
+        }
+        if self.rates != Some((source_rate, target_rate)) {
+            self.reset();
+            self.rates = Some((source_rate, target_rate));
+        }
+        self.carry.extend_from_slice(&input[..input_frames * 2]);
+        let buffered_frames = self.carry.len() / 2;
+        let step = source_rate / target_rate as f64;
+        let mut output = Vec::new();
+        while self.phase + 1.0 < buffered_frames as f64 {
+            let first = self.phase.floor() as usize;
+            let second = first + 1;
+            let fraction = self.phase - first as f64;
+            for channel in 0..2 {
+                let a = self.carry[first * 2 + channel] as f64;
+                let b = self.carry[second * 2 + channel] as f64;
+                output.push(
+                    (a + (b - a) * fraction)
+                        .round()
+                        .clamp(i16::MIN as f64, i16::MAX as f64) as i16,
+                );
+            }
+            self.phase += step;
+        }
+        let consumed_frames = (self.phase.floor() as usize).min(buffered_frames.saturating_sub(1));
+        if consumed_frames > 0 {
+            self.carry.drain(..consumed_frames * 2);
+            self.phase -= consumed_frames as f64;
+        }
+        output
     }
-    output
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{frame_interval, next_frame_anchor, resample_stereo};
+    use super::{StereoResampler, frame_interval, next_frame_anchor};
     use std::time::Duration;
 
     #[test]
@@ -94,17 +126,33 @@ mod tests {
     }
 
     #[test]
-    fn resamples_stereo_frame_count_to_device_rate() {
-        let input = (0..2205).flat_map(|n| [n, -n]).collect::<Vec<i16>>();
-        let output = resample_stereo(&input, 22_050.0, 44_100);
-        assert_eq!(output.len(), 8820);
-        assert_eq!(&output[..4], &[0, 0, 1, -1]);
+    fn streaming_resampler_interpolates_across_frame_boundaries() {
+        let mut resampler = StereoResampler::new();
+        let first = resampler.process(&[0, 0, 10, 10], 22_050.0, 44_100);
+        let second = resampler.process(&[20, 20], 22_050.0, 44_100);
+        assert_eq!(first, [0, 0, 5, 5]);
+        assert_eq!(second, [10, 10, 15, 15]);
     }
 
     #[test]
     fn resampler_handles_empty_and_invalid_rates() {
-        assert!(resample_stereo(&[], 22_050.0, 44_100).is_empty());
+        let mut resampler = StereoResampler::new();
+        assert!(resampler.process(&[], 22_050.0, 44_100).is_empty());
         let input = [7, -7];
-        assert_eq!(resample_stereo(&input, 0.0, 44_100), input);
+        assert_eq!(resampler.process(&input, 0.0, 44_100), input);
+    }
+
+    #[test]
+    fn streaming_resampler_carries_fractional_phase_across_frames() {
+        let mut resampler = StereoResampler::new();
+        let frame = [1200, -1200].repeat(735);
+        let mut output_frames = 0usize;
+        for _ in 0..60 {
+            output_frames += resampler.process(&frame, 44_100.0, 32_768).len() / 2;
+        }
+        assert!(
+            output_frames.abs_diff(32_768) <= 1,
+            "60 emulated frames at 60 Hz should resample to about 32,768 Hz, got {output_frames}"
+        );
     }
 }
