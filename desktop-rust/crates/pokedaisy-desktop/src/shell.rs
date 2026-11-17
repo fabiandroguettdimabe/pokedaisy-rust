@@ -576,15 +576,8 @@ pub fn run() -> Result<(), String> {
                             if field=="recursive"{refresh=true;}
                         },
                         "play"=> {
-                            if let Some(running)=child.as_mut(){
-                                match running.try_wait().map_err(|e|e.to_string())? {
-                                    None => return Err("Ya hay una partida abierta. Vuelve a su ventana para continuar.".into()),
-                                    Some(_) => {
-                                        child = None;
-                                        session = None;
-                                    }
-                                }
-                            }
+                            ensure_player_stopped(&mut child, "Ya hay una partida abierta. Vuelve a su ventana para continuar.")?;
+                            session = None;
                             let game = if let Some(storage_id) = action["storage_id"].as_str() {
                                 let source_index = action["source_index"].as_u64().ok_or("Selecciona una copia del juego")? as usize;
                                 let source = crate::resolve_game_by_source(&games, storage_id, source_index).ok_or("La copia seleccionada cambió desde que se mostró la biblioteca; actualízala")?;
@@ -661,11 +654,7 @@ pub fn run() -> Result<(), String> {
                         },
                         "export_vault_bundle" => {
                             if vault_busy { return Err("Ya hay una operación Vault en curso".into()); }
-                            if let Some(running) = child.as_mut() {
-                                if running.try_wait().map_err(|error| error.to_string())?.is_none() {
-                                    return Err("Cierra la partida antes de empaquetar un guardado".into());
-                                }
-                            }
+                            ensure_player_stopped(&mut child, "Cierra la partida antes de empaquetar un guardado.")?;
                             let requested = PathBuf::from(action["file"].as_str().ok_or("Guardado inválido")?);
                             let source = save_files(&config).into_iter().find(|path| *path == requested)
                                 .ok_or("El guardado ya no está disponible; actualiza la lista")?;
@@ -696,11 +685,7 @@ pub fn run() -> Result<(), String> {
                         },
                         "import_vault_bundle" => {
                             if vault_busy { return Err("Ya hay una operación Vault en curso".into()); }
-                            if let Some(running) = child.as_mut() {
-                                if running.try_wait().map_err(|error| error.to_string())?.is_none() {
-                                    return Err("Cierra la partida antes de importar un guardado".into());
-                                }
-                            }
+                            ensure_player_stopped(&mut child, "Cierra la partida antes de importar un guardado.")?;
                             if let Some(bundle_path) = rfd::FileDialog::new()
                                 .set_title("Elegir paquete verificado de Vyntra Vault")
                                 .add_filter("Paquete Vault", &["zip"])
@@ -724,7 +709,7 @@ pub fn run() -> Result<(), String> {
                             }
                         },
                         "export_save"=> {
-                            if let Some(running)=child.as_mut(){if running.try_wait().map_err(|e|e.to_string())?.is_none(){return Err("Cierra la partida antes de exportar para evitar copiar un guardado durante su escritura.".into());}}
+                            ensure_player_stopped(&mut child, "Cierra la partida antes de exportar para evitar copiar un guardado durante su escritura.")?;
                             let files=save_files(&config);
                             let requested=PathBuf::from(action["file"].as_str().ok_or("Guardado inválido")?);
                             let source=files.iter().find(|path|**path==requested).ok_or("El guardado ya no está disponible; actualiza la lista")?;
@@ -898,6 +883,24 @@ fn terminate_child_process(child: &mut Option<std::process::Child>) -> Result<()
             Err(error.to_string())
         }
     }
+}
+
+fn ensure_player_stopped(
+    child: &mut Option<std::process::Child>,
+    message: &str,
+) -> Result<(), String> {
+    let Some(process) = child.as_mut() else {
+        return Ok(());
+    };
+    if process
+        .try_wait()
+        .map_err(|error| error.to_string())?
+        .is_none()
+    {
+        return Err(message.to_owned());
+    }
+    *child = None;
+    Ok(())
 }
 
 fn validate_command_session(
@@ -1249,6 +1252,49 @@ fn publish(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn active_player_blocks_sensitive_operations_without_losing_child_handle() {
+        const HOLD_ENV: &str = "VYNTRA_TEST_HOLD_PLAYER_CHILD";
+        const READY_ENV: &str = "VYNTRA_TEST_PLAYER_CHILD_READY";
+        let ready_path =
+            std::env::temp_dir().join(format!("vyntra-player-guard-ready-{}", std::process::id()));
+        let _ = fs::remove_file(&ready_path);
+        let child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "shell::tests::hold_player_child_until_killed"])
+            .env(HOLD_ENV, "1")
+            .env(READY_ENV, &ready_path)
+            .spawn()
+            .unwrap();
+        for _ in 0..200 {
+            if ready_path.exists() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(25));
+        }
+        assert!(ready_path.exists(), "child process did not start");
+        let mut child = Some(child);
+
+        assert!(ensure_player_stopped(&mut child, "player activo").is_err());
+        assert!(child.is_some(), "guard must preserve the live child handle");
+
+        terminate_child_process(&mut child).unwrap();
+        let _ = fs::remove_file(ready_path);
+    }
+
+    #[test]
+    fn exited_player_is_reaped_before_sensitive_operations() {
+        let mut child = Some(
+            std::process::Command::new("cmd.exe")
+                .args(["/C", "exit", "0"])
+                .spawn()
+                .unwrap(),
+        );
+        child.as_mut().unwrap().wait().unwrap();
+
+        assert!(ensure_player_stopped(&mut child, "player activo").is_ok());
+        assert!(child.is_none());
+    }
 
     fn cmd(action: &str) -> protocol::UiCommandEnvelope {
         protocol::UiCommandEnvelope {
