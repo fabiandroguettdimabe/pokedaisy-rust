@@ -109,6 +109,33 @@ pub fn mark_played(entries: &mut [LibraryEntry], id: &str, played_at_unix: u64) 
     true
 }
 
+pub fn relink_entry(
+    entries: &mut [LibraryEntry],
+    id: &str,
+    candidate: &Path,
+) -> Result<(), String> {
+    let entry = entries
+        .iter_mut()
+        .find(|entry| entry.id == id)
+        .ok_or("El juego ya no está en la biblioteca")?;
+    let expected = entry
+        .content_hash
+        .as_deref()
+        .ok_or("Esta entrada no tiene hash previo; no se puede reenlazar con seguridad")?;
+    if !candidate.is_file() {
+        return Err("El archivo seleccionado no existe".into());
+    }
+    let actual = identity::sha256_file(candidate)?;
+    if actual != expected {
+        return Err("El archivo seleccionado no coincide con el contenido original".into());
+    }
+    entry.path = candidate
+        .canonicalize()
+        .map_err(|error| error.to_string())?;
+    entry.refresh();
+    Ok(())
+}
+
 fn system_from_extension(path: &Path) -> Option<String> {
     let ext = path
         .extension()
@@ -235,6 +262,35 @@ mod tests {
         assert!(!mark_played(&mut entries, "missing", 50));
         assert!(entries[0].favorite);
         assert_eq!(entries[0].last_played_unix, Some(42));
+    }
+
+    #[test]
+    fn relink_requires_exact_content_hash_and_preserves_identity() {
+        let dir = std::env::temp_dir().join(format!("vyntra-relink-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let old_path = dir.join("old.gba");
+        let new_path = dir.join("restored.gba");
+        let wrong_path = dir.join("wrong.gba");
+        let mut rom = vec![0u8; 0xc0];
+        rom[0xb2] = 0x96;
+        rom[0xac..0xb0].copy_from_slice(b"ABCD");
+        rom[0xbc] = 1;
+        fs::write(&old_path, &rom).unwrap();
+        fs::write(&new_path, &rom).unwrap();
+        fs::write(&wrong_path, b"different rom").unwrap();
+        let mut entry = LibraryEntry::from_path(old_path.clone());
+        entry.favorite = true;
+        let id = entry.id.clone();
+        fs::remove_file(&old_path).unwrap();
+
+        let mut entries = vec![entry];
+        assert!(relink_entry(&mut entries, &id, &wrong_path).is_err());
+        assert_eq!(entries[0].path, old_path);
+        relink_entry(&mut entries, &id, &new_path).unwrap();
+        assert_eq!(entries[0].id, id);
+        assert_eq!(entries[0].path, new_path.canonicalize().unwrap());
+        assert!(entries[0].favorite);
+        let _ = fs::remove_dir_all(dir);
     }
 
     #[test]

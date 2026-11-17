@@ -135,6 +135,15 @@ pub fn run() -> Result<(), String> {
                             if !library::set_favorite(&mut imported, id, favorite) { return Err("El juego ya no está en la biblioteca".into()); }
                             library::save(&index_path, &imported)?;
                         },
+                        "relink" => {
+                            let id = action["storage_id"].as_str().ok_or("Juego inválido")?;
+                            if let Some(path) = rfd::FileDialog::new().set_title("Volver a localizar esta ROM · debe ser idéntica").add_filter("ROM GB / GBC / GBA / DS", &["gb","gbc","gba","nds"]).pick_file() {
+                                library::relink_entry(&mut imported, id, &path)?;
+                                library::save(&index_path, &imported)?;
+                                command_result = Some(json!({"relinked":true}));
+                                refresh = true;
+                            }
+                        },
                         "import" => {
                             if let Some(paths)=rfd::FileDialog::new().set_title("Importar ROMs a Vyntra").add_filter("ROMs GB / GBC / GBA / DS", &["gb","gbc","gba","nds"]).pick_files() {
                                 let summary = crate::import::import_paths(&mut imported, paths);
