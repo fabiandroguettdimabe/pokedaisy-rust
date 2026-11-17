@@ -12,6 +12,8 @@ mod settings;
 #[cfg(target_os = "windows")]
 mod shell;
 mod timing;
+#[allow(dead_code)] // Wired into the process bridge in the remaining T10 work.
+mod transport;
 mod vault;
 use fontdue::Font;
 use sdl2::audio::AudioSpecDesired;
