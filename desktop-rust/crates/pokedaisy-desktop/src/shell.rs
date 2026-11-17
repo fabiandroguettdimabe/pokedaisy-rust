@@ -3,6 +3,7 @@ use super::*;
 use crate::library;
 use crate::protocol;
 use serde_json::json;
+use std::io::Read;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tao::{
@@ -23,12 +24,25 @@ enum Message {
         Vec<library::LibraryEntry>,
         crate::import::ImportSummary,
     ),
+    VaultImportReady(
+        u64,
+        Result<(crate::vault::SaveBundleManifest, Vec<u8>), String>,
+    ),
+    VaultExportFinished(u64, Result<(), String>),
 }
 
 enum ImportSource {
     Loose(PathBuf),
     Archive(PathBuf, Vec<String>),
     Rejected(usize),
+}
+
+struct PreparedBundleRestore {
+    game: Game,
+    manifest: crate::domain::SaveManifest,
+    payload: Vec<u8>,
+    destination: PathBuf,
+    manifest_path: PathBuf,
 }
 
 pub fn run() -> Result<(), String> {
@@ -100,6 +114,8 @@ pub fn run() -> Result<(), String> {
     let mut player_commands: Option<crate::transport::PlayerCommandSender> = None;
     let mut import_generation = 0u64;
     let mut active_import: Option<Arc<AtomicBool>> = None;
+    let mut vault_generation = 0u64;
+    let mut vault_busy = false;
     let mut command_revision: u64 = 0;
     let mut pending_migration: Option<migration::MigrationReport> = None;
     let mut probe_generation = 0u64;
@@ -167,6 +183,42 @@ pub fn run() -> Result<(), String> {
                     let _ = webview.evaluate_script(&format!("window.vyntraImportDone&&window.vyntraImportDone({payload});"));
                 }
                 publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
+            },
+            TaoEvent::UserEvent(Message::VaultImportReady(id, result)) if id == vault_generation => {
+                vault_busy = false;
+                match result.and_then(|(manifest, payload)| prepare_bundle_restore(manifest, payload, &games, &config)) {
+                    Err(error) => {
+                        let _ = webview.evaluate_script(&format!("window.vyntraError({});", json!(error)));
+                    }
+                    Ok(prepared) => {
+                        let kind = if prepared.manifest.kind == domain::SaveKind::SaveState { "estado" } else { "SRAM" };
+                        let prompt = format!("Importar {kind} verificado para {}. Si ya existe un guardado válido, se conservará una copia antes de reemplazarlo.", prepared.game.title);
+                        let answer = rfd::MessageDialog::new()
+                            .set_title("Importar paquete de Vyntra Vault")
+                            .set_description(&prompt)
+                            .set_level(rfd::MessageLevel::Warning)
+                            .set_buttons(rfd::MessageButtons::YesNo)
+                            .show();
+                        if answer == rfd::MessageDialogResult::Yes {
+                            match commit_bundle_restore(prepared, &config) {
+                                Ok(()) => {
+                                    publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
+                                    let _ = webview.evaluate_script("window.vyntraAck&&window.vyntraAck({ok:true,result:{vault_import:{restored:true}}});");
+                                }
+                                Err(error) => { let _ = webview.evaluate_script(&format!("window.vyntraError({});", json!(error))); }
+                            }
+                        } else {
+                            let _ = webview.evaluate_script("window.vyntraAck&&window.vyntraAck({ok:true,result:{vault_import:{cancelled:true}}});");
+                        }
+                    }
+                }
+            },
+            TaoEvent::UserEvent(Message::VaultExportFinished(id, result)) if id == vault_generation => {
+                vault_busy = false;
+                match result {
+                    Ok(()) => { let _ = webview.evaluate_script("window.vyntraAck&&window.vyntraAck({ok:true,result:{vault_export:{done:true}}});"); }
+                    Err(error) => { let _ = webview.evaluate_script(&format!("window.vyntraError({});", json!(error))); }
+                }
             },
             TaoEvent::UserEvent(Message::Pipe(event)) => {
                 let matches_session = session.as_ref().is_some_and(|active| {
@@ -525,6 +577,70 @@ pub fn run() -> Result<(), String> {
                             let path=match field {"saves"=>&config.saves,"states"=>&config.states,"library"=>&config.library,"system"=>&config.system,"config"=>&data,_=>return Err("Carpeta no válida".into())};
                             std::process::Command::new("explorer.exe").arg(path).spawn().map_err(|e|e.to_string())?;
                         },
+                        "export_vault_bundle" => {
+                            if vault_busy { return Err("Ya hay una operación Vault en curso".into()); }
+                            if let Some(running) = child.as_mut() {
+                                if running.try_wait().map_err(|error| error.to_string())?.is_none() {
+                                    return Err("Cierra la partida antes de empaquetar un guardado".into());
+                                }
+                            }
+                            let requested = PathBuf::from(action["file"].as_str().ok_or("Guardado inválido")?);
+                            let source = save_files(&config).into_iter().find(|path| *path == requested)
+                                .ok_or("El guardado ya no está disponible; actualiza la lista")?;
+                            let default_name = format!("{}.vyntra.zip", source.file_stem().unwrap_or_default().to_string_lossy());
+                            if let Some(destination) = rfd::FileDialog::new()
+                                .set_title("Exportar paquete verificado de Vault")
+                                .add_filter("Paquete Vyntra Vault", &["zip"])
+                                .set_file_name(default_name)
+                                .save_file()
+                            {
+                                if destination == source { return Err("El paquete debe guardarse en otra ubicación".into()); }
+                                vault_generation = vault_generation.saturating_add(1);
+                                let id = vault_generation;
+                                let tx = proxy.clone();
+                                let worker_config = config.clone();
+                                vault_busy = true;
+                                let spawn = std::thread::Builder::new().name("vyntra-vault-export".into()).spawn(move || {
+                                    let result = bundle_for_save_file(&source, &worker_config)
+                                        .and_then(|bytes| atomic_write(&destination, &bytes));
+                                    let _ = tx.send_event(Message::VaultExportFinished(id, result));
+                                });
+                                if let Err(error) = spawn {
+                                    vault_busy = false;
+                                    return Err(format!("No se pudo iniciar la exportación Vault: {error}"));
+                                }
+                                command_result = Some(json!({"vault_export":{"started":true}}));
+                            }
+                        },
+                        "import_vault_bundle" => {
+                            if vault_busy { return Err("Ya hay una operación Vault en curso".into()); }
+                            if let Some(running) = child.as_mut() {
+                                if running.try_wait().map_err(|error| error.to_string())?.is_none() {
+                                    return Err("Cierra la partida antes de importar un guardado".into());
+                                }
+                            }
+                            if let Some(bundle_path) = rfd::FileDialog::new()
+                                .set_title("Elegir paquete verificado de Vyntra Vault")
+                                .add_filter("Paquete Vault", &["zip"])
+                                .pick_file()
+                            {
+                                let size = fs::metadata(&bundle_path).map_err(|error| error.to_string())?.len();
+                                if size > crate::vault::MAX_BUNDLE_BYTES { return Err("El paquete Vault supera el límite de tamaño".into()); }
+                                vault_generation = vault_generation.saturating_add(1);
+                                let id = vault_generation;
+                                let tx = proxy.clone();
+                                vault_busy = true;
+                                let spawn = std::thread::Builder::new().name("vyntra-vault-import".into()).spawn(move || {
+                                    let result = crate::vault::read_bundle_file(&bundle_path);
+                                    let _ = tx.send_event(Message::VaultImportReady(id, result));
+                                });
+                                if let Err(error) = spawn {
+                                    vault_busy = false;
+                                    return Err(format!("No se pudo iniciar la importación Vault: {error}"));
+                                }
+                                command_result = Some(json!({"vault_import":{"started":true}}));
+                            }
+                        },
                         "export_save"=> {
                             if let Some(running)=child.as_mut(){if running.try_wait().map_err(|e|e.to_string())?.is_none(){return Err("Cierra la partida antes de exportar para evitar copiar un guardado durante su escritura.".into());}}
                             let files=save_files(&config);
@@ -675,6 +791,196 @@ fn validate_command_session(
 fn validate_command_revision(expected: Option<u64>, current: u64) -> Result<(), String> {
     if expected.is_some_and(|revision| revision != current) {
         return Err("La biblioteca cambió desde tu última acción; vuelve a intentarlo".into());
+    }
+    Ok(())
+}
+
+fn read_bounded_file(path: &Path, max_bytes: u64) -> Result<Vec<u8>, String> {
+    let mut bytes = Vec::new();
+    fs::File::open(path)
+        .map_err(|error| error.to_string())?
+        .take(max_bytes.saturating_add(1))
+        .read_to_end(&mut bytes)
+        .map_err(|error| error.to_string())?;
+    if bytes.len() as u64 > max_bytes {
+        return Err("El archivo supera el tamaño máximo permitido".into());
+    }
+    Ok(bytes)
+}
+
+fn bundle_for_save_file(source: &Path, config: &Settings) -> Result<Vec<u8>, String> {
+    let is_state = source.starts_with(&config.states);
+    if !is_state && !source.starts_with(&config.saves) {
+        return Err("El guardado está fuera de las carpetas de Vault".into());
+    }
+    let storage_id = source
+        .ancestors()
+        .find(|ancestor| {
+            ancestor
+                .parent()
+                .and_then(Path::file_name)
+                .is_some_and(|name| name == "by-id")
+        })
+        .and_then(Path::file_name)
+        .and_then(|name| name.to_str())
+        .ok_or("El guardado no pertenece a una carpeta de identidad verificable")?
+        .to_owned();
+    let parent = source.parent().ok_or("Ruta de guardado inválida")?;
+    let manifest_path = parent.join(if is_state {
+        "state.manifest.json"
+    } else {
+        "manifest.json"
+    });
+    let manifest: domain::SaveManifest = serde_json::from_slice(
+        &read_bounded_file(&manifest_path, 64 * 1024)
+            .map_err(|_| "El guardado no tiene manifiesto verificable")?,
+    )
+    .map_err(|_| "El manifiesto del guardado está dañado")?;
+    let payload = read_bounded_file(source, crate::vault::MAX_BUNDLE_PAYLOAD_BYTES)
+        .map_err(|_| "El guardado supera el tamaño máximo para un paquete Vault")?;
+    let rom_hash = manifest
+        .rom_sha256
+        .as_deref()
+        .ok_or("Falta identidad SHA-256 de ROM")?;
+    let core_hash = manifest
+        .core_hash
+        .as_deref()
+        .ok_or("Falta identidad SHA-256 del núcleo")?;
+    if !storage_id.eq_ignore_ascii_case(rom_hash.get(..16).ok_or("Hash de ROM inválido")?)
+        || manifest.save_id != format!("{}-{:?}", storage_id, manifest.kind).to_lowercase()
+    {
+        return Err("La carpeta o el manifiesto no corresponden a la identidad de esta ROM".into());
+    }
+    if is_state {
+        if manifest.kind != domain::SaveKind::SaveState {
+            return Err("El manifiesto no corresponde a un estado".into());
+        }
+        vault::validate_state(&manifest, &payload, rom_hash, core_hash)?;
+    } else {
+        if manifest.kind != domain::SaveKind::BatteryRam {
+            return Err("El manifiesto no corresponde a una SRAM".into());
+        }
+        vault::validate_battery(&manifest, &payload, rom_hash, core_hash)?;
+    }
+    let bundle_manifest = vault::SaveBundleManifest {
+        schema_version: 1,
+        storage_id,
+        kind: manifest.kind,
+        rom_sha256: rom_hash.to_owned(),
+        core_hash: core_hash.to_owned(),
+        state_format: manifest.state_format,
+        bytes: payload.len() as u64,
+        sha256: identity::sha256_bytes(&payload),
+    };
+    vault::encode_bundle(&bundle_manifest, &payload)
+}
+
+fn prepare_bundle_restore(
+    bundle: vault::SaveBundleManifest,
+    payload: Vec<u8>,
+    games: &[Game],
+    config: &Settings,
+) -> Result<PreparedBundleRestore, String> {
+    let game = games
+        .iter()
+        .find(|game| game_storage_key(game) == bundle.storage_id)
+        .ok_or("No hay una ROM de esta biblioteca con la identidad del paquete")?;
+    let rom_hash = identity::sha256_file(&game.path).map_err(|error| error.to_string())?;
+    if rom_hash != bundle.rom_sha256 {
+        return Err("El contenido de la ROM no coincide con el paquete Vault".into());
+    }
+    let core_path = config
+        .core(game.system)
+        .map_err(|_| "No hay un núcleo instalado para verificar el paquete")?;
+    let core_hash = identity::sha256_file(&core_path)
+        .map_err(|_| "No se pudo verificar el núcleo instalado")?;
+    if core_hash != bundle.core_hash {
+        return Err("El paquete se creó con otra versión del núcleo".into());
+    }
+    let manifest = domain::SaveManifest {
+        save_id: format!("{}-{:?}", bundle.storage_id, bundle.kind).to_lowercase(),
+        kind: bundle.kind,
+        rom_sha256: Some(bundle.rom_sha256.clone()),
+        core_hash: Some(bundle.core_hash.clone()),
+        state_format: bundle.state_format.clone(),
+        slot: (bundle.kind == domain::SaveKind::SaveState).then_some(1),
+        bytes: Some(bundle.bytes),
+        sha256: Some(bundle.sha256.clone()),
+        parent_id: None,
+        created_at_utc: None,
+        created_at_unix: Some(now_unix()),
+        status: "committed".into(),
+    };
+    match bundle.kind {
+        domain::SaveKind::SaveState => {
+            vault::validate_state(&manifest, &payload, &rom_hash, &core_hash)?
+        }
+        domain::SaveKind::BatteryRam => {
+            vault::validate_battery(&manifest, &payload, &rom_hash, &core_hash)?
+        }
+        _ => return Err("El paquete no contiene un guardado restaurable".into()),
+    }
+    let (destination, manifest_file) = match bundle.kind {
+        domain::SaveKind::SaveState => (
+            preferred_state_path(game, &config.states),
+            "state.manifest.json",
+        ),
+        domain::SaveKind::BatteryRam => {
+            (preferred_battery_path(game, &config.saves), "manifest.json")
+        }
+        _ => unreachable!(),
+    };
+    let manifest_path = destination
+        .parent()
+        .ok_or("Destino de restauración inválido")?
+        .join(manifest_file);
+    Ok(PreparedBundleRestore {
+        game: game.clone(),
+        manifest,
+        payload,
+        destination,
+        manifest_path,
+    })
+}
+
+fn commit_bundle_restore(prepared: PreparedBundleRestore, config: &Settings) -> Result<(), String> {
+    let is_state = prepared.manifest.kind == domain::SaveKind::SaveState;
+    let backup = if is_state {
+        backup_verified_state(
+            &prepared.game,
+            &config.states,
+            prepared.manifest.core_hash.as_deref(),
+        )?
+    } else {
+        backup_verified_battery(
+            &prepared.game,
+            &config.saves,
+            prepared.manifest.core_hash.as_deref(),
+        )?
+    };
+    if prepared.destination.is_file() && backup.is_none() {
+        return Err("El guardado actual no se pudo verificar y queda intacto; muévelo manualmente antes de importar".into());
+    }
+    atomic_write(&prepared.destination, &prepared.payload)?;
+    let manifest_bytes =
+        serde_json::to_vec_pretty(&prepared.manifest).map_err(|error| error.to_string())?;
+    if let Err(error) = atomic_write(&prepared.manifest_path, &manifest_bytes) {
+        if let Some(backup_dir) = backup {
+            let (payload_name, manifest_name) = if is_state {
+                ("slot1.ss", "state.manifest.json")
+            } else {
+                ("battery.sav", "manifest.json")
+            };
+            let old_payload = fs::read(backup_dir.join(payload_name)).map_err(|restore_error| format!("No se pudo confirmar manifiesto ({error}); la copia previa permanece en {} ({restore_error})", backup_dir.display()))?;
+            let old_manifest = fs::read(backup_dir.join(manifest_name)).map_err(|restore_error| format!("No se pudo confirmar manifiesto ({error}); la copia previa permanece en {} ({restore_error})", backup_dir.display()))?;
+            atomic_write(&prepared.destination, &old_payload).map_err(|restore_error| format!("Falló el manifiesto ({error}) y la restauración ({restore_error}); copia previa: {}", backup_dir.display()))?;
+            atomic_write(&prepared.manifest_path, &old_manifest).map_err(|restore_error| format!("Falló el manifiesto ({error}) y la restauración ({restore_error}); copia previa: {}", backup_dir.display()))?;
+        } else {
+            let _ = fs::remove_file(&prepared.destination);
+        }
+        return Err(format!(
+            "No se pudo confirmar el manifiesto del guardado: {error}"
+        ));
     }
     Ok(())
 }
@@ -850,5 +1156,159 @@ mod tests {
         assert!(found.contains(&root.join("top.srm")));
         assert_eq!(save_files_in(&[&root.join("missing")]).len(), 0);
         fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn vault_export_bundles_only_manifest_verified_saves() {
+        let root = std::env::temp_dir().join(format!("vyntra-vault-export-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let rom = root.join("fixture.gb");
+        fs::write(&rom, b"fixture rom").unwrap();
+        let game = Game {
+            path: rom,
+            title: "Fixture".into(),
+            system: "GB",
+            storage_key: std::sync::OnceLock::new(),
+        };
+        let state_root = root.join("states");
+        let state_path = preferred_state_path(&game, &state_root);
+        let payload = b"fixture state";
+        atomic_write(&state_path, payload).unwrap();
+        super::super::write_save_manifest(
+            &game,
+            &state_root,
+            domain::SaveKind::SaveState,
+            payload,
+            Some(1),
+            Some(&"b".repeat(64)),
+            "committed",
+        );
+        let mut config = Settings::default();
+        config.states = state_root;
+        config.saves = root.join("saves");
+
+        let bundle = bundle_for_save_file(&state_path, &config).unwrap();
+        let (manifest, decoded) = crate::vault::decode_bundle(&bundle).unwrap();
+        assert_eq!(manifest.storage_id, game_storage_key(&game));
+        assert_eq!(decoded, payload);
+        let manifest_path = state_path.parent().unwrap().join("state.manifest.json");
+        fs::remove_file(manifest_path).unwrap();
+        assert!(bundle_for_save_file(&state_path, &config).is_err());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn vault_restore_requires_same_rom_and_core_and_backups_before_replace() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-vault-restore-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let rom_path = root.join("fixture.gb");
+        let core_path = root.join("fixture-core.dll");
+        fs::write(&rom_path, b"fixture rom").unwrap();
+        fs::write(&core_path, b"fixture core").unwrap();
+        let game = Game {
+            path: rom_path.clone(),
+            title: "Fixture".into(),
+            system: "GB",
+            storage_key: std::sync::OnceLock::new(),
+        };
+        let mut config = Settings::default();
+        config.states = root.join("states");
+        config.saves = root.join("saves");
+        config.cores[0] = Some(core_path.clone());
+        let rom_hash = identity::sha256_file(&rom_path).unwrap();
+        let core_hash = identity::sha256_file(&core_path).unwrap();
+        let state_path = preferred_state_path(&game, &config.states);
+        atomic_write(&state_path, b"old state").unwrap();
+        super::super::write_save_manifest(
+            &game,
+            &config.states,
+            domain::SaveKind::SaveState,
+            b"old state",
+            Some(1),
+            Some(&core_hash),
+            "committed",
+        );
+        let payload = b"new portable state";
+        let bundle = crate::vault::SaveBundleManifest {
+            schema_version: 1,
+            storage_id: game_storage_key(&game),
+            kind: domain::SaveKind::SaveState,
+            rom_sha256: rom_hash.clone(),
+            core_hash: core_hash.clone(),
+            state_format: Some("libretro-serialize-v1".into()),
+            bytes: payload.len() as u64,
+            sha256: identity::sha256_bytes(payload),
+        };
+        let prepared = prepare_bundle_restore(
+            bundle.clone(),
+            payload.to_vec(),
+            std::slice::from_ref(&game),
+            &config,
+        )
+        .unwrap();
+        commit_bundle_restore(prepared, &config).unwrap();
+        assert_eq!(fs::read(&state_path).unwrap(), payload);
+        let backup_root = state_path.parent().unwrap().join("backups");
+        assert_eq!(fs::read_dir(backup_root).unwrap().count(), 1);
+
+        let mut wrong_rom = bundle;
+        wrong_rom.rom_sha256 = "0".repeat(64);
+        assert!(
+            prepare_bundle_restore(
+                wrong_rom,
+                payload.to_vec(),
+                std::slice::from_ref(&game),
+                &config
+            )
+            .is_err()
+        );
+        assert_eq!(fs::read(&state_path).unwrap(), payload);
+
+        let wrong_core = crate::vault::SaveBundleManifest {
+            schema_version: 1,
+            storage_id: game_storage_key(&game),
+            kind: domain::SaveKind::SaveState,
+            rom_sha256: identity::sha256_file(&game.path).unwrap(),
+            core_hash: "0".repeat(64),
+            state_format: Some("libretro-serialize-v1".into()),
+            bytes: payload.len() as u64,
+            sha256: identity::sha256_bytes(payload),
+        };
+        assert!(
+            prepare_bundle_restore(
+                wrong_core,
+                payload.to_vec(),
+                std::slice::from_ref(&game),
+                &config
+            )
+            .is_err()
+        );
+
+        let manifest_path = state_path.parent().unwrap().join("state.manifest.json");
+        atomic_write(&manifest_path, b"corrupt manifest").unwrap();
+        let unverified_payload = b"must not replace an unverified save";
+        let unverified_bundle = crate::vault::SaveBundleManifest {
+            schema_version: 1,
+            storage_id: game_storage_key(&game),
+            kind: domain::SaveKind::SaveState,
+            rom_sha256: identity::sha256_file(&game.path).unwrap(),
+            core_hash,
+            state_format: Some("libretro-serialize-v1".into()),
+            bytes: unverified_payload.len() as u64,
+            sha256: identity::sha256_bytes(unverified_payload),
+        };
+        let prepared = prepare_bundle_restore(
+            unverified_bundle,
+            unverified_payload.to_vec(),
+            std::slice::from_ref(&game),
+            &config,
+        )
+        .unwrap();
+        assert!(commit_bundle_restore(prepared, &config).is_err());
+        assert_eq!(fs::read(&state_path).unwrap(), payload);
+        let _ = fs::remove_dir_all(root);
     }
 }

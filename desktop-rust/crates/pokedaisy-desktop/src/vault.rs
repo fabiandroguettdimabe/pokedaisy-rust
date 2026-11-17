@@ -4,10 +4,11 @@ use crate::{
     identity,
 };
 use serde::{Deserialize, Serialize};
-use std::io::{Cursor, Read, Write};
+use std::io::{Cursor, Read, Seek, Write};
+use std::path::Path;
 
-const MAX_BUNDLE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
-const MAX_BUNDLE_PAYLOAD_BYTES: u64 = 1024 * 1024 * 1024;
+pub const MAX_BUNDLE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+pub const MAX_BUNDLE_PAYLOAD_BYTES: u64 = 1024 * 1024 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SaveBundleManifest {
@@ -35,6 +36,12 @@ fn validate_bundle_manifest(manifest: &SaveBundleManifest, payload: &[u8]) -> Re
         || manifest.bytes > MAX_BUNDLE_PAYLOAD_BYTES
     {
         return Err("El manifiesto del paquete Vault no es válido".into());
+    }
+    if !manifest
+        .storage_id
+        .eq_ignore_ascii_case(&manifest.rom_sha256[..16])
+    {
+        return Err("La identidad estable no corresponde al hash de la ROM".into());
     }
     match manifest.kind {
         SaveKind::SaveState
@@ -86,8 +93,13 @@ pub fn decode_bundle(bytes: &[u8]) -> Result<(SaveBundleManifest, Vec<u8>), Stri
     if bytes.len() as u64 > MAX_BUNDLE_BYTES {
         return Err("El paquete Vault supera el límite de tamaño".into());
     }
-    let mut archive =
-        zip::ZipArchive::new(Cursor::new(bytes)).map_err(|error| error.to_string())?;
+    let archive = zip::ZipArchive::new(Cursor::new(bytes)).map_err(|error| error.to_string())?;
+    decode_bundle_archive(archive)
+}
+
+fn decode_bundle_archive<R: Read + Seek>(
+    mut archive: zip::ZipArchive<R>,
+) -> Result<(SaveBundleManifest, Vec<u8>), String> {
     if archive.len() != 2 {
         return Err("El paquete Vault debe contener solo manifiesto y contenido".into());
     }
@@ -121,6 +133,16 @@ pub fn decode_bundle(bytes: &[u8]) -> Result<(SaveBundleManifest, Vec<u8>), Stri
         .map_err(|error| error.to_string())?;
     validate_bundle_manifest(&manifest, &payload)?;
     Ok((manifest, payload))
+}
+
+pub fn read_bundle_file(path: &Path) -> Result<(SaveBundleManifest, Vec<u8>), String> {
+    let file = std::fs::File::open(path).map_err(|error| error.to_string())?;
+    let size = file.metadata().map_err(|error| error.to_string())?.len();
+    if size > MAX_BUNDLE_BYTES {
+        return Err("El paquete Vault supera el límite de tamaño".into());
+    }
+    let archive = zip::ZipArchive::new(file).map_err(|error| error.to_string())?;
+    decode_bundle_archive(archive)
 }
 
 pub fn validate_state(
@@ -176,13 +198,13 @@ pub fn validate_battery(
 
 #[cfg(test)]
 mod bundle_tests {
-    use super::{SaveBundleManifest, decode_bundle, encode_bundle};
+    use super::{SaveBundleManifest, decode_bundle, encode_bundle, read_bundle_file};
     use crate::{domain::SaveKind, identity};
 
     fn fixture_manifest(payload: &[u8]) -> SaveBundleManifest {
         SaveBundleManifest {
             schema_version: 1,
-            storage_id: "0123456789abcdef".into(),
+            storage_id: "aaaaaaaaaaaaaaaa".into(),
             kind: SaveKind::SaveState,
             rom_sha256: "a".repeat(64),
             core_hash: "b".repeat(64),
@@ -200,6 +222,12 @@ mod bundle_tests {
         let (decoded, content) = decode_bundle(&bytes).unwrap();
         assert_eq!(decoded, manifest);
         assert_eq!(content, payload);
+        let path = std::env::temp_dir().join(format!("vyntra-bundle-{}.zip", std::process::id()));
+        std::fs::write(&path, &bytes).unwrap();
+        let (from_file, file_content) = read_bundle_file(&path).unwrap();
+        assert_eq!(from_file, manifest);
+        assert_eq!(file_content, payload);
+        let _ = std::fs::remove_file(path);
     }
 
     #[test]

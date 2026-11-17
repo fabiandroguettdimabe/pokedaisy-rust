@@ -44,6 +44,8 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await page.keyboard.press('c');
   assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'set',field:'key',index:0,value:'c'});
   await page.getByRole('button',{name:'Vyntra Vault',exact:true}).click();
+  await page.getByRole('button',{name:'Importar paquete',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'import_vault_bundle'});
   await page.getByRole('button',{name:'Revisar migración antigua'}).click();
   assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'migration_preview'});
   await page.evaluate(()=>window.vyntraAck({ok:true,result:{migration:{schema:1,items:[]}}}));
