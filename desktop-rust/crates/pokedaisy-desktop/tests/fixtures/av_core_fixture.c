@@ -67,7 +67,17 @@ static retro_audio_sample_batch_t audio_batch_cb;
 static retro_input_poll_t input_poll_cb;
 static retro_input_state_t input_state_cb;
 static uint8_t system_ram[4] = {0, 2, 3, 4};
-static uint8_t ewram[16] = {1, 2, 3, 4, 5, 6};
+static uint8_t ewram[0x2000] = {
+    [0] = 1, [1] = 2, [2] = 3, [3] = 4, [4] = 5, [5] = 6,
+    [0x100] = 1,
+    [0x101c] = 73,
+    [0x1020] = 25,
+    [0x102c] = 33,
+    [0x1034] = 15,
+    [0x1054] = 12,
+    [0x1056] = 5,
+    [0x1058] = 10,
+};
 static uint8_t iwram[8] = {7, 8, 9, 10};
 static const struct retro_memory_descriptor regions[] = {
     { .flags = 1u << 2, .ptr = ewram, .start = 0x02000000, .select = 0xff000000, .len = sizeof(ewram) },

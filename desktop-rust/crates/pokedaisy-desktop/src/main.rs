@@ -2913,6 +2913,79 @@ mod tests {
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    #[cfg(windows)]
+    #[test]
+    fn synthetic_libretro_map_flows_through_gen3_party_adapter_and_poller() {
+        let compiler = "x86_64-w64-mingw32-gcc";
+        if std::process::Command::new(compiler)
+            .arg("--version")
+            .output()
+            .is_err()
+        {
+            eprintln!("Skipping Libretro memory flow fixture: MinGW compiler is unavailable");
+            return;
+        }
+        let root = std::env::temp_dir().join(format!("vyntra-memory-flow-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/av_core_fixture.c");
+        let dll = root.join("vyntra-memory-fixture.dll");
+        let build = std::process::Command::new(compiler)
+            .args(["-std=c11", "-O2", "-shared"])
+            .arg(&fixture)
+            .arg("-o")
+            .arg(&dll)
+            .output()
+            .unwrap();
+        assert!(
+            build.status.success(),
+            "fixture build failed: {}",
+            String::from_utf8_lossy(&build.stderr)
+        );
+        let save_dir = root.join("saves");
+        let system_dir = root.join("system");
+        fs::create_dir_all(&save_dir).unwrap();
+        fs::create_dir_all(&system_dir).unwrap();
+        let rom = root.join("fixture.gba");
+        fs::write(&rom, b"synthetic Gen 3 memory fixture").unwrap();
+        let mut core = super::LibretroCore::load(
+            &dll,
+            super::CorePaths {
+                save_dir,
+                system_dir,
+                panel_width: 320,
+                panel_height: 240,
+            },
+        )
+        .unwrap();
+        core.load_game(&rom).unwrap();
+        core.run_frame(Default::default()).unwrap();
+
+        let identity = super::memory_adapter::GameIdentity {
+            system: "GBA".into(),
+            rom_sha256: "synthetic-rom-sha256".into(),
+            core_sha256: "synthetic-core-sha256".into(),
+            game_revision: "synthetic-fixture-r1".into(),
+        };
+        let adapter = super::gen3_save::Gen3PartyMemoryAdapter::new(
+            identity.clone(),
+            0x0200_0100,
+            0x0200_1000,
+        );
+        let mut registry = super::memory_adapter::MemoryAdapterRegistry::default();
+        registry.register(Box::new(adapter)).unwrap();
+        let mut poller = super::memory_adapter::MemoryPoller::new("fixture-session", identity, 1);
+        let mut reader = super::memory_adapter::LibretroMemoryReader::new(&mut core);
+        let snapshot = poller.poll(&registry, &mut reader).unwrap().unwrap();
+        assert_eq!(snapshot["party_count"], 1);
+        assert_eq!(snapshot["party"][0]["species_id"], 25);
+        assert_eq!(snapshot["party"][0]["level"], 12);
+        assert_eq!(snapshot["party"][0]["moves"][0]["move_id"], 33);
+        drop(core);
+        fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     fn configured_keyboard_bindings_map_to_libretro_buttons() {
         let mut config = super::Settings::default();
