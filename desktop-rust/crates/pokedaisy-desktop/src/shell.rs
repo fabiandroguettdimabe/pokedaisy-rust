@@ -954,8 +954,8 @@ pub fn run() -> Result<(), String> {
                                 "smooth"=>next.smooth=value.as_bool().ok_or("Filtro inválido")?,
                                 "fullscreen"=>next.fullscreen=value.as_bool().ok_or("Valor inválido")?,
                                 "recursive"=>next.recursive=value.as_bool().ok_or("Valor inválido")?,
-                                "fast_forward"=>next.fast_forward=value.as_u64().ok_or("Velocidad inválida")?.clamp(2,4) as u32,
-                                "autosave"=>next.autosave=value.as_u64().ok_or("Intervalo inválido")?.clamp(10,120),
+                                "fast_forward"=>next.fast_forward=setting_choice(value,&[2,3,4],"Velocidad inválida")? as u32,
+                                "autosave"=>next.autosave=setting_choice(value,&[10,20,30,60,120],"Intervalo inválido")?,
                                 "reduced_motion"=>next.reduced_motion=value.as_bool().ok_or("Valor inválido")?,
                                 "keys_reset"=>next.keys=Settings::default().keys,
                                 "cores_reset"=>next.cores=[None,None,None],
@@ -1417,6 +1417,13 @@ fn required_setting_value<'a>(
     error: &str,
 ) -> Result<&'a serde_json::Value, String> {
     action.get("value").ok_or_else(|| error.to_owned())
+}
+
+fn setting_choice(value: &serde_json::Value, choices: &[u64], error: &str) -> Result<u64, String> {
+    value
+        .as_u64()
+        .filter(|number| choices.contains(number))
+        .ok_or_else(|| error.to_owned())
 }
 
 fn optional_setting_u8(value: &serde_json::Value, error: &str) -> Result<Option<u8>, String> {
@@ -2067,6 +2074,19 @@ mod tests {
         assert_eq!(
             required_setting_value(&serde_json::json!({"value":null}), "Valor inválido").unwrap(),
             &serde_json::Value::Null
+        );
+        assert_eq!(
+            setting_choice(&serde_json::json!(4), &[2, 3, 4], "Velocidad inválida").unwrap(),
+            4
+        );
+        assert!(setting_choice(&serde_json::json!(99), &[2, 3, 4], "Velocidad inválida").is_err());
+        assert!(
+            setting_choice(
+                &serde_json::json!(11),
+                &[10, 20, 30, 60, 120],
+                "Intervalo inválido"
+            )
+            .is_err()
         );
     }
 
