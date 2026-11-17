@@ -1143,14 +1143,7 @@ pub fn run() -> Result<(), String> {
                         },
                         "migration_apply" => {
                             let report = pending_migration.clone().ok_or("Primero revisa los guardados heredados")?;
-                            for entry in &report.items {
-                                if !entry.item.source.starts_with(&config.saves) && !entry.item.source.starts_with(&config.states) {
-                                    return Err("El journal contiene una ruta fuera de las carpetas configuradas".into());
-                                }
-                                if !entry.item.destination.starts_with(&config.saves) && !entry.item.destination.starts_with(&config.states) {
-                                    return Err("El destino queda fuera de las carpetas configuradas".into());
-                                }
-                            }
+                            validate_migration_report_paths(&report, &config, &root)?;
                             migration::apply(&data.join("migration-journal-v1.json"), &report)?;
                             let refreshed = migration::preview(&report.items.into_iter().map(|entry| entry.item).collect::<Vec<_>>())?;
                             command_result = Some(json!({"migration": refreshed}));
@@ -1692,11 +1685,7 @@ fn save_files(config: &Settings) -> Vec<PathBuf> {
     files
 }
 
-fn legacy_migration_items(
-    games: &[Game],
-    config: &Settings,
-    root: &Path,
-) -> Vec<migration::MigrationItem> {
+fn legacy_migration_roots(config: &Settings, root: &Path) -> (Vec<PathBuf>, Vec<PathBuf>) {
     let mut battery_dirs = vec![
         config.saves.clone(),
         root.join("data/saves"),
@@ -1711,13 +1700,96 @@ fn legacy_migration_items(
     ];
     state_dirs.sort();
     state_dirs.dedup();
+    (battery_dirs, state_dirs)
+}
+
+fn validate_migration_report_paths(
+    report: &migration::MigrationReport,
+    config: &Settings,
+    root: &Path,
+) -> Result<(), String> {
+    let (battery_roots, state_roots) = legacy_migration_roots(config, root);
+    for entry in &report.items {
+        let (source_roots, destination_root) = match entry.item.kind.as_str() {
+            "battery" => (&battery_roots, &config.saves),
+            "state_unverified" => (&state_roots, &config.states),
+            _ => return Err("Tipo de guardado de migración desconocido".into()),
+        };
+        let source_allowed = source_roots
+            .iter()
+            .any(|source_root| regular_file_within_root(&entry.item.source, source_root));
+        if !source_allowed {
+            return Err("El origen queda fuera de las carpetas conocidas de guardados".into());
+        }
+        if !destination_within_root(&entry.item.destination, destination_root) {
+            return Err("El destino queda fuera de la carpeta configurada".into());
+        }
+    }
+    Ok(())
+}
+
+fn regular_file_within_root(path: &Path, root: &Path) -> bool {
+    let Ok(metadata) = fs::symlink_metadata(path) else {
+        return false;
+    };
+    if !metadata.file_type().is_file() {
+        return false;
+    }
+    let (Ok(path), Ok(root)) = (fs::canonicalize(path), fs::canonicalize(root)) else {
+        return false;
+    };
+    path.starts_with(root)
+}
+
+fn destination_within_root(destination: &Path, root: &Path) -> bool {
+    if !destination.starts_with(root) {
+        return false;
+    }
+    let Ok(canonical_root) = fs::canonicalize(root) else {
+        return false;
+    };
+    if let Ok(metadata) = fs::symlink_metadata(destination) {
+        if !metadata.file_type().is_file() {
+            return false;
+        }
+        return fs::canonicalize(destination).is_ok_and(|path| path.starts_with(&canonical_root));
+    }
+
+    let Some(mut ancestor) = destination.parent() else {
+        return false;
+    };
+    loop {
+        match fs::symlink_metadata(ancestor) {
+            Ok(_) => {
+                return fs::canonicalize(ancestor)
+                    .is_ok_and(|path| path.starts_with(&canonical_root));
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                let Some(parent) = ancestor.parent() else {
+                    return false;
+                };
+                ancestor = parent;
+            }
+            Err(_) => return false,
+        }
+    }
+}
+
+fn legacy_migration_items(
+    games: &[Game],
+    config: &Settings,
+    root: &Path,
+) -> Vec<migration::MigrationItem> {
+    let (battery_dirs, state_dirs) = legacy_migration_roots(config, root);
     let mut items = Vec::new();
     for game in games {
         let game_id = game_storage_key(game);
         let battery_destination = preferred_battery_path(game, &config.saves);
         for dir in &battery_dirs {
             let battery_source = legacy_battery_path(game, dir);
-            if battery_source.is_file() && battery_source != battery_destination {
+            if regular_file_within_root(&battery_source, dir)
+                && battery_source != battery_destination
+            {
                 items.push(migration::MigrationItem::new(
                     battery_source,
                     battery_destination.clone(),
@@ -1729,7 +1801,7 @@ fn legacy_migration_items(
         let state_destination = preferred_state_path(game, &config.states);
         for dir in &state_dirs {
             let state_source = legacy_state_path(game, dir);
-            if state_source.is_file() && state_source != state_destination {
+            if regular_file_within_root(&state_source, dir) && state_source != state_destination {
                 items.push(migration::MigrationItem::new(
                     state_source,
                     state_destination.clone(),
@@ -2255,6 +2327,49 @@ mod tests {
         assert!(started.elapsed() >= std::time::Duration::from_millis(300));
         assert!(child.wait().unwrap().success());
         let _ = fs::remove_file(ready);
+    }
+
+    #[test]
+    fn migration_apply_accepts_known_legacy_roots_with_custom_save_folders() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-legacy-apply-roots-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let saves = root.join("custom/saves");
+        let states = root.join("custom/states");
+        let historical = root.join("saves");
+        let outside = root.join("outside");
+        fs::create_dir_all(&saves).unwrap();
+        fs::create_dir_all(&states).unwrap();
+        fs::create_dir_all(&historical).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        let known_source = historical.join("legacy.gb.sav");
+        let outside_source = outside.join("unrelated.sav");
+        fs::write(&known_source, b"legacy battery").unwrap();
+        fs::write(&outside_source, b"outside data").unwrap();
+        let destination = saves.join("by-id/game/battery.sav");
+        let config = Settings {
+            saves: saves.clone(),
+            states,
+            ..Settings::default()
+        };
+        let known_report = migration::preview(&[migration::MigrationItem::new(
+            known_source,
+            destination.clone(),
+            "game".into(),
+            "battery".into(),
+        )])
+        .unwrap();
+        let outside_report = migration::preview(&[migration::MigrationItem::new(
+            outside_source,
+            destination,
+            "game".into(),
+            "battery".into(),
+        )])
+        .unwrap();
+
+        assert!(validate_migration_report_paths(&known_report, &config, &root).is_ok());
+        assert!(validate_migration_report_paths(&outside_report, &config, &root).is_err());
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
