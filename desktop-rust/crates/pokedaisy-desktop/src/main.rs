@@ -961,7 +961,8 @@ fn sdl_main() -> Result<(), String> {
                             }
                         }
                     }
-                    last_auto = Instant::now();
+                    last_auto =
+                        timing::next_frame_anchor(last_auto, Instant::now(), frame_interval);
                 } else if let Some(frame) = last_frame.as_ref() {
                     draw_play(&mut canvas, &texture_creator, frame, w, h, config.smooth)?;
                 }

@@ -152,7 +152,7 @@ fn normalize_av_info(av: RetroAvInfo) -> SystemAvInfo {
             60.0
         },
         sample_rate: if av.timing.sample_rate.is_finite() && av.timing.sample_rate > 0.0 {
-            av.timing.sample_rate
+            av.timing.sample_rate.clamp(8_000.0, 192_000.0)
         } else {
             32_768.0
         },
@@ -1199,6 +1199,18 @@ mod av_contract_tests {
         assert_eq!(av.fps, 60.0);
         assert_eq!(av.sample_rate, 32_768.0);
         assert_eq!(av.geometry.base_width, 1);
+    }
+
+    #[test]
+    fn unreasonable_sample_rate_is_clamped_for_safe_resampling() {
+        let av = normalize_av_info(RetroAvInfo {
+            timing: RetroTiming {
+                sample_rate: 1_000_000.0,
+                ..RetroTiming::default()
+            },
+            ..RetroAvInfo::default()
+        });
+        assert_eq!(av.sample_rate, 192_000.0);
     }
 
     #[test]

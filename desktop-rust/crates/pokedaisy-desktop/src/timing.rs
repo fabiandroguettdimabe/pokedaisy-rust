@@ -11,6 +11,19 @@ pub fn frame_interval(fps: f64) -> Duration {
     Duration::from_secs_f64(1.0 / fps)
 }
 
+pub fn next_frame_anchor(
+    previous: std::time::Instant,
+    now: std::time::Instant,
+    interval: Duration,
+) -> std::time::Instant {
+    let next = previous + interval;
+    if now.saturating_duration_since(next) > interval.saturating_mul(2) {
+        now
+    } else {
+        next
+    }
+}
+
 pub fn resample_stereo(input: &[i16], source_rate: f64, target_rate: u32) -> Vec<i16> {
     if input.is_empty() || !source_rate.is_finite() || source_rate <= 0.0 || target_rate == 0 {
         return input.to_vec();
@@ -43,7 +56,7 @@ pub fn resample_stereo(input: &[i16], source_rate: f64, target_rate: u32) -> Vec
 
 #[cfg(test)]
 mod tests {
-    use super::{frame_interval, resample_stereo};
+    use super::{frame_interval, next_frame_anchor, resample_stereo};
     use std::time::Duration;
 
     #[test]
@@ -60,6 +73,24 @@ mod tests {
             Duration::from_secs_f64(1.0 / 60.0)
         );
         assert_eq!(frame_interval(0.0), Duration::from_secs_f64(1.0 / 60.0));
+    }
+
+    #[test]
+    fn frame_anchor_advances_without_small_execution_time_drift() {
+        let start = std::time::Instant::now();
+        let interval = Duration::from_millis(20);
+        assert_eq!(
+            next_frame_anchor(start, start + interval + Duration::from_millis(2), interval),
+            start + interval
+        );
+    }
+
+    #[test]
+    fn frame_anchor_drops_backlog_after_a_long_stall() {
+        let start = std::time::Instant::now();
+        let interval = Duration::from_millis(20);
+        let now = start + Duration::from_millis(100);
+        assert_eq!(next_frame_anchor(start, now, interval), now);
     }
 
     #[test]
