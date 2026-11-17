@@ -118,6 +118,7 @@ pub fn run() -> Result<(), String> {
     let mut vault_generation = 0u64;
     let mut vault_busy = false;
     let mut command_revision: u64 = 0;
+    let mut command_acks = protocol::CommandAckCache::new(128);
     let mut pending_migration: Option<migration::MigrationReport> = None;
     let mut probe_generation = 0u64;
     let mut core_probe: Option<serde_json::Value> = None;
@@ -263,6 +264,12 @@ pub fn run() -> Result<(), String> {
                     Ok(cmd) => cmd,
                     Err(_) => return,
                 };
+                if let Some(cached) = command_acks.lookup(&cmd).cloned() {
+                    let mut replay = cached;
+                    replay.revision = Some(command_revision);
+                    let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(replay)));
+                    return;
+                }
                 let action = cmd.payload.clone();
                 let name = cmd.action.as_str();
                 let mut refresh = false;
@@ -738,6 +745,7 @@ pub fn run() -> Result<(), String> {
                         ack
                     }
                 };
+                command_acks.remember(&cmd, ack.clone());
                 let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
                 if let Err(error)=result {
                     if !stale_revision {

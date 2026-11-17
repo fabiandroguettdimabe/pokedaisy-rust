@@ -8,6 +8,7 @@
 use crate::domain::CONTRACT_VERSION;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::VecDeque;
 
 /// Application-level error with a stable code for UI handling and diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -72,6 +73,53 @@ pub struct UiAck {
     pub error: Option<AppError>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub revision: Option<u64>,
+}
+
+/// Bounded replay cache for revisioned commands. It lets a client recover the
+/// original acknowledgement after a lost response without repeating effects.
+pub struct CommandAckCache {
+    capacity: usize,
+    entries: VecDeque<(String, UiAck)>,
+}
+
+impl CommandAckCache {
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            capacity: capacity.max(1),
+            entries: VecDeque::new(),
+        }
+    }
+
+    pub fn lookup(&self, command: &UiCommandEnvelope) -> Option<&UiAck> {
+        let key = command_dedupe_key(command)?;
+        self.entries
+            .iter()
+            .find_map(|(cached, ack)| (cached == &key).then_some(ack))
+    }
+
+    pub fn remember(&mut self, command: &UiCommandEnvelope, ack: UiAck) {
+        let Some(key) = command_dedupe_key(command) else {
+            return;
+        };
+        self.entries.retain(|(cached, _)| cached != &key);
+        self.entries.push_back((key, ack));
+        while self.entries.len() > self.capacity {
+            self.entries.pop_front();
+        }
+    }
+}
+
+fn command_dedupe_key(command: &UiCommandEnvelope) -> Option<String> {
+    command.expected_revision?;
+    serde_json::to_string(&serde_json::json!({
+        "expected_revision": command.expected_revision,
+        "session_id": command.session_id,
+        "epoch": command.epoch,
+        "request_id": command.request_id,
+        "action": command.action,
+        "payload": command.payload,
+    }))
+    .ok()
 }
 
 /// Event envelope (application/worker -> UI subscribers).
@@ -182,5 +230,39 @@ mod tests {
         assert!(ok.ok);
         let bad = UiAck::failure("c2", AppError::new("x", "y"));
         assert!(!bad.ok);
+    }
+
+    #[test]
+    fn command_ack_cache_replays_only_the_same_revisioned_command() {
+        let command = parse_legacy_action(
+            r#"{"action":"import_roots","expected_revision":7,"roots":["C:/roms"]}"#,
+        )
+        .unwrap();
+        let mut cache = CommandAckCache::new(2);
+        let ack = UiAck::success(
+            "legacy-import_roots",
+            Some(serde_json::json!({"started":true})),
+        );
+        cache.remember(&command, ack.clone());
+
+        assert_eq!(cache.lookup(&command), Some(&ack));
+        let next_revision = parse_legacy_action(
+            r#"{"action":"import_roots","expected_revision":8,"roots":["C:/roms"]}"#,
+        )
+        .unwrap();
+        assert!(cache.lookup(&next_revision).is_none());
+        let legacy = parse_legacy_action(r#"{"action":"import_roots"}"#).unwrap();
+        cache.remember(&legacy, ack);
+        assert!(cache.lookup(&legacy).is_none());
+
+        let second = parse_legacy_action(r#"{"action":"scan","expected_revision":8}"#).unwrap();
+        let third = parse_legacy_action(r#"{"action":"scan","expected_revision":9}"#).unwrap();
+        cache.remember(&second, UiAck::success("second", None));
+        cache.remember(&third, UiAck::success("third", None));
+        assert!(cache.lookup(&command).is_none());
+        assert_eq!(
+            cache.lookup(&third).map(|ack| ack.command_id.as_str()),
+            Some("third")
+        );
     }
 }

@@ -12,6 +12,8 @@ Actualizado: 2026-11-17. Este documento registra el comportamiento comprobado de
 
 ## Cambios implementados en este checkout
 
+- **T02 parcial:** el shell mantiene una caché acotada de 128 ACK para comandos revisionados. Si se reenvía el mismo comando (revisión, request, sesión/época, acción y payload), devuelve el ACK guardado antes de ejecutar el handler, evitando repetir efectos después de perderse la respuesta. El test cubre replay, otra revisión, comandos legacy y capacidad; falta migrar todas las acciones al contrato y sanear logs.
+
 - Desktop se muestra como **Vyntra Desktop** y usa la paleta Dark Crimson + Black en su interfaz SDL. El símbolo V se dibuja como vector en SDL; las variantes SVG original, reducida y monocromática están en `desktop-rust/assets/`.
 - Android muestra **Vyntra Pocket** como nombre de aplicación. Se conservan `applicationId` y `namespace` `com.pokedaisy.app` para no romper actualización in-place ni acceso a los datos existentes.
 - Los paquetes Rust propios se llaman `vyntra-desktop` y `vyntra-libretro`; las rutas en disco aún conservan `crates/pokedaisy-*`.
