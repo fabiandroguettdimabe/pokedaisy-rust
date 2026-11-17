@@ -3,6 +3,7 @@ use super::*;
 use crate::library;
 use crate::protocol;
 use serde_json::json;
+use std::ffi::c_void;
 use std::io::Read;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -57,6 +58,7 @@ pub fn run() -> Result<(), String> {
     fs::create_dir_all(&data).map_err(|e| e.to_string())?;
     let config_path = data.join("vyntra-settings.json");
     let mut config = Settings::load(&config_path, &root)?;
+    let mut config_fingerprint = settings_fingerprint(&config_path)?;
     for path in [
         &config.library,
         &config.saves,
@@ -340,6 +342,16 @@ pub fn run() -> Result<(), String> {
                         return;
                     }
                 };
+                let _settings_lock = if is_settings_mutation(&cmd.action) {
+                    match SettingsMutex::acquire() {
+                        Ok(lock) => Some(lock),
+                        Err(reason) => {
+                            let ack = protocol::UiAck::failure(cmd.command_id.clone(), protocol::AppError::new("settings_busy", reason).retryable());
+                            let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
+                            return;
+                        }
+                    }
+                } else { None };
                 if let Some(cached) = command_acks.lookup(&cmd).cloned() {
                     let mut replay = cached;
                     replay.revision = Some(command_revision);
@@ -350,10 +362,19 @@ pub fn run() -> Result<(), String> {
                 let name = cmd.action.as_str();
                 let mut refresh = false;
                 let mut command_result: Option<serde_json::Value> = None;
-                let stale_revision = cmd
+                let mut external_config_error = None;
+                if is_settings_mutation(name) {
+                    match reload_external_settings(&config_path, &root, &config_fingerprint) {
+                        Ok(Some((latest, current))) => { config = latest; config_fingerprint = current; command_revision = command_revision.saturating_add(1); refresh = true; }
+                        Ok(None) => {},
+                        Err(error) => external_config_error = Some(error),
+                    }
+                }
+                let mut stale_revision = cmd
                     .expected_revision
                     .is_some_and(|revision| revision != command_revision);
                 let result = (|| -> Result<(), String> {
+                    if let Some(error) = external_config_error { return Err(error); }
                     validate_command_revision(cmd.expected_revision, command_revision)?;
                     validate_command_session(&session, session_epoch, &cmd)?;
                     match name {
@@ -655,7 +676,17 @@ pub fn run() -> Result<(), String> {
                                     *match field {"library"=>&mut next.library,"saves"=>&mut next.saves,"states"=>&mut next.states,_=>&mut next.system}=p;
                                 } else{return Ok(());}
                             } else { return Err("Opción no válida".into()); }
-                            next.save(&config_path)?; config=next; refresh=true;
+                            let _settings_lock = SettingsMutex::acquire()?;
+                            let current = settings_fingerprint(&config_path)?;
+                            if current != config_fingerprint {
+                                config = Settings::load(&config_path, &root)?;
+                                config_fingerprint = current;
+                                command_revision = command_revision.saturating_add(1);
+                                stale_revision = true;
+                                refresh = true;
+                                return Err("La configuración cambió en otra ventana mientras elegías la ruta. Revisa el estado y vuelve a elegirla.".into());
+                            }
+                            next.save(&config_path)?; config=next; config_fingerprint=settings_fingerprint(&config_path)?; refresh=true;
                         },
                         "set" => {
                             let mut next=config.clone(); let field=action["field"].as_str().unwrap_or(""); let value=&action["value"];
@@ -889,6 +920,9 @@ pub fn run() -> Result<(), String> {
                         _=>return Err("Acción no disponible".into()),
                     } Ok(())
                 })();
+                if result.is_ok() && is_settings_mutation(name) {
+                    if let Ok(fingerprint) = settings_fingerprint(&config_path) { config_fingerprint = fingerprint; }
+                }
                 command_revision = command_revision.saturating_add(1);
                 let ack = match &result {
                     Ok(_) => {
@@ -1092,6 +1126,87 @@ fn validate_command_session(
         }
     }
     Ok(())
+}
+
+fn is_settings_mutation(action: &str) -> bool {
+    matches!(
+        action,
+        "reset_settings_section"
+            | "game_smoothing"
+            | "system_smoothing"
+            | "game_volume"
+            | "system_volume"
+            | "game_fast_forward"
+            | "system_fast_forward"
+            | "game_autosave"
+            | "system_autosave"
+            | "library_view"
+            | "library_filter"
+            | "library_selection"
+            | "set"
+    )
+}
+
+fn settings_fingerprint(path: &Path) -> Result<Option<String>, String> {
+    match fs::read(path) {
+        Ok(bytes) => Ok(Some(crate::identity::sha256_bytes(&bytes))),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(format!("No se pudo revisar la configuración: {error}")),
+    }
+}
+
+fn reload_external_settings(
+    path: &Path,
+    root: &Path,
+    known: &Option<String>,
+) -> Result<Option<(Settings, Option<String>)>, String> {
+    let current = settings_fingerprint(path)?;
+    if &current == known {
+        return Ok(None);
+    }
+    let latest = Settings::load(path, root)
+        .map_err(|error| format!("No se pudo recargar la configuración actualizada: {error}"))?;
+    Ok(Some((latest, current)))
+}
+
+struct SettingsMutex(*mut c_void);
+
+#[link(name = "kernel32")]
+unsafe extern "system" {
+    fn CreateMutexW(attributes: *mut c_void, initial_owner: i32, name: *const u16) -> *mut c_void;
+    fn WaitForSingleObject(handle: *mut c_void, milliseconds: u32) -> u32;
+    fn ReleaseMutex(handle: *mut c_void) -> i32;
+    fn CloseHandle(handle: *mut c_void) -> i32;
+}
+
+impl SettingsMutex {
+    fn acquire() -> Result<Self, String> {
+        let name: Vec<u16> = "Local\\VyntraSettingsMutation-v1"
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
+        let handle = unsafe { CreateMutexW(std::ptr::null_mut(), 0, name.as_ptr()) };
+        if handle.is_null() {
+            return Err("No se pudo abrir el bloqueo compartido de ajustes".into());
+        }
+        let wait = unsafe { WaitForSingleObject(handle, 30_000) };
+        if wait != 0 && wait != 0x80 {
+            unsafe {
+                CloseHandle(handle);
+            }
+            return Err("Otra ventana mantiene ocupados los ajustes. Intenta de nuevo.".into());
+        }
+        Ok(Self(handle))
+    }
+}
+
+impl Drop for SettingsMutex {
+    fn drop(&mut self) {
+        unsafe {
+            ReleaseMutex(self.0);
+            CloseHandle(self.0);
+        }
+    }
 }
 
 fn validate_command_revision(expected: Option<u64>, current: u64) -> Result<(), String> {
@@ -1702,6 +1817,69 @@ mod tests {
         assert!(validate_command_revision(Some(7), 7).is_ok());
         assert!(validate_command_revision(Some(6), 7).is_err());
         assert!(validate_command_revision(None, 7).is_ok());
+    }
+
+    #[test]
+    fn second_settings_window_reloads_external_change_and_rejects_old_revision() {
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-settings-two-windows-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join("settings.json");
+        let mut first_window = Settings::default();
+        first_window.save(&path).unwrap();
+        let stale_window = Settings::load(&path, &root).unwrap();
+        let stale_fingerprint = settings_fingerprint(&path).unwrap();
+
+        first_window.volume = 35;
+        first_window.save(&path).unwrap();
+        let (reloaded, new_fingerprint) =
+            reload_external_settings(&path, &root, &stale_fingerprint)
+                .unwrap()
+                .expect("second window detects the changed settings file");
+        assert_eq!(reloaded.volume, 35);
+        assert_ne!(new_fingerprint, stale_fingerprint);
+        assert!(validate_command_revision(Some(0), 1).is_err());
+        assert_eq!(stale_window.volume, 80);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn settings_mutex_serializes_independent_processes() {
+        const READY_ENV: &str = "VYNTRA_SETTINGS_MUTEX_TEST_READY";
+        if let Some(ready_path) = env::var_os(READY_ENV) {
+            let _lock = SettingsMutex::acquire().unwrap();
+            fs::write(ready_path, b"ready").unwrap();
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            return;
+        }
+        let ready =
+            std::env::temp_dir().join(format!("vyntra-mutex-ready-{}.txt", std::process::id()));
+        let _ = fs::remove_file(&ready);
+        let mut child = std::process::Command::new(env::current_exe().unwrap())
+            .arg("--exact")
+            .arg("shell::tests::settings_mutex_serializes_independent_processes")
+            .arg("--nocapture")
+            .env(READY_ENV, &ready)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while !ready.exists() && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        assert!(
+            ready.exists(),
+            "child process failed to acquire the named mutex"
+        );
+        let started = std::time::Instant::now();
+        let _lock = SettingsMutex::acquire().unwrap();
+        assert!(started.elapsed() >= std::time::Duration::from_millis(300));
+        assert!(child.wait().unwrap().success());
+        let _ = fs::remove_file(ready);
     }
 
     #[test]
