@@ -141,6 +141,24 @@ impl NonEmpty for String {
 mod tests {
     use super::inspect_bytes;
 
+    fn gb_fixture(color: bool, title: &[u8]) -> Vec<u8> {
+        const LOGO: [u8; 48] = [
+            0xce, 0xed, 0x66, 0x66, 0xcc, 0x0d, 0x00, 0x0b, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0c,
+            0x00, 0x0d, 0x00, 0x08, 0x11, 0x1f, 0x88, 0x89, 0x00, 0x0e, 0xdc, 0xcc, 0x6e, 0xe6,
+            0xdd, 0xdd, 0xd9, 0x99, 0xbb, 0xbb, 0x67, 0x63, 0x6e, 0x0e, 0xec, 0xcc, 0xdd, 0xdc,
+            0x99, 0x9f, 0xbb, 0xb9, 0x33, 0x3e,
+        ];
+        let mut bytes = vec![0; 0x150];
+        bytes[0x104..0x134].copy_from_slice(&LOGO);
+        let title_len = title.len().min(15);
+        bytes[0x134..0x134 + title_len].copy_from_slice(&title[..title_len]);
+        bytes[0x143] = if color { 0x80 } else { 0 };
+        bytes[0x14d] = bytes[0x134..=0x14c]
+            .iter()
+            .fold(0u8, |sum, byte| sum.wrapping_sub(*byte).wrapping_sub(1));
+        bytes
+    }
+
     #[test]
     fn gb_header_checksum_is_reported_but_does_not_gate_rom_inspection() {
         const LOGO: [u8; 48] = [
@@ -184,6 +202,40 @@ mod tests {
         assert!(inspect_bytes("short.gb", &[0; 0x14f]).is_none());
         assert!(inspect_bytes("short.gbc", &[0; 0x14f]).is_none());
         assert!(inspect_bytes("unknown.bin", &[0; 0x400]).is_none());
+    }
+
+    #[test]
+    fn gb_and_gbc_logo_color_flag_and_optional_title_are_checked() {
+        let gb = gb_fixture(false, b"  HOME  ");
+        let inspection = inspect_bytes("fixture.gb", &gb).unwrap();
+        assert_eq!(inspection.system, "GB");
+        assert_eq!(inspection.title.as_deref(), Some("HOME"));
+        assert!(inspection.header_checksum_valid.unwrap());
+        assert!(inspect_bytes("fixture.gbc", &gb).is_none());
+
+        let gbc = gb_fixture(true, b"\0\0");
+        let inspection = inspect_bytes("fixture.gbc", &gbc).unwrap();
+        assert_eq!(inspection.system, "GBC");
+        assert_eq!(inspection.title, None);
+        assert!(inspect_bytes("fixture.gb", &gbc).is_none());
+    }
+
+    #[test]
+    fn gba_fields_are_reported_and_invalid_game_codes_are_rejected() {
+        let mut gba = vec![0; 0xc0];
+        gba[0xa0..0xa4].copy_from_slice(b"HOME");
+        gba[0xac..0xb0].copy_from_slice(b"ABCD");
+        gba[0xb2] = 0x96;
+        gba[0xbc] = 7;
+        gba[0xbd] = super::gba_header_checksum(&gba);
+        let inspection = inspect_bytes("fixture.gba", &gba).unwrap();
+        assert_eq!(inspection.title.as_deref(), Some("HOME"));
+        assert_eq!(inspection.game_code.as_deref(), Some("ABCD"));
+        assert_eq!(inspection.revision, Some(7));
+        assert_eq!(inspection.header_checksum_valid, Some(true));
+
+        gba[0xac..0xb0].copy_from_slice(b"AB?D");
+        assert!(inspect_bytes("fixture.gba", &gba).is_none());
     }
 
     #[test]
