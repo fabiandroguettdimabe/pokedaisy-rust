@@ -1307,6 +1307,26 @@ fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
     })
 }
 
+fn safe_log_file_name(path: &Path) -> String {
+    let name = path.file_name().unwrap_or_default().to_string_lossy();
+    let sanitized = name
+        .chars()
+        .take(128)
+        .map(|character| {
+            if character.is_control() {
+                '\u{fffd}'
+            } else {
+                character
+            }
+        })
+        .collect::<String>();
+    if sanitized.is_empty() {
+        "archivo".into()
+    } else {
+        sanitized
+    }
+}
+
 fn atomic_write_with(
     path: &Path,
     data: &[u8],
@@ -1358,7 +1378,7 @@ fn open_game(
             Err(error) => {
                 eprintln!(
                     "No se pudo validar/restaurar SRAM para {}: {error}",
-                    game.path.display()
+                    safe_log_file_name(&game.path)
                 );
                 None
             }
@@ -1370,7 +1390,7 @@ fn open_game(
         if let Err(error) = core.write_save_ram(&bytes) {
             eprintln!(
                 "El núcleo rechazó la SRAM de {}: {error:?}",
-                game.path.display()
+                safe_log_file_name(&game.path)
             );
         }
     }
@@ -1672,7 +1692,7 @@ fn save_battery(core: &mut LibretroCore, game: &Game, dir: &Path, core_hash: Opt
             if let Err(error) = backup_verified_battery(game, dir, core_hash) {
                 eprintln!(
                     "No se pudo respaldar SRAM anterior para {}: {error}",
-                    game.path.display()
+                    safe_log_file_name(&game.path)
                 );
                 return;
             }
@@ -1688,15 +1708,15 @@ fn save_battery(core: &mut LibretroCore, game: &Game, dir: &Path, core_hash: Opt
                 ),
                 Err(e) => eprintln!(
                     "No se pudo guardar SRAM para {} en {}: {e}",
-                    game.path.display(),
-                    path.display()
+                    safe_log_file_name(&game.path),
+                    safe_log_file_name(&path)
                 ),
             }
         }
         Err(e) => {
             eprintln!(
                 "No se pudo leer SRAM del núcleo para {}: {e:?}",
-                game.path.display()
+                safe_log_file_name(&game.path)
             );
         }
     }
@@ -2634,6 +2654,18 @@ mod tests {
     use std::fs;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn filesystem_diagnostic_labels_hide_parent_paths_and_control_characters() {
+        let raw_path = format!("C:\\private\\user-data\\ROM{}.gba", '\u{1b}');
+        let label = super::safe_log_file_name(std::path::Path::new(&raw_path));
+        assert_eq!(label, "ROM\u{fffd}.gba");
+        assert!(!label.contains("private"));
+
+        let long_path =
+            std::path::Path::new(&format!("C:\\private\\{}.gba", "R".repeat(200))).to_path_buf();
+        assert!(super::safe_log_file_name(&long_path).len() <= 128);
+    }
 
     #[test]
     fn cancelled_library_scan_discards_partial_results() {
