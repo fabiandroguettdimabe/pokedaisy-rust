@@ -984,6 +984,14 @@ fn prepare_bundle_restore(
 }
 
 fn commit_bundle_restore(prepared: PreparedBundleRestore, config: &Settings) -> Result<(), String> {
+    commit_bundle_restore_with(prepared, config, atomic_write)
+}
+
+fn commit_bundle_restore_with(
+    prepared: PreparedBundleRestore,
+    config: &Settings,
+    mut write: impl FnMut(&Path, &[u8]) -> Result<(), String>,
+) -> Result<(), String> {
     let is_state = prepared.manifest.kind == domain::SaveKind::SaveState;
     let backup = if is_state {
         backup_verified_state(
@@ -1001,10 +1009,10 @@ fn commit_bundle_restore(prepared: PreparedBundleRestore, config: &Settings) -> 
     if prepared.destination.is_file() && backup.is_none() {
         return Err("El guardado actual no se pudo verificar y queda intacto; muévelo manualmente antes de importar".into());
     }
-    atomic_write(&prepared.destination, &prepared.payload)?;
+    write(&prepared.destination, &prepared.payload)?;
     let manifest_bytes =
         serde_json::to_vec_pretty(&prepared.manifest).map_err(|error| error.to_string())?;
-    if let Err(error) = atomic_write(&prepared.manifest_path, &manifest_bytes) {
+    if let Err(error) = write(&prepared.manifest_path, &manifest_bytes) {
         if let Some(backup_dir) = backup {
             let (payload_name, manifest_name) = if is_state {
                 ("slot1.ss", "state.manifest.json")
@@ -1013,8 +1021,8 @@ fn commit_bundle_restore(prepared: PreparedBundleRestore, config: &Settings) -> 
             };
             let old_payload = fs::read(backup_dir.join(payload_name)).map_err(|restore_error| format!("No se pudo confirmar manifiesto ({error}); la copia previa permanece en {} ({restore_error})", backup_dir.display()))?;
             let old_manifest = fs::read(backup_dir.join(manifest_name)).map_err(|restore_error| format!("No se pudo confirmar manifiesto ({error}); la copia previa permanece en {} ({restore_error})", backup_dir.display()))?;
-            atomic_write(&prepared.destination, &old_payload).map_err(|restore_error| format!("Falló el manifiesto ({error}) y la restauración ({restore_error}); copia previa: {}", backup_dir.display()))?;
-            atomic_write(&prepared.manifest_path, &old_manifest).map_err(|restore_error| format!("Falló el manifiesto ({error}) y la restauración ({restore_error}); copia previa: {}", backup_dir.display()))?;
+            write(&prepared.destination, &old_payload).map_err(|restore_error| format!("Falló el manifiesto ({error}) y la restauración ({restore_error}); copia previa: {}", backup_dir.display()))?;
+            write(&prepared.manifest_path, &old_manifest).map_err(|restore_error| format!("Falló el manifiesto ({error}) y la restauración ({restore_error}); copia previa: {}", backup_dir.display()))?;
         } else {
             let _ = fs::remove_file(&prepared.destination);
         }
@@ -1294,6 +1302,40 @@ mod tests {
         let backup_root = state_path.parent().unwrap().join("backups");
         assert_eq!(fs::read_dir(backup_root).unwrap().count(), 1);
 
+        let manifest_path = state_path.parent().unwrap().join("state.manifest.json");
+        let committed_manifest = fs::read(&manifest_path).unwrap();
+        let interrupted_payload = b"second portable state";
+        let interrupted_bundle = crate::vault::SaveBundleManifest {
+            schema_version: 1,
+            storage_id: game_storage_key(&game),
+            kind: domain::SaveKind::SaveState,
+            rom_sha256: rom_hash.clone(),
+            core_hash: core_hash.clone(),
+            state_format: Some("libretro-serialize-v1".into()),
+            bytes: interrupted_payload.len() as u64,
+            sha256: identity::sha256_bytes(interrupted_payload),
+        };
+        let interrupted = prepare_bundle_restore(
+            interrupted_bundle,
+            interrupted_payload.to_vec(),
+            std::slice::from_ref(&game),
+            &config,
+        )
+        .unwrap();
+        let mut writes = 0;
+        assert!(
+            commit_bundle_restore_with(interrupted, &config, |path, bytes| {
+                writes += 1;
+                if writes == 2 {
+                    return Err("fallo de escritura inyectado".into());
+                }
+                atomic_write(path, bytes)
+            })
+            .is_err()
+        );
+        assert_eq!(fs::read(&state_path).unwrap(), payload);
+        assert_eq!(fs::read(&manifest_path).unwrap(), committed_manifest);
+
         let mut wrong_rom = bundle;
         wrong_rom.rom_sha256 = "0".repeat(64);
         assert!(
@@ -1327,7 +1369,6 @@ mod tests {
             .is_err()
         );
 
-        let manifest_path = state_path.parent().unwrap().join("state.manifest.json");
         atomic_write(&manifest_path, b"corrupt manifest").unwrap();
         let unverified_payload = b"must not replace an unverified save";
         let unverified_bundle = crate::vault::SaveBundleManifest {
