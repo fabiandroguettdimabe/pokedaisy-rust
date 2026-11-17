@@ -1,3 +1,4 @@
+mod audio_queue;
 mod domain;
 mod gen3_save;
 mod identity;
@@ -18,6 +19,7 @@ mod timing;
 #[allow(dead_code)] // Wired into the process bridge in the remaining T10 work.
 mod transport;
 mod vault;
+use audio_queue::AudioPlaybackQueue;
 use fontdue::Font;
 use sdl2::audio::AudioSpecDesired;
 use sdl2::event::Event;
@@ -564,13 +566,15 @@ fn sdl_main() -> Result<(), String> {
     let sdl = sdl2::init()?;
     let video = sdl.video()?;
     let audio_subsystem = sdl.audio()?;
-    let audio_device = audio_subsystem.open_queue::<i16, _>(
+    let audio_playback = AudioPlaybackQueue::new();
+    let audio_device = audio_subsystem.open_playback(
         None,
         &AudioSpecDesired {
             freq: Some(32_768),
             channels: Some(2),
             samples: Some(1024),
         },
+        |_| audio_playback.callback(),
     )?;
     audio_device.resume();
     let controller_subsystem = sdl.game_controller()?;
@@ -1176,6 +1180,12 @@ fn sdl_main() -> Result<(), String> {
         let (w, h) = canvas.window().size();
         canvas.set_draw_color(BG);
         canvas.clear();
+        audio_playback.set_active(
+            matches!(screen, Screen::Playing)
+                && core.is_some()
+                && !companion_paused
+                && !keyboard_input.is_pressed(Keycode::Space),
+        );
         match screen {
             Screen::Library => draw_library(
                 &mut canvas,
@@ -1263,7 +1273,7 @@ fn sdl_main() -> Result<(), String> {
                                 let mut dropped_audio_frames = 0u64;
                                 if !f.audio.is_empty() {
                                     if fast_forward {
-                                        audio_device.clear();
+                                        audio_playback.clear();
                                         audio_resampler.reset();
                                     } else {
                                         let target_rate = audio_device.spec().freq.max(1) as u32;
@@ -1294,22 +1304,21 @@ fn sdl_main() -> Result<(), String> {
                                                     as i16
                                             })
                                             .collect();
-                                        let queued = audio_device.size();
-                                        if timing::audio_queue_fits_budget(
+                                        let queued = audio_playback.queued_bytes();
+                                        let admitted = timing::audio_queue_fits_budget(
                                             queued,
                                             samples.len(),
                                             target_rate,
                                             timing::AUDIO_QUEUE_BUDGET_MS,
-                                        ) {
-                                            let _ = audio_device.queue_audio(&samples);
-                                        } else {
+                                        ) && audio_playback.queue(&samples);
+                                        if !admitted {
                                             dropped_audio_frames = (samples.len() / 2) as u64;
                                         }
                                     }
                                 }
                                 let target_rate = audio_device.spec().freq.max(1) as u32;
                                 audio_queue_diagnostics.observe(
-                                    audio_device.size(),
+                                    audio_playback.queued_bytes(),
                                     target_rate,
                                     dropped_audio_frames,
                                 );
@@ -1414,6 +1423,7 @@ fn sdl_main() -> Result<(), String> {
                         "high_water_ms": audio_queue_diagnostics.snapshot().high_water_ms,
                         "empty_episodes": audio_queue_diagnostics.snapshot().empty_episodes,
                         "dropped_frames": audio_queue_diagnostics.snapshot().dropped_frames,
+                        "underrun_frames": audio_playback.underrun_frames(),
                     },
                     "companion_memory": companion_memory,
                 });
