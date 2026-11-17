@@ -1,4 +1,4 @@
-"""Build an original, logo-free NDS test cart: ARM9 fills VRAM green, ARM7 loops.
+"""Build an original, logo-free NDS test cart: ARM9 draws input feedback; ARM7 loops.
 
 No game, firmware, BIOS or Nintendo header logo is copied. ARM instructions
 are emitted directly so this diagnostic does not need a devkitARM install.
@@ -30,7 +30,27 @@ def diagnostic():
     # Four corner markers prove the host displays every source pixel, not a crop.
     for pixel, color in [(0,0x801f),(255,0xfc00),(191*256,0xffff),(192*256-1,0x83ff)]:
         load(0,0x06800000+pixel*2);load(1,color);words.append(0xe1c010b0)
-    words.append(0xeafffffe)
+    # Poll KEYINPUT (active-low A) and repaint the framebuffer red while held,
+    # green when released. This makes real frontend input observable in SDL.
+    load(4,0x04000130)
+    poll_start=len(words)
+    words += [
+        0xe1d410b0, # ldrh r1,[r4]: KEYINPUT
+        0xe3110001, # tst r1,#1: A is pressed when bit 0 is clear
+        0x03a02080, # moveq r2,#0x80
+        0x13a02083, # movne r2,#0x83
+        0xe1a02402, # mov r2,r2,lsl #8
+        0x0382201f, # orreq r2,r2,#0x1f (opaque red)
+        0x138220e0, # orrne r2,r2,#0xe0 (opaque green)
+    ]
+    load(0,0x06800000)
+    load(1,256*192)
+    pixel_loop=len(words)
+    words += [0xe0c020b2,0xe2511001]
+    branch=len(words);words.append(0)
+    words[branch]=0x1a000000|((pixel_loop-branch-2)&0xffffff)
+    branch=len(words);words.append(0)
+    words[branch]=0xea000000|((poll_start-branch-2)&0xffffff)
     for index, register, value in literals:
         distance = (len(words) - index) * 4 - 8
         words[index] = 0xe59f0000 | register << 12 | distance

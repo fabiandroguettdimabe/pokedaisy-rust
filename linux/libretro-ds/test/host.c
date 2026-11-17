@@ -75,6 +75,13 @@ int main(int argc,char** argv){
   if(frame+200>=frames && frame+196<frames)mask=1u<<RETRO_DEVICE_ID_JOYPAD_START;
   if(getenv("PD_TEST_BUTTON"))mask=(frame%60>=30 && frame%60<34)?1u<<atoi(getenv("PD_TEST_BUTTON")):0;retro_run_fn();
  }
+ if(getenv("PD_TEST_INPUT")){
+  unsigned char released[sizeof image];
+  mask=0;for(int i=0;i<3;++i)retro_run_fn();
+  size_t image_bytes=(size_t)w*h*(fmt==1?4:2);memcpy(released,image,image_bytes);
+  mask=1u<<RETRO_DEVICE_ID_JOYPAD_A;for(int i=0;i<3;++i)retro_run_fn();
+  assert(image_bytes&&memcmp(released,image,image_bytes)!=0);
+ }
  mask=0;retro_run_fn();ppm(directory,"game");
  size_t n=retro_serialize_size_fn();assert(n>0);void* state=malloc(n);assert(retro_serialize_fn(state,n));
  char path[1024];snprintf(path,sizeof path,"%s/roundtrip.state",directory);FILE* f=fopen(path,"wb");assert(f&&fwrite(state,1,n,f)==n);fclose(f);
