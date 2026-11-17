@@ -69,8 +69,8 @@ Los alias siguientes abrevían rutas en las fichas; no representan módulos nuev
 
 | Archivos | SHA-256 | Estado |
 |---|---|---|
-| mgba_libretro.dll, pokedaisy_gbc_libretro.dll, vyntra_gbc_libretro.dll | D775ECEF6DA1DA5489FF2E0A37C13826B510C73711F89E78CB8D757C6F8C1426 | [NO-VERIFICADO] Carga/ABI y origen no comprobados. |
-| melondsds_libretro.dll, pokedaisy_ds_libretro.dll, vyntra_ds_libretro.dll | 6BE427125CAE551DA75680F85609CFB1CBAAFAFEF1CEBEBCC5E0E55A85E0FF41 | [NO-VERIFICADO] No asumir equivalencia con el core personalizado del proyecto. |
+| mgba_libretro.dll, pokedaisy_gbc_libretro.dll, vyntra_gbc_libretro.dll | D775ECEF6DA1DA5489FF2E0A37C13826B510C73711F89E78CB8D757C6F8C1426 | [PARCIAL] El hash coincide; `mgba_libretro.dll` carga en el probe y declara GBA. Origen/versión no verificados y no se asume que los alias sean el core personalizado. |
+| melondsds_libretro.dll, pokedaisy_ds_libretro.dll, vyntra_ds_libretro.dll | 6BE427125CAE551DA75680F85609CFB1CBAAFAFEF1CEBEBCC5E0E55A85E0FF41 | [PARCIAL] El hash coincide; `melondsds_libretro.dll` carga en el probe y declara DS. Origen/versión no verificados y no se asume equivalencia de producto por el nombre del alias. |
 | Núcleo GBA con nombre propio/armGBA | No encontrado en la carpeta observada | [BLOQUEADO] Obtener/buildar y validar; un mGBA público podría ser alternativa de reproducción si supera el contrato, no sustituto automático de extensiones. |
 
 Dependencias declaradas: SDL2 0.38, libloading 0.8.9, fontdue 0.9.3, rfd 0.15, Wry 0.54, Tao 0.34; Preact ^10.29, Tailwind ^4.2, Lucide ^0.577, esbuild ^0.27 y playwright-core ^1.65; versiones resueltas en lockfiles. NOTICE declara mGBA/partes armGBA MPL-2.0, melonDS GPL-3.0, DSperate GPL-3.0-or-later y licencias de dependencias. Verificar composición exacta por artefacto; no borrar avisos ni incluir Gambatte GPL-2-only en el ensamblado excluido por el proyecto. No se acreditó la procedencia de las DLL locales para redistribuirlas.
