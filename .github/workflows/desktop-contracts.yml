@@ -1,0 +1,24 @@
+name: Desktop checkpoint contracts
+
+on:
+  push:
+    branches: ['vyntra/**']
+
+permissions:
+  contents: read
+
+jobs:
+  transport-contracts:
+    name: Rust transport contract tests
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        with:
+          toolchain: stable
+
+      - name: Run bounded transport and shared contract tests
+        working-directory: desktop-rust
+        run: cargo test -p vyntra-desktop transport::tests
