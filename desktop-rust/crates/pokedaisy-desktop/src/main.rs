@@ -626,6 +626,7 @@ fn sdl_main() -> Result<(), String> {
     let mut last_pipe_snapshot = Instant::now();
     let mut companion_paused = false;
     let mut audio_resampler = timing::StereoResampler::new();
+    let mut audio_queue_diagnostics = timing::AudioQueueDiagnostics::default();
     if let Some(path) = rom_arg {
         if let Some(index) = games.iter().position(|g| g.path == path) {
             selected = index;
@@ -1213,6 +1214,7 @@ fn sdl_main() -> Result<(), String> {
                         match c.run_frame(input) {
                             Ok(f) => {
                                 last_frame = f.video;
+                                let mut dropped_audio_frames = 0u64;
                                 if !f.audio.is_empty() {
                                     if fast_forward {
                                         audio_device.clear();
@@ -1245,9 +1247,17 @@ fn sdl_main() -> Result<(), String> {
                                             <= queue_limit_bytes
                                         {
                                             let _ = audio_device.queue_audio(&samples);
+                                        } else {
+                                            dropped_audio_frames = (samples.len() / 2) as u64;
                                         }
                                     }
                                 }
+                                let target_rate = audio_device.spec().freq.max(1) as u32;
+                                audio_queue_diagnostics.observe(
+                                    audio_device.size(),
+                                    target_rate,
+                                    dropped_audio_frames,
+                                );
                             }
                             Err(e) => last_error = Some(format!("Error del core: {e:?}")),
                         }
@@ -1291,6 +1301,12 @@ fn sdl_main() -> Result<(), String> {
                     "system": active_game.as_ref().map(|game| game.system),
                     "screen": if matches!(screen, Screen::Playing) { "playing" } else { "menu" },
                     "paused": companion_paused,
+                    "audio": {
+                        "depth_ms": audio_queue_diagnostics.snapshot().depth_ms,
+                        "high_water_ms": audio_queue_diagnostics.snapshot().high_water_ms,
+                        "empty_episodes": audio_queue_diagnostics.snapshot().empty_episodes,
+                        "dropped_frames": audio_queue_diagnostics.snapshot().dropped_frames,
+                    },
                 });
                 let _ = pipe.send_snapshot(snapshot);
             }

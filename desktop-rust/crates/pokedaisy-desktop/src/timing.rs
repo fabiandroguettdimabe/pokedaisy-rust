@@ -24,6 +24,43 @@ pub fn next_frame_anchor(
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct AudioQueueSnapshot {
+    pub depth_ms: u32,
+    pub high_water_ms: u32,
+    pub empty_episodes: u64,
+    pub dropped_frames: u64,
+}
+
+#[derive(Default)]
+pub struct AudioQueueDiagnostics {
+    snapshot: AudioQueueSnapshot,
+    was_empty: bool,
+}
+
+impl AudioQueueDiagnostics {
+    pub fn observe(&mut self, queued_bytes: u32, sample_rate: u32, dropped_frames: u64) {
+        let bytes_per_second = u64::from(sample_rate).saturating_mul(4);
+        let depth_ms = if bytes_per_second == 0 {
+            0
+        } else {
+            (u64::from(queued_bytes).saturating_mul(1000) / bytes_per_second)
+                .min(u64::from(u32::MAX)) as u32
+        };
+        self.snapshot.depth_ms = depth_ms;
+        self.snapshot.high_water_ms = self.snapshot.high_water_ms.max(depth_ms);
+        if depth_ms == 0 && !self.was_empty {
+            self.snapshot.empty_episodes = self.snapshot.empty_episodes.saturating_add(1);
+        }
+        self.was_empty = depth_ms == 0;
+        self.snapshot.dropped_frames = self.snapshot.dropped_frames.saturating_add(dropped_frames);
+    }
+
+    pub fn snapshot(&self) -> AudioQueueSnapshot {
+        self.snapshot
+    }
+}
+
 #[derive(Default)]
 pub struct StereoResampler {
     rates: Option<(f64, u32)>,
@@ -88,7 +125,7 @@ impl StereoResampler {
 
 #[cfg(test)]
 mod tests {
-    use super::{StereoResampler, frame_interval, next_frame_anchor};
+    use super::{AudioQueueDiagnostics, StereoResampler, frame_interval, next_frame_anchor};
     use std::time::Duration;
 
     #[test]
@@ -154,5 +191,20 @@ mod tests {
             output_frames.abs_diff(32_768) <= 1,
             "60 emulated frames at 60 Hz should resample to about 32,768 Hz, got {output_frames}"
         );
+    }
+
+    #[test]
+    fn audio_queue_diagnostics_track_depth_empty_episodes_and_dropped_frames() {
+        let mut diagnostics = AudioQueueDiagnostics::default();
+        diagnostics.observe(0, 44_100, 0);
+        diagnostics.observe(17_640, 44_100, 12);
+        diagnostics.observe(0, 44_100, 0);
+        diagnostics.observe(0, 44_100, 0);
+
+        let snapshot = diagnostics.snapshot();
+        assert_eq!(snapshot.depth_ms, 0);
+        assert_eq!(snapshot.high_water_ms, 100);
+        assert_eq!(snapshot.empty_episodes, 2);
+        assert_eq!(snapshot.dropped_frames, 12);
     }
 }
