@@ -4,6 +4,10 @@
 
 #define EXPORT __declspec(dllexport)
 
+#ifdef PROBE_MISSING_DEPENDENCY
+__declspec(dllimport) void vyntra_probe_dependency(void);
+#endif
+
 typedef void (*retro_environment_t)(unsigned, void *);
 typedef void (*retro_video_refresh_t)(const void *, unsigned, unsigned, size_t);
 typedef void (*retro_audio_sample_t)(int16_t, int16_t);
@@ -33,7 +37,11 @@ EXPORT void retro_set_audio_sample(retro_audio_sample_t callback) { (void)callba
 EXPORT void retro_set_audio_sample_batch(retro_audio_sample_batch_t callback) { (void)callback; }
 EXPORT void retro_set_input_poll(retro_input_poll_t callback) { (void)callback; }
 EXPORT void retro_set_input_state(retro_input_state_t callback) { (void)callback; }
-EXPORT void retro_init(void) {}
+EXPORT void retro_init(void) {
+#ifdef PROBE_MISSING_DEPENDENCY
+    vyntra_probe_dependency();
+#endif
+}
 EXPORT void retro_deinit(void) {}
 EXPORT void retro_get_system_info(struct retro_system_info *info) {
     info->library_name = "Vyntra Probe Fixture";
