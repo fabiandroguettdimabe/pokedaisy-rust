@@ -225,6 +225,35 @@ mod migration_contract_tests {
     }
 
     #[test]
+    fn unique_legacy_sram_remains_readable_and_ambiguous_one_is_rejected() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-legacy-sram-read-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let first_path = root.join("roms/one/Same.gb");
+        let second_path = root.join("roms/two/Same.gb");
+        std::fs::create_dir_all(first_path.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(second_path.parent().unwrap()).unwrap();
+        std::fs::write(&first_path, b"first ROM content").unwrap();
+        std::fs::write(&second_path, b"second ROM content").unwrap();
+        let first = super::game_from_path(first_path);
+        let second = super::game_from_path(second_path);
+        let save_dir = root.join("saves");
+        let legacy_path = super::legacy_battery_path(&first, &save_dir);
+        std::fs::create_dir_all(legacy_path.parent().unwrap()).unwrap();
+        std::fs::write(&legacy_path, b"legacy SRAM bytes").unwrap();
+
+        assert_eq!(
+            super::read_legacy_battery(&first, std::slice::from_ref(&first), &save_dir)
+                .unwrap()
+                .as_deref(),
+            Some(b"legacy SRAM bytes".as_slice())
+        );
+        assert!(super::read_legacy_battery(&first, &[first.clone(), second], &save_dir).is_err());
+        assert_eq!(std::fs::read(&legacy_path).unwrap(), b"legacy SRAM bytes");
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn migration_preview_marks_homonymous_destinations_as_conflicts() {
         let root = std::env::temp_dir().join(format!("vyntra-conflict-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
@@ -1423,17 +1452,15 @@ fn open_game(
             }
         }
     } else {
-        let legacy_path = legacy_battery_path(game, saves);
-        if legacy_path.is_file() && legacy_battery_is_unambiguous(game, games) {
-            fs::read(legacy_path).ok()
-        } else {
-            if legacy_path.is_file() {
+        match read_legacy_battery(game, games, saves) {
+            Ok(bytes) => bytes,
+            Err(error) => {
                 eprintln!(
-                    "Se omitió SRAM legacy ambigua para {}",
+                    "No se pudo cargar SRAM legacy para {}: {error}",
                     safe_log_file_name(&game.path)
                 );
+                None
             }
-            None
         }
     };
     if let Some(bytes) = save_bytes {
@@ -1454,13 +1481,36 @@ fn legacy_battery_is_unambiguous(game: &Game, games: &[Game]) -> bool {
     let Ok(game_hash) = identity::sha256_file(&game.path) else {
         return false;
     };
-    games
+    let mut found_matching_name = false;
+    for candidate in games
         .iter()
         .filter(|candidate| candidate.path.file_name() == Some(file_name))
-        .all(|candidate| {
-            identity::sha256_file(&candidate.path)
-                .is_ok_and(|candidate_hash| candidate_hash == game_hash)
-        })
+    {
+        found_matching_name = true;
+        if !identity::sha256_file(&candidate.path)
+            .is_ok_and(|candidate_hash| candidate_hash == game_hash)
+        {
+            return false;
+        }
+    }
+    found_matching_name
+}
+
+fn read_legacy_battery(
+    game: &Game,
+    games: &[Game],
+    saves: &Path,
+) -> Result<Option<Vec<u8>>, String> {
+    let path = legacy_battery_path(game, saves);
+    if !path.is_file() {
+        return Ok(None);
+    }
+    if !legacy_battery_is_unambiguous(game, games) {
+        return Err("El nombre de archivo coincide con varias identidades de ROM".into());
+    }
+    fs::read(path)
+        .map(Some)
+        .map_err(|error| format!("No se pudo leer el archivo: {error}"))
 }
 
 fn load_compatible_battery(
