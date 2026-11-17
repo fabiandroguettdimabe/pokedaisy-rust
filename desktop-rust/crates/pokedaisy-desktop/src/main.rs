@@ -87,6 +87,40 @@ mod migration_contract_tests {
     }
 
     #[test]
+    fn migration_recovers_when_destination_committed_before_journal_update() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-migration-recover-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let source = root.join("legacy/game.sav");
+        let destination = root.join("new/by-id/game/battery.sav");
+        let journal = root.join("migration.json");
+        fs::create_dir_all(source.parent().unwrap()).unwrap();
+        fs::write(&source, b"committed-before-journal").unwrap();
+        let report = preview(&[MigrationItem::new(
+            source.clone(),
+            destination.clone(),
+            "rom-id".into(),
+            "battery".into(),
+        )])
+        .unwrap();
+        assert_eq!(report.items[0].status, MigrationStatus::Ready);
+
+        // Simulate process loss after the destination rename but before the
+        // journal could record Committed.
+        fs::create_dir_all(destination.parent().unwrap()).unwrap();
+        fs::copy(&source, &destination).unwrap();
+        fs::write(&journal, serde_json::to_vec(&report).unwrap()).unwrap();
+        apply(&journal, &report).unwrap();
+
+        let recovered: super::migration::MigrationReport =
+            serde_json::from_slice(&fs::read(&journal).unwrap()).unwrap();
+        assert_eq!(recovered.items[0].status, MigrationStatus::Committed);
+        assert_eq!(fs::read(&destination).unwrap(), b"committed-before-journal");
+        assert!(source.is_file());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn save_owner_uses_captured_session_after_library_selection_changes() {
         let first = super::game_from_path(std::path::PathBuf::from("first.gb"));
         let second = super::game_from_path(std::path::PathBuf::from("second.gb"));
