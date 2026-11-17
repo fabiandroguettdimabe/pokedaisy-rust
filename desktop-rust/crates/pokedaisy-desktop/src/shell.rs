@@ -3027,7 +3027,7 @@ mod tests {
     }
 
     #[test]
-    fn vault_restore_requires_same_rom_and_core_and_backups_before_replace() {
+    fn vault_restore_validates_identity_and_recovers_backup_after_rollback_failure() {
         let root =
             std::env::temp_dir().join(format!("vyntra-vault-restore-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
@@ -3116,6 +3116,43 @@ mod tests {
         );
         assert_eq!(fs::read(&state_path).unwrap(), payload);
         assert_eq!(fs::read(&manifest_path).unwrap(), committed_manifest);
+
+        let rollback_failure_payload = b"state interrupted during rollback";
+        let rollback_failure_bundle = crate::vault::SaveBundleManifest {
+            schema_version: 1,
+            storage_id: game_storage_key(&game),
+            kind: domain::SaveKind::SaveState,
+            rom_sha256: rom_hash.clone(),
+            core_hash: core_hash.clone(),
+            state_format: Some("libretro-serialize-v1".into()),
+            bytes: rollback_failure_payload.len() as u64,
+            sha256: identity::sha256_bytes(rollback_failure_payload),
+        };
+        let rollback_failure = prepare_bundle_restore(
+            rollback_failure_bundle,
+            rollback_failure_payload.to_vec(),
+            std::slice::from_ref(&game),
+            &config,
+        )
+        .unwrap();
+        let mut writes = 0;
+        assert!(
+            commit_bundle_restore_with(rollback_failure, &config, |path, bytes| {
+                writes += 1;
+                if writes == 2 || writes == 3 {
+                    return Err("fallo de escritura durante commit/rollback".into());
+                }
+                atomic_write(path, bytes)
+            })
+            .is_err()
+        );
+        assert_eq!(fs::read(&state_path).unwrap(), rollback_failure_payload);
+        assert_eq!(
+            super::load_compatible_state(&game, &config.states, Some(&core_hash)).unwrap(),
+            payload
+        );
+        atomic_write(&state_path, payload).unwrap();
+        atomic_write(&manifest_path, &committed_manifest).unwrap();
 
         let mut wrong_rom = bundle;
         wrong_rom.rom_sha256 = "0".repeat(64);
