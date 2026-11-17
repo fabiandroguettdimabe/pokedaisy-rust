@@ -1,5 +1,12 @@
 use super::*;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+
+#[derive(Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct GameSettingsOverride {
+    pub smooth: Option<bool>,
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -21,6 +28,7 @@ pub struct Settings {
     pub library_view: String,
     pub library_filter: String,
     pub library_selection: Option<String>,
+    pub game_overrides: BTreeMap<String, GameSettingsOverride>,
 }
 
 #[cfg(test)]
@@ -68,6 +76,29 @@ mod tests {
     }
 
     #[test]
+    fn per_game_smoothing_override_survives_restart_and_can_inherit_global() {
+        let dir = std::env::temp_dir().join(format!("vyntra-game-settings-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("settings.json");
+        let mut settings = Settings::load(&path, &dir).unwrap();
+        settings.smooth = true;
+        settings
+            .set_game_smooth("a1b2c3d4e5f60718", Some(false))
+            .unwrap();
+        assert!(!settings.smooth_for_game("a1b2c3d4e5f60718"));
+        assert!(settings.smooth_for_game("another-game"));
+        settings.save(&path).unwrap();
+
+        let mut loaded = Settings::load(&path, &dir).unwrap();
+        assert!(!loaded.smooth_for_game("a1b2c3d4e5f60718"));
+        assert!(loaded.smooth_for_game("another-game"));
+        loaded.set_game_smooth("a1b2c3d4e5f60718", None).unwrap();
+        assert!(loaded.smooth_for_game("a1b2c3d4e5f60718"));
+        assert!(loaded.set_game_smooth("bad id", Some(false)).is_err());
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
     fn section_reset_changes_only_its_fields_and_preserves_library_files() {
         let root =
             std::env::temp_dir().join(format!("vyntra-reset-section-{}", std::process::id()));
@@ -111,6 +142,7 @@ impl Default for Settings {
             library_view: "grid".into(),
             library_filter: "Todos".into(),
             library_selection: None,
+            game_overrides: BTreeMap::new(),
             keys: [
                 "Z",
                 "X",
@@ -191,6 +223,17 @@ impl Settings {
         }) {
             value.library_selection = None;
         }
+        if value.game_overrides.len() > 10_000 {
+            return Err("Demasiados perfiles por juego en la configuración".into());
+        }
+        value.game_overrides.retain(|id, profile| {
+            !id.is_empty()
+                && id.len() <= 64
+                && id
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || b"-_".contains(&byte))
+                && profile.smooth.is_some()
+        });
         for dir in [
             &mut value.library,
             &mut value.saves,
@@ -228,6 +271,37 @@ impl Settings {
             .clone()
             .map(Ok)
             .unwrap_or_else(|| find_core(system))
+    }
+    pub fn smooth_for_game(&self, storage_id: &str) -> bool {
+        self.game_overrides
+            .get(storage_id)
+            .and_then(|profile| profile.smooth)
+            .unwrap_or(self.smooth)
+    }
+    pub fn set_game_smooth(&mut self, storage_id: &str, value: Option<bool>) -> Result<(), String> {
+        if storage_id.is_empty()
+            || storage_id.len() > 64
+            || !storage_id
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || b"-_".contains(&byte))
+        {
+            return Err("Identificador de juego inválido".into());
+        }
+        if let Some(smooth) = value {
+            if !self.game_overrides.contains_key(storage_id) && self.game_overrides.len() >= 10_000
+            {
+                return Err("Se alcanzó el límite de perfiles por juego".into());
+            }
+            self.game_overrides.insert(
+                storage_id.to_owned(),
+                GameSettingsOverride {
+                    smooth: Some(smooth),
+                },
+            );
+        } else {
+            self.game_overrides.remove(storage_id);
+        }
+        Ok(())
     }
     pub fn rows(&self, tab: usize) -> Vec<(String, String)> {
         let row = |label: &str, value: String| (label.to_owned(), value);

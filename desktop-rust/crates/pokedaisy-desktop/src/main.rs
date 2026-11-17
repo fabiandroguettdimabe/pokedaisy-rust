@@ -1262,7 +1262,11 @@ fn sdl_main() -> Result<(), String> {
                             Err(e) => last_error = Some(format!("Error del core: {e:?}")),
                         }
                         if let Some(frame) = last_frame.as_ref() {
-                            draw_play(&mut canvas, &texture_creator, frame, w, h, config.smooth)?;
+                            let smooth = active_game
+                                .as_ref()
+                                .map(|game| config.smooth_for_game(&game_storage_key(game)))
+                                .unwrap_or(config.smooth);
+                            draw_play(&mut canvas, &texture_creator, frame, w, h, smooth)?;
                         }
                         if let Some(e) = last_error.as_deref() {
                             text(
@@ -1287,7 +1291,11 @@ fn sdl_main() -> Result<(), String> {
                     last_auto =
                         timing::next_frame_anchor(last_auto, Instant::now(), frame_interval);
                 } else if let Some(frame) = last_frame.as_ref() {
-                    draw_play(&mut canvas, &texture_creator, frame, w, h, config.smooth)?;
+                    let smooth = active_game
+                        .as_ref()
+                        .map(|game| config.smooth_for_game(&game_storage_key(game)))
+                        .unwrap_or(config.smooth);
+                    draw_play(&mut canvas, &texture_creator, frame, w, h, smooth)?;
                 }
                 draw_play_header(&mut canvas, &pixel_font, w)?;
             }

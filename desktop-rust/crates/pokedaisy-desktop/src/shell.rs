@@ -392,6 +392,19 @@ pub fn run() -> Result<(), String> {
                             if !library::set_note(&mut imported, id, note.to_owned()) { return Err("El juego ya no está en la biblioteca".into()); }
                             library::save(&index_path, &imported)?;
                         },
+                        "game_smoothing" => {
+                            let id = action["storage_id"].as_str().ok_or("Juego inválido")?;
+                            if !games.iter().any(|game| game_storage_key(game) == id) {
+                                return Err("El juego ya no está en la biblioteca".into());
+                            }
+                            let value = action["value"].as_bool();
+                            let previous = config.clone();
+                            config.set_game_smooth(id, value)?;
+                            if let Err(error) = config.save(&config_path) {
+                                config = previous;
+                                return Err(error);
+                            }
+                        },
                         "library_view" => {
                             let view = action["value"].as_str().ok_or("Vista inválida")?;
                             if !matches!(view, "grid" | "list") { return Err("Vista inválida".into()); }

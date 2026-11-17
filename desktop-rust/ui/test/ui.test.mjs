@@ -43,6 +43,8 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
    await page.screenshot({path:resolve('../../.taste-skill/companion/library-mobile.png'),fullPage:true});
    await page.setViewportSize({width:1360,height:880});
   await page.locator('.game-card').filter({hasText:'Synthetic GBA fixture'}).first().click();
+  await page.getByLabel('Suavizado de imagen para este juego').selectOption('off');
+  await expectCommand('game_smoothing',{storage_id:'gba-fixture',value:false});
   await page.getByLabel('Copia del juego').selectOption('2');
   await page.getByRole('button',{name:'Jugar',exact:true}).click();
   await expectCommand('play',{storage_id:'gba-fixture',source_index:2});

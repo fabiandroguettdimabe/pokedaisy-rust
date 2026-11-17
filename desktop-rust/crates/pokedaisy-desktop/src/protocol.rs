@@ -16,6 +16,7 @@ const SUPPORTED_ACTIONS: &[&str] = &[
     "reset_settings_section",
     "favorite",
     "game_note",
+    "game_smoothing",
     "library_view",
     "library_filter",
     "library_selection",
@@ -47,6 +48,7 @@ enum PayloadFieldType {
     Number,
     Array,
     Any,
+    NullableBoolean,
 }
 
 fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppError> {
@@ -69,6 +71,13 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
             &[
                 ("storage_id", PayloadFieldType::String),
                 ("value", PayloadFieldType::String),
+            ],
+            &["storage_id", "value"],
+        ),
+        "game_smoothing" => (
+            &[
+                ("storage_id", PayloadFieldType::String),
+                ("value", PayloadFieldType::NullableBoolean),
             ],
             &["storage_id", "value"],
         ),
@@ -124,6 +133,7 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
             PayloadFieldType::Number => value.as_u64().is_some(),
             PayloadFieldType::Array => value.is_array(),
             PayloadFieldType::Any => !value.is_null(),
+            PayloadFieldType::NullableBoolean => value.is_boolean() || value.is_null(),
         };
         if !matches_type {
             return Err(AppError::new(
@@ -167,6 +177,9 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
                             .chars()
                             .any(|ch| ch.is_control() && ch != '\n' && ch != '\r' && ch != '\t')
                 })
+        }
+        "game_smoothing" => {
+            invalid_storage_id() || !(object["value"].is_boolean() || object["value"].is_null())
         }
         "favorite" | "relink" => invalid_storage_id(),
         "play" => {
@@ -667,6 +680,7 @@ mod tests {
                 "reset_settings_section" => serde_json::json!({"section":"general"}),
                 "favorite" => serde_json::json!({"storage_id":"g1","value":true}),
                 "game_note" => serde_json::json!({"storage_id":"g1","value":"note"}),
+                "game_smoothing" => serde_json::json!({"storage_id":"g1","value":false}),
                 "library_view" => serde_json::json!({"value":"grid"}),
                 "library_filter" => serde_json::json!({"value":"Todos"}),
                 "library_selection" => serde_json::json!({"value":"g1"}),
@@ -695,6 +709,29 @@ mod tests {
                 "supported action `{action}` rejected its declared payload"
             );
         }
+    }
+
+    #[test]
+    fn game_smoothing_accepts_override_or_global_inheritance_only() {
+        for value in [
+            serde_json::json!(true),
+            serde_json::json!(false),
+            Value::Null,
+        ] {
+            let body = serde_json::json!({
+                "protocol_version": CONTRACT_VERSION,
+                "command_id": "game-smoothing",
+                "action": "game_smoothing",
+                "payload": {"storage_id":"a1b2c3d4e5f60718","value":value},
+            })
+            .to_string();
+            assert!(parse_ui_command(&body).is_ok());
+        }
+        let invalid = r#"{"protocol_version":1,"command_id":"bad-smoothing","action":"game_smoothing","payload":{"storage_id":"a1b2c3d4e5f60718","value":"yes"}}"#;
+        assert_eq!(
+            parse_ui_command(invalid).unwrap_err().code,
+            "invalid_payload"
+        );
     }
 
     #[test]
