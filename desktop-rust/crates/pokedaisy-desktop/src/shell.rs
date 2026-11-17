@@ -28,7 +28,7 @@ enum Message {
 enum ImportSource {
     Loose(PathBuf),
     Archive(PathBuf, Vec<String>),
-    Rejected,
+    Rejected(usize),
 }
 
 pub fn run() -> Result<(), String> {
@@ -276,7 +276,7 @@ pub fn run() -> Result<(), String> {
                                                 if cancelled { break; }
                                                 if !selected.is_empty() { sources.push(ImportSource::Archive(path, selected)); }
                                             }
-                                            Err(_) => sources.push(ImportSource::Rejected),
+                                            Err(_) => sources.push(ImportSource::Rejected(1)),
                                         }
                                     } else {
                                         sources.push(ImportSource::Loose(path));
@@ -318,7 +318,55 @@ pub fn run() -> Result<(), String> {
                                                     summary.rejected += result.rejected;
                                                     if result.cancelled { summary.cancelled = true; break; }
                                                 }
-                                                ImportSource::Rejected => summary.rejected += 1,
+                                                ImportSource::Rejected(count) => summary.rejected += count,
+                                            }
+                                        }
+                                        let _ = worker_proxy.send_event(Message::ImportFinished(id, worker_entries, summary));
+                                    });
+                                    match spawn {
+                                        Ok(_) => {
+                                            active_import = Some(cancelled);
+                                            command_result = Some(json!({"import":{"started":true}}));
+                                        }
+                                        Err(error) => return Err(format!("No se pudo iniciar la importación: {error}")),
+                                    }
+                                }
+                            }
+                        },
+                        "import_roots" => {
+                            if active_import.is_some() { return Err("Ya hay una importación en curso".into()); }
+                            if let Some(mut roots) = rfd::FileDialog::new().set_title("Elegir hasta 16 carpetas de ROMs").pick_folders() {
+                                let mut rejected = roots.len().saturating_sub(16);
+                                roots.truncate(16);
+                                let (paths, rejected_paths) = crate::import::collect_rom_paths(&roots, 10_000);
+                                rejected = rejected.saturating_add(rejected_paths);
+                                let mut sources: Vec<_> = paths.into_iter().map(ImportSource::Loose).collect();
+                                if rejected > 0 { sources.push(ImportSource::Rejected(rejected)); }
+                                if !sources.is_empty() {
+                                    import_generation = import_generation.saturating_add(1);
+                                    let id = import_generation;
+                                    let cancelled = Arc::new(AtomicBool::new(false));
+                                    let cancel_worker = Arc::clone(&cancelled);
+                                    let mut worker_entries = imported.clone();
+                                    let worker_proxy = proxy.clone();
+                                    let spawn = std::thread::Builder::new().name("vyntra-import-roots".into()).spawn(move || {
+                                        let mut summary = crate::import::ImportSummary::default();
+                                        for source in sources {
+                                            if cancel_worker.load(Ordering::Acquire) { summary.cancelled = true; break; }
+                                            match source {
+                                                ImportSource::Loose(path) => {
+                                                    let proxy = worker_proxy.clone();
+                                                    let result = crate::import::import_paths_controlled(
+                                                        &mut worker_entries, [path], 1024 * 1024 * 1024,
+                                                        &cancel_worker, move |progress| { let _ = proxy.send_event(Message::ImportProgress(id, progress)); },
+                                                    );
+                                                    summary.imported += result.imported;
+                                                    summary.duplicates += result.duplicates;
+                                                    summary.rejected += result.rejected;
+                                                    if result.cancelled { summary.cancelled = true; break; }
+                                                }
+                                                ImportSource::Rejected(count) => summary.rejected += count,
+                                                ImportSource::Archive(_, _) => unreachable!(),
                                             }
                                         }
                                         let _ = worker_proxy.send_event(Message::ImportFinished(id, worker_entries, summary));

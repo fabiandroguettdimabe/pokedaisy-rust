@@ -1,5 +1,6 @@
 use crate::{inspect, library::LibraryEntry};
 use sha2::{Digest, Sha256};
+use std::collections::HashSet;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -24,6 +25,68 @@ pub struct ArchiveProgress {
     pub completed_bytes: u64,
     pub total_bytes: u64,
     pub member: String,
+}
+
+/// Enumerate ROM candidates below explicitly chosen roots without following
+/// directory symlinks. Duplicate paths across overlapping roots appear once.
+pub fn collect_rom_paths(roots: &[PathBuf], max_files: usize) -> (Vec<PathBuf>, usize) {
+    let mut candidates = Vec::new();
+    let mut rejected = 0usize;
+    let mut seen = HashSet::new();
+    let mut pending: Vec<_> = roots.iter().cloned().map(|path| (path, 0usize)).collect();
+    while let Some((path, depth)) = pending.pop() {
+        let Ok(metadata) = fs::symlink_metadata(&path) else {
+            rejected += 1;
+            continue;
+        };
+        if metadata.file_type().is_symlink() {
+            rejected += 1;
+            continue;
+        }
+        if metadata.is_dir() {
+            if depth >= 64 {
+                rejected += 1;
+                continue;
+            }
+            match fs::read_dir(path) {
+                Ok(children) => {
+                    for child in children {
+                        match child {
+                            Ok(entry) => pending.push((entry.path(), depth + 1)),
+                            Err(_) => rejected += 1,
+                        }
+                    }
+                }
+                Err(_) => rejected += 1,
+            }
+            continue;
+        }
+        let is_rom = path
+            .extension()
+            .and_then(|value| value.to_str())
+            .is_some_and(|ext| {
+                matches!(
+                    ext.to_ascii_lowercase().as_str(),
+                    "gb" | "gbc" | "gba" | "nds"
+                )
+            });
+        if !metadata.is_file() || !is_rom {
+            continue;
+        }
+        let Ok(canonical) = path.canonicalize() else {
+            rejected += 1;
+            continue;
+        };
+        if !seen.insert(canonical.clone()) {
+            continue;
+        }
+        if candidates.len() >= max_files {
+            rejected += 1;
+        } else {
+            candidates.push(canonical);
+        }
+    }
+    (candidates, rejected)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -517,9 +580,9 @@ pub fn import_paths_controlled(
 #[cfg(test)]
 mod tests {
     use super::{
-        ArchivePolicy, archive_rom_members, import_archive, import_archive_members,
-        import_archive_members_controlled, import_paths, import_paths_controlled,
-        import_paths_with_limit,
+        ArchivePolicy, archive_rom_members, collect_rom_paths, import_archive,
+        import_archive_members, import_archive_members_controlled, import_paths,
+        import_paths_controlled, import_paths_with_limit,
     };
     use crate::library::LibraryEntry;
     use std::fs;
@@ -557,6 +620,28 @@ mod tests {
             entries[0].path,
             PathBuf::from(&valid.canonicalize().unwrap())
         );
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn folder_import_collects_supported_roms_from_multiple_roots_once() {
+        let root = std::env::temp_dir().join(format!("vyntra-import-roots-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let first = root.join("first");
+        let second = root.join("second/nested");
+        fs::create_dir_all(&first).unwrap();
+        fs::create_dir_all(&second).unwrap();
+        let one = first.join("one.gba");
+        let two = second.join("two.gba");
+        fs::write(&one, valid_gba()).unwrap();
+        fs::write(&two, valid_gba()).unwrap();
+
+        let (paths, rejected) = collect_rom_paths(&[first.clone(), root.join("second"), first], 16);
+
+        assert_eq!(rejected, 0);
+        assert_eq!(paths.len(), 2);
+        assert!(paths.contains(&one.canonicalize().unwrap()));
+        assert!(paths.contains(&two.canonicalize().unwrap()));
         let _ = fs::remove_dir_all(root);
     }
 

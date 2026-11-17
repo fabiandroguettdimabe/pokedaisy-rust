@@ -19,6 +19,8 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
    reference_type_chart:{schema_version:1,dataset_id:'pokemon-gen3-type-chart',generation:3,source_sha256:'a'.repeat(64),license:'GPL-3.0-only',default_percent:100,types:[{id:8,name:'Steel'},{id:10,name:'Fire'},{id:12,name:'Grass'}],matchups:[]},
   }));
   assert.equal(await page.locator('.game-card').count(),2);
+  await page.getByRole('button',{name:'Importar carpetas',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'import_roots'});
   assert.equal(await page.getByRole('button',{name:'Jugar',exact:true}).isDisabled(),true);
   await page.getByRole('textbox',{name:'Buscar juegos'}).fill('Synthetic GBA');
   assert.equal(await page.locator('.game-card').count(),1);
