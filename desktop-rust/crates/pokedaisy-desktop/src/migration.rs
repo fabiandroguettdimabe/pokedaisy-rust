@@ -304,11 +304,13 @@ mod tests {
         assert_eq!(child.code(), Some(77));
         assert!(!path.exists());
         assert!(path.with_extension("tmp").exists());
-        assert_eq!(load_journal(&path).unwrap(), Some(previous));
+        assert_eq!(load_journal(&path).unwrap(), Some(previous.clone()));
 
         persist(&path, &next).unwrap();
         assert_eq!(load_journal(&path).unwrap(), Some(next));
         assert!(!path.with_extension("tmp").exists());
+        fs::write(&path, b"{").unwrap();
+        assert_eq!(load_journal(&path).unwrap(), Some(previous));
         let _ = fs::remove_dir_all(root);
     }
 
@@ -467,18 +469,29 @@ mod tests {
 
 fn load_journal(path: &Path) -> Result<Option<MigrationReport>, String> {
     let backup = path.with_extension("bak");
-    let bytes = match fs::read(path) {
-        Ok(bytes) => bytes,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => match fs::read(backup) {
-            Ok(bytes) => bytes,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-            Err(e) => return Err(e.to_string()),
+    match fs::read(path) {
+        Ok(bytes) => match serde_json::from_slice(&bytes) {
+            Ok(report) => Ok(Some(report)),
+            Err(primary_error) => match fs::read(&backup) {
+                Ok(bytes) => serde_json::from_slice(&bytes)
+                    .map(Some)
+                    .map_err(|backup_error| {
+                        format!("Journal y respaldo inválidos ({primary_error}; {backup_error})")
+                    }),
+                Err(backup_error) => Err(format!(
+                    "Journal inválido ({primary_error}); no se pudo leer respaldo ({backup_error})"
+                )),
+            },
         },
-        Err(e) => return Err(e.to_string()),
-    };
-    serde_json::from_slice(&bytes)
-        .map(Some)
-        .map_err(|e| e.to_string())
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => match fs::read(&backup) {
+            Ok(bytes) => serde_json::from_slice(&bytes)
+                .map(Some)
+                .map_err(|error| error.to_string()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(error) => Err(error.to_string()),
+        },
+        Err(error) => Err(error.to_string()),
+    }
 }
 
 fn persist(path: &Path, report: &MigrationReport) -> Result<(), String> {
