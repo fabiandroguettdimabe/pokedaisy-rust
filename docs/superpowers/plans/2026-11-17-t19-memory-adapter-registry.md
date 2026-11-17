@@ -37,6 +37,8 @@
 - [x] Align the Libretro environment command with `36 | RETRO_ENVIRONMENT_EXPERIMENTAL`; the AV fixture calls the official value and proves mapped reads work.
 - [x] Keep poller revisions monotonic after decoder rejection; test that the next valid capture recovers and publishes.
 - [x] Exercise the complete synthetic path from the Libretro C memory-map callback through owned capture, exact-identity adapter, poller, Gen III validation, and decoded snapshot.
+- [x] Reject a guest-memory read whose address range crosses Libretro `select` or `disconnect` mapping and would copy noncontiguous host bytes; cover the boundary in the synthetic core fixture.
+- [x] Capture and match Libretro `addrspace` names, with a fixture proving that overlapping numeric addresses in `BIOS` and `WRAM` return only the requested address-space bytes.
 - [x] Wire optional exact-identity polling into Player's periodic pipe snapshot; no adapter is registered by default.
 - [ ] Register and verify a profile against a legally redistributable fixture for one concrete game revision before advertising live data.
 
