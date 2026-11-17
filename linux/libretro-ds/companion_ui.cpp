@@ -14,8 +14,13 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#ifdef _WIN32
+#include <direct.h>
+#include <io.h>
+#else
 #include <sys/stat.h>
 #include <unistd.h>
+#endif
 extern "C" {
 #include "pd_style.h"
 #include "pd_tables.h"
@@ -31,6 +36,21 @@ constexpr Companion::Row settingsOrder[]={
 // HUD opens the shared HUD page (pd_ui_settings.c's hud_page: on/off, LOOK, SIZE and each part), as on the GB/GBA cores;
 // HudSize, HudBalls, HudRepel and HudMap stay rows of the enum for settings files and apply(), not of the list.
 constexpr int listed=int(std::size(settingsOrder));
+int make_directory(const char* path){
+#ifdef _WIN32
+  return _mkdir(path);
+#else
+  return mkdir(path,0755);
+#endif
+}
+bool flush_settings(FILE* file){
+  if(std::fflush(file))return false;
+#ifdef _WIN32
+  return _commit(_fileno(file))==0;
+#else
+  return fsync(fileno(file))==0;
+#endif
+}
 const char* const layoutNames[]={"ONE SCREEN","TOP","BOTTOM","SIDE BY SIDE","STACKED","LARGE + SMALL","PICTURE IN PICTURE"};
 const char* const buttonNames[]={"L2","R2","X","Y","NONE"};
 const unsigned buttonIds[]={RETRO_DEVICE_ID_JOYPAD_L2,RETRO_DEVICE_ID_JOYPAD_R2,RETRO_DEVICE_ID_JOYPAD_X,RETRO_DEVICE_ID_JOYPAD_Y};
@@ -57,7 +77,7 @@ void DsCompanionUi::init(const std::string& directory,int legacyLayout,bool lega
   *this=DsCompanionUi{};defaults();layout=std::clamp(legacyLayout,0,4);settings.hud=legacyHud;
   if(!directory.empty()){
     const std::string sub=directory+"/pokedaisy-ds";
-    if(mkdir(sub.c_str(),0755)==0 || errno==EEXIST)path=sub+"/settings.ini";
+    if(make_directory(sub.c_str())==0 || errno==EEXIST)path=sub+"/settings.ini";
   }
   bool loaded=false;
   if(!path.empty()){
@@ -107,7 +127,7 @@ bool DsCompanionUi::save(){
   FILE* f=std::fopen(temp.c_str(),"a");bool ok=f;
   if(f){
     ok=std::fprintf(f,"ds_layout=%d\nds_battles=%d\nds_companionbtn=%d\nds_screenbtn=%d\nds_penspeed=%d\nds_battlestrip=%d\nds_hudminimal=%d\nds_darkmode=%d\nds_autorun=%d\n",layout,autoBattles,companionButton,screenButton,penSpeed,battleStrip,hudMinimal,darkMode,autoRun)>0;
-    if(std::fflush(f) || fsync(fileno(f)))ok=false;
+    if(!flush_settings(f))ok=false;
     if(std::fclose(f))ok=false;
   }
   if(ok && std::rename(temp.c_str(),path.c_str())==0){error.clear();return true;}

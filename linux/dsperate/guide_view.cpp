@@ -25,6 +25,13 @@ struct BossTeam {
 
 namespace {
 using namespace ds_guide_data;
+bool local_time(const std::time_t* value,std::tm* result){
+#ifdef _WIN32
+  return localtime_s(result,value)==0;
+#else
+  return localtime_r(value,result)!=nullptr;
+#endif
+}
 template<size_t N>
 constexpr DsWildRates rates(const int32_t (&data)[N]){
   static_assert(N%3==0);
@@ -147,7 +154,7 @@ DsGuideHere ds_guide_here(DsGame game,int map,int hour,int month,bool soulSilver
 DsGuideHere ds_guide_here(const DsCompanion& s,bool soulSilver){
   const auto now=std::time(nullptr);
   std::tm local{};
-  return localtime_r(&now,&local)?ds_guide_here(s.game,s.map,local.tm_hour,local.tm_mon+1,soulSilver):DsGuideHere{};
+  return local_time(&now,&local)?ds_guide_here(s.game,s.map,local.tm_hour,local.tm_mon+1,soulSilver):DsGuideHere{};
 }
 
 namespace {
