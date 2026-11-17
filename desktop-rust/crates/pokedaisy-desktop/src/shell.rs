@@ -691,7 +691,8 @@ pub fn run() -> Result<(), String> {
                             }
                         },
                         "migration_preview" => {
-                            let report = migration::preview(&legacy_migration_items(&games, &config))?;
+                            let report =
+                                migration::preview(&legacy_migration_items(&games, &config, &root))?;
                             command_result = Some(json!({"migration": report}));
                             pending_migration = Some(report);
                         },
@@ -1052,27 +1053,51 @@ fn save_files(config: &Settings) -> Vec<PathBuf> {
     files
 }
 
-fn legacy_migration_items(games: &[Game], config: &Settings) -> Vec<migration::MigrationItem> {
+fn legacy_migration_items(
+    games: &[Game],
+    config: &Settings,
+    root: &Path,
+) -> Vec<migration::MigrationItem> {
+    let mut battery_dirs = vec![
+        config.saves.clone(),
+        root.join("data/saves"),
+        root.join("saves"),
+    ];
+    battery_dirs.sort();
+    battery_dirs.dedup();
+    let mut state_dirs = vec![
+        config.states.clone(),
+        root.join("data/states"),
+        root.join("states"),
+    ];
+    state_dirs.sort();
+    state_dirs.dedup();
     let mut items = Vec::new();
     for game in games {
         let game_id = game_storage_key(game);
-        let battery_source = legacy_battery_path(game, &config.saves);
-        if battery_source.is_file() {
-            items.push(migration::MigrationItem::new(
-                battery_source,
-                preferred_battery_path(game, &config.saves),
-                game_id.clone(),
-                "battery".into(),
-            ));
+        let battery_destination = preferred_battery_path(game, &config.saves);
+        for dir in &battery_dirs {
+            let battery_source = legacy_battery_path(game, dir);
+            if battery_source.is_file() && battery_source != battery_destination {
+                items.push(migration::MigrationItem::new(
+                    battery_source,
+                    battery_destination.clone(),
+                    game_id.clone(),
+                    "battery".into(),
+                ));
+            }
         }
-        let state_source = legacy_state_path(game, &config.states);
-        if state_source.is_file() {
-            items.push(migration::MigrationItem::new(
-                state_source,
-                preferred_state_path(game, &config.states),
-                game_id,
-                "state_unverified".into(),
-            ));
+        let state_destination = preferred_state_path(game, &config.states);
+        for dir in &state_dirs {
+            let state_source = legacy_state_path(game, dir);
+            if state_source.is_file() && state_source != state_destination {
+                items.push(migration::MigrationItem::new(
+                    state_source,
+                    state_destination.clone(),
+                    game_id.clone(),
+                    "state_unverified".into(),
+                ));
+            }
         }
     }
     items
@@ -1191,6 +1216,42 @@ mod tests {
         assert!(validate_command_revision(Some(7), 7).is_ok());
         assert!(validate_command_revision(Some(6), 7).is_err());
         assert!(validate_command_revision(None, 7).is_ok());
+    }
+
+    #[test]
+    fn migration_preview_discovers_known_legacy_roots_outside_custom_folders() {
+        let root = std::env::temp_dir().join(format!("vyntra-legacy-roots-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let rom_path = root.join("roms/Same.gb");
+        fs::create_dir_all(rom_path.parent().unwrap()).unwrap();
+        fs::write(&rom_path, b"fixture rom").unwrap();
+        fs::create_dir_all(root.join("data/saves")).unwrap();
+        fs::create_dir_all(root.join("data/states")).unwrap();
+        let battery = root.join("data/saves/Same.gb.sav");
+        let state = root.join("data/states/Same.gb.ss");
+        fs::write(&battery, b"legacy battery").unwrap();
+        fs::write(&state, b"legacy state").unwrap();
+
+        let game = Game {
+            path: rom_path,
+            title: "Same".into(),
+            system: "GB",
+            storage_key: std::sync::OnceLock::new(),
+        };
+        let mut config = Settings::default();
+        config.saves = root.join("custom/saves");
+        config.states = root.join("custom/states");
+        let items = legacy_migration_items(std::slice::from_ref(&game), &config, &root);
+
+        assert_eq!(items.len(), 2);
+        assert!(items.iter().any(|item| item.source == battery));
+        assert!(items.iter().any(|item| item.source == state));
+        assert!(
+            items
+                .iter()
+                .all(|item| item.destination.starts_with(&root.join("custom")))
+        );
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
