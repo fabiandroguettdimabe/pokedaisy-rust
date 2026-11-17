@@ -104,6 +104,14 @@ pub struct PartyMember {
     pub species_id: u16,
     pub level: u8,
     pub is_egg: bool,
+    pub hp: u16,
+    pub max_hp: u16,
+    pub moves: Vec<MoveSlot>,
+}
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+pub struct MoveSlot {
+    pub move_id: u16,
+    pub pp: u8,
 }
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct ItemStack {
@@ -163,13 +171,26 @@ pub fn read(bytes: &[u8], format: Gen3Format) -> Result<Snapshot, String> {
         let off = party_off + i * 100;
         let rec = decode_mon(&sb1[off..off + 80])?;
         let level = sb1[off + 0x54];
-        if !rec.2 && !(1..=100).contains(&level) {
+        let hp = u16le(&sb1, off + 0x56);
+        let max_hp = u16le(&sb1, off + 0x58);
+        if !rec.is_egg && !(1..=100).contains(&level) {
             return Err(format!("nivel inválido en slot de equipo {}", i + 1));
         }
+        if max_hp == 0 || hp > max_hp {
+            return Err(format!("HP inválido en slot de equipo {}", i + 1));
+        }
         party.push(PartyMember {
-            species_id: rec.0,
+            species_id: rec.species_id,
             level,
-            is_egg: rec.2,
+            is_egg: rec.is_egg,
+            hp,
+            max_hp,
+            moves: rec
+                .move_ids
+                .iter()
+                .zip(rec.move_pp)
+                .map(|(&move_id, pp)| MoveSlot { move_id, pp })
+                .collect(),
         });
     }
     for i in count..6 {
@@ -185,19 +206,34 @@ pub fn read(bytes: &[u8], format: Gen3Format) -> Result<Snapshot, String> {
         .encryption_key()
         .map(|off| u32le(&sb2, off) as u16)
         .unwrap_or(0);
-    let bag = std::array::from_fn(|p| {
-        let (off, slots) = format.pockets()[p];
-        (0..slots)
-            .filter_map(|i| {
-                let at = off + i * 4;
-                let item = u16le(&sb1, at);
-                (item != 0).then(|| ItemStack {
-                    item_id: item,
-                    quantity: u16le(&sb1, at + 2) ^ key,
+    let bag = (0..5)
+        .map(|p| -> Result<Vec<ItemStack>, String> {
+            let (off, slots) = format.pockets()[p];
+            (0..slots)
+                .filter_map(|i| {
+                    let at = off + i * 4;
+                    let item = u16le(&sb1, at);
+                    let quantity = u16le(&sb1, at + 2) ^ key;
+                    if item == 0 {
+                        if quantity != 0 {
+                            return Some(Err(
+                                "cantidad guardada en un slot de mochila vacío".to_string()
+                            ));
+                        }
+                        return None;
+                    }
+                    if quantity == 0 || quantity > 999 {
+                        return Some(Err(format!("cantidad inválida para el objeto ID {item}")));
+                    }
+                    Some(Ok(ItemStack {
+                        item_id: item,
+                        quantity,
+                    }))
                 })
-            })
-            .collect()
-    });
+                .collect::<Result<Vec<_>, String>>()
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let bag: [Vec<ItemStack>; 5] = bag.try_into().map_err(|_| "layout de mochila incompleto")?;
     Ok(Snapshot {
         format,
         counter,
@@ -237,7 +273,14 @@ fn read_slot(bytes: &[u8], slot: usize, format: Gen3Format) -> Option<([usize; S
     }
 }
 
-fn decode_mon(bytes: &[u8]) -> Result<(u16, u8, bool), String> {
+struct DecodedMon {
+    species_id: u16,
+    is_egg: bool,
+    move_ids: [u16; 4],
+    move_pp: [u8; 4],
+}
+
+fn decode_mon(bytes: &[u8]) -> Result<DecodedMon, String> {
     let personality = u32le(bytes, 0);
     let key = personality ^ u32le(bytes, 4);
     let order = SUBSTRUCTS[(personality % 24) as usize];
@@ -262,7 +305,14 @@ fn decode_mon(bytes: &[u8]) -> Result<(u16, u8, bool), String> {
     if !is_egg && !(1..=412).contains(&species) {
         return Err(format!("species ID inválido: {species}"));
     }
-    Ok((species, 0, is_egg))
+    let move_ids = std::array::from_fn(|i| u16le(&data, 12 + i * 2));
+    let move_pp = std::array::from_fn(|i| data[20 + i]);
+    Ok(DecodedMon {
+        species_id: species,
+        is_egg,
+        move_ids,
+        move_pp,
+    })
 }
 fn checksum(bytes: &[u8]) -> u16 {
     let sum = bytes.chunks_exact(4).fold(0u32, |s, w| {
@@ -301,6 +351,11 @@ mod tests {
         blocks[1][0x234] = 0;
         // A bag stack quantity is stored XORed with the low half of Emerald's encryption key.
         put32(&mut blocks[0], 0xAC, 0x00001234);
+        for (offset, slots) in format.pockets() {
+            for index in 0..slots {
+                put16(&mut blocks[1], offset + index * 4 + 2, 0x1234);
+            }
+        }
         put16(&mut blocks[1], 0x560, 13);
         put16(&mut blocks[1], 0x562, 5 ^ 0x1234);
         for id in 0..14 {
@@ -356,8 +411,12 @@ mod tests {
         bytes[sector + 0x234] = 1;
         // Personality and OT ID are zero, so the first physical substructure is Growth.
         bytes[party + 0x20..party + 0x22].copy_from_slice(&25u16.to_le_bytes());
-        bytes[party + 0x1C..party + 0x1E].copy_from_slice(&25u16.to_le_bytes());
+        bytes[party + 0x20 + 12..party + 0x20 + 14].copy_from_slice(&33u16.to_le_bytes());
+        bytes[party + 0x20 + 12 + 8] = 15;
+        bytes[party + 0x1C..party + 0x1E].copy_from_slice(&73u16.to_le_bytes());
         bytes[party + 0x54] = 12;
+        bytes[party + 0x56..party + 0x58].copy_from_slice(&5u16.to_le_bytes());
+        bytes[party + 0x58..party + 0x5A].copy_from_slice(&10u16.to_le_bytes());
         let sum = checksum(&bytes[sector..sector + DATA]);
         bytes[sector + 0xFF6..sector + 0xFF8].copy_from_slice(&sum.to_le_bytes());
         let snapshot = read(&bytes, Gen3Format::Emerald).unwrap();
@@ -366,7 +425,18 @@ mod tests {
             vec![PartyMember {
                 species_id: 25,
                 level: 12,
-                is_egg: false
+                is_egg: false,
+                hp: 5,
+                max_hp: 10,
+                moves: vec![
+                    MoveSlot {
+                        move_id: 33,
+                        pp: 15
+                    },
+                    MoveSlot { move_id: 0, pp: 0 },
+                    MoveSlot { move_id: 0, pp: 0 },
+                    MoveSlot { move_id: 0, pp: 0 }
+                ],
             }]
         );
     }
@@ -395,5 +465,36 @@ mod tests {
         let mut bytes = fixture();
         bytes[0x1000 + 0xFF4..0x1000 + 0xFF6].copy_from_slice(&99u16.to_le_bytes());
         assert!(read(&bytes, Gen3Format::Emerald).is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_party_hp_and_zero_bag_quantity_with_valid_sector_checksums() {
+        let mut bytes = fixture();
+        let sector = 0x1000;
+        let party = sector + 0x238;
+        bytes[sector + 0x234] = 1;
+        bytes[party + 0x20..party + 0x22].copy_from_slice(&25u16.to_le_bytes());
+        bytes[party + 0x1C..party + 0x1E].copy_from_slice(&25u16.to_le_bytes());
+        bytes[party + 0x54] = 12;
+        bytes[party + 0x56..party + 0x58].copy_from_slice(&11u16.to_le_bytes());
+        bytes[party + 0x58..party + 0x5A].copy_from_slice(&10u16.to_le_bytes());
+        let sum = checksum(&bytes[sector..sector + DATA]);
+        bytes[sector + 0xFF6..sector + 0xFF8].copy_from_slice(&sum.to_le_bytes());
+        assert!(
+            read(&bytes, Gen3Format::Emerald)
+                .unwrap_err()
+                .contains("HP inválido")
+        );
+
+        let mut bytes = fixture();
+        bytes[0x1000 + 0x560..0x1000 + 0x562].copy_from_slice(&13u16.to_le_bytes());
+        bytes[0x1000 + 0x562..0x1000 + 0x564].copy_from_slice(&0x1234u16.to_le_bytes());
+        let sum = checksum(&bytes[0x1000..0x1000 + DATA]);
+        bytes[0x1000 + 0xFF6..0x1000 + 0xFF8].copy_from_slice(&sum.to_le_bytes());
+        assert!(
+            read(&bytes, Gen3Format::Emerald)
+                .unwrap_err()
+                .contains("cantidad inválida")
+        );
     }
 }

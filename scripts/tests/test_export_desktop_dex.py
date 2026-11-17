@@ -36,6 +36,11 @@ class ExportDesktopDexTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             MODULE.parse_gen3_species_dex("speciesNationalDex: IntArray = intArrayOf(0, 1)")
 
+    def test_gen3_item_names_reject_duplicate_ids_and_keep_game_text(self):
+        self.assertEqual(MODULE.parse_item_names('val itemNamesFireRedGame: Map<Int, String> = mapOf(\n1 to "MASTER BALL",\n2 to "POTION"\n)'), {"1": "MASTER BALL", "2": "POTION"})
+        with self.assertRaises(ValueError):
+            MODULE.parse_item_names('val itemNamesFireRedGame: Map<Int, String> = mapOf(\n1 to "MASTER BALL",\n1 to "DUPLICATE"\n)')
+
     def test_shipped_dataset_covers_all_generation_boundaries_and_source_hash(self):
         source = (ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/SpeciesNamesNationalDex.kt").read_bytes()
         dataset = MODULE.build_dataset(source)
@@ -54,6 +59,10 @@ class ExportDesktopDexTests(unittest.TestCase):
         self.assertEqual(dataset["gen3_species_map"][277], 252)
         self.assertEqual(dataset["gen3_species_source_sha256"], MODULE.hashlib.sha256(
             (ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/save/SpeciesDexGen.kt").read_bytes()
+        ).hexdigest())
+        self.assertEqual(dataset["gen3_item_names"]["13"], "POTION")
+        self.assertEqual(dataset["gen3_item_source_sha256"], MODULE.hashlib.sha256(
+            (ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/ItemTextGame.kt").read_bytes()
         ).hexdigest())
 
 

@@ -9,6 +9,7 @@ import re
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/SpeciesNamesNationalDex.kt"
 GEN3_SPECIES_SOURCE = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/save/SpeciesDexGen.kt"
+GEN3_ITEM_SOURCE = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/ItemTextGame.kt"
 OUTPUT = ROOT / "desktop-rust/ui/src/data/pokedex-gen9.json"
 GENERATION_ENDS = (151, 251, 386, 493, 649, 721, 809, 905, 1025)
 
@@ -53,6 +54,8 @@ def build_dataset(source_bytes: bytes) -> dict:
         first = last + 1
     gen3_map_bytes = GEN3_SPECIES_SOURCE.read_bytes()
     gen3_map = parse_gen3_species_dex(gen3_map_bytes.decode("utf-8"))
+    gen3_item_bytes = GEN3_ITEM_SOURCE.read_bytes()
+    gen3_items = parse_item_names(gen3_item_bytes.decode("utf-8"))
     return {
         "schema_version": 1,
         "dataset_id": "pokemon-national-dex-gen9",
@@ -65,6 +68,8 @@ def build_dataset(source_bytes: bytes) -> dict:
         "species": species,
         "gen3_species_map": gen3_map,
         "gen3_species_source_sha256": hashlib.sha256(gen3_map_bytes).hexdigest(),
+        "gen3_item_names": gen3_items,
+        "gen3_item_source_sha256": hashlib.sha256(gen3_item_bytes).hexdigest(),
     }
 
 
@@ -78,6 +83,24 @@ def parse_gen3_species_dex(source: str) -> list[int]:
     if any(number < 0 or number > 411 for number in values):
         raise ValueError("Gen III species map contains an invalid National Dex number")
     return values
+
+
+def parse_item_names(source: str) -> dict[str, str]:
+    match = re.search(r"itemNamesFireRedGame:\s*Map<Int, String>\s*=\s*mapOf\((.*?)\n\)", source, re.S)
+    if not match:
+        raise ValueError("missing generated Gen III item-name table")
+    entries = {}
+    for item_id, encoded_name in re.findall(r'(\d+)\s+to\s+("(?:\\.|[^"\\])*")', match.group(1)):
+        key = str(int(item_id))
+        if key in entries:
+            raise ValueError(f"duplicate Gen III item ID {key}")
+        name = json.loads(encoded_name)
+        if not name or any(ord(char) < 32 for char in name):
+            raise ValueError(f"invalid Gen III item name at ID {key}")
+        entries[key] = name
+    if not entries:
+        raise ValueError("empty Gen III item-name table")
+    return entries
 
 
 def main() -> None:
