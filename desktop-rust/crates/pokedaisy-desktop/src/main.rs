@@ -2896,7 +2896,25 @@ mod tests {
             .read_save_ram()
             .expect("mGBA must return save RAM after a write");
         assert_eq!(read_back, battery);
+        let core_hash = super::identity::sha256_file(&config.cores[1].clone().unwrap()).unwrap();
+        super::save_battery(&mut core, &game, &saves, Some(&core_hash));
+        assert_eq!(
+            super::load_compatible_battery(&game, &saves, config.cores[1].as_ref().unwrap())
+                .unwrap()
+                .as_deref(),
+            Some(battery.as_slice()),
+            "the production save manifest must validate the persisted core bytes"
+        );
         drop(core);
+        let mut reopened =
+            super::open_game(&game, std::slice::from_ref(&game), &saves, &system, &config)
+                .expect("mGBA must reopen the game through the production path");
+        assert_eq!(
+            reopened.read_save_ram().unwrap(),
+            battery,
+            "open_game must restore the committed battery save"
+        );
+        drop(reopened);
         std::fs::remove_dir_all(root).unwrap();
     }
 
