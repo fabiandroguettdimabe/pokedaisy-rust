@@ -31,6 +31,8 @@
 - [x] Add small deterministic tests for SAF byte-copy limits: exact-cap acceptance and overflow rejection before writing the oversized chunk.
 - [x] Keep the POSIX Gradle wrapper on LF across Windows checkouts via `.gitattributes`.
 - [x] Recheck current package/version/manifest and storage recovery flow.
-- [ ] Run Android tests if JDK/SDK are installed; otherwise record the exact missing tools.
+- [x] Prepare a temporary JDK 17, Gradle 8.10.2, and checksum-verified Android command-line tools outside the repository.
+- [ ] Obtain authorization for the NDK 28.2.13676358 SDK license, install required SDK packages, and run Android tests; `:app:testDebugUnitTest` currently stops at `LicenceNotAcceptedException`.
+- [ ] Validate upgrade/signature, SAF permission revocation/recovery, and lifecycle with an Android device or emulator.
 - [x] Mark T20 partial if device/signature/SAF validation remains unavailable; commit and push.
 
