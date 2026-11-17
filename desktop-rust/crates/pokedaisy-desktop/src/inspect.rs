@@ -139,7 +139,8 @@ impl NonEmpty for String {
 
 #[cfg(test)]
 mod tests {
-    use super::inspect_bytes;
+    use super::{inspect_bytes, inspect_file};
+    use std::io::Write;
 
     fn gb_fixture(color: bool, title: &[u8]) -> Vec<u8> {
         const LOGO: [u8; 48] = [
@@ -236,6 +237,25 @@ mod tests {
 
         gba[0xac..0xb0].copy_from_slice(b"AB?D");
         assert!(inspect_bytes("fixture.gba", &gba).is_none());
+    }
+
+    #[test]
+    fn file_inspection_reads_only_a_bounded_header_from_large_roms() {
+        let path =
+            std::env::temp_dir().join(format!("vyntra-inspect-bounded-{}.gba", std::process::id()));
+        let _ = std::fs::remove_file(&path);
+        let mut file = std::fs::File::create(&path).unwrap();
+        let mut header = vec![0; 0xc0];
+        header[0xac..0xb0].copy_from_slice(b"ABCD");
+        header[0xb2] = 0x96;
+        file.write_all(&header).unwrap();
+        file.set_len(32 * 1024 * 1024).unwrap();
+        drop(file);
+
+        let inspection = inspect_file(&path).unwrap();
+        assert_eq!(inspection.system, "GBA");
+        assert_eq!(inspection.game_code.as_deref(), Some("ABCD"));
+        let _ = std::fs::remove_file(path);
     }
 
     #[test]
