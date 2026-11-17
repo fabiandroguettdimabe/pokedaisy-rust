@@ -146,7 +146,8 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
             Some("Todos" | "Favoritos" | "GB" | "GBC" | "GBA" | "DS")
         ),
         "library_selection" => object["value"].as_str().is_some_and(|value| {
-            value.len() > 64
+            value.is_empty()
+                || value.len() > 64
                 || !value
                     .bytes()
                     .all(|byte| byte.is_ascii_alphanumeric() || b"-_".contains(&byte))
@@ -180,9 +181,11 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
                 .as_u64()
                 .is_some_and(|value| value > u8::MAX as u64)
                 || object["defenses"].as_array().is_some_and(|values| {
-                    values
-                        .iter()
-                        .any(|value| value.as_u64().is_none_or(|id| id > u8::MAX as u64))
+                    values.is_empty()
+                        || values.len() > 2
+                        || values
+                            .iter()
+                            .any(|value| value.as_u64().is_none_or(|id| id > u8::MAX as u64))
                 })
         }
         "probe_core" => object["index"].as_u64().is_none_or(|index| index >= 3),
@@ -574,9 +577,18 @@ mod tests {
         for (action, payload) in [
             ("library_view", serde_json::json!({"value":"tiles"})),
             ("library_filter", serde_json::json!({"value":"GBC+"})),
+            ("library_selection", serde_json::json!({"value":""})),
             (
                 "type_matchup",
                 serde_json::json!({"attack":256,"defenses":[2]}),
+            ),
+            (
+                "type_matchup",
+                serde_json::json!({"attack":1,"defenses":[]}),
+            ),
+            (
+                "type_matchup",
+                serde_json::json!({"attack":1,"defenses":[1,2,3]}),
             ),
             ("set", serde_json::json!({"field":"volume","value":101})),
             ("set", serde_json::json!({"field":"autosave","value":5})),
