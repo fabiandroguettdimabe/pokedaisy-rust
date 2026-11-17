@@ -161,6 +161,9 @@ pub fn apply(journal_path: &Path, report: &MigrationReport) -> Result<(), String
         return Err("Versión de journal de migración no compatible".into());
     }
     let mut journal = load_journal(journal_path)?.unwrap_or_else(|| report.clone());
+    if journal.schema != 1 {
+        return Err("Versión de journal de migración guardado no compatible".into());
+    }
     let same_preview = journal.items.len() == report.items.len()
         && journal
             .items
@@ -382,6 +385,37 @@ mod tests {
     }
 
     #[test]
+    fn migration_refuses_an_unsupported_journal_schema_without_rewriting_it() {
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-migration-journal-schema-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let journal_path = root.join("migration.json");
+        let unsupported = MigrationReport {
+            schema: 99,
+            items: Vec::new(),
+        };
+        persist(&journal_path, &unsupported).unwrap();
+        let original = fs::read(&journal_path).unwrap();
+        let report = MigrationReport {
+            schema: 1,
+            items: Vec::new(),
+        };
+
+        assert!(apply(&journal_path, &report).is_err());
+        assert_eq!(fs::read(&journal_path).unwrap(), original);
+        fs::remove_file(&journal_path).unwrap();
+        let backup_path = journal_path.with_extension("bak");
+        fs::write(&backup_path, &original).unwrap();
+        assert!(apply(&journal_path, &report).is_err());
+        assert!(!journal_path.exists());
+        assert_eq!(fs::read(&backup_path).unwrap(), original);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn migration_rejects_source_growth_after_preview_without_copying_it() {
         let root = std::env::temp_dir().join(format!(
             "vyntra-migration-source-growth-{}",
@@ -541,7 +575,31 @@ mod tests {
             fs::read(&path).unwrap(),
             serde_json::to_vec_pretty(&previous).unwrap()
         );
-        assert!(!path.with_extension("tmp").exists());
+        assert!(migration_staging_files(&path).is_empty());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn journal_persistence_preserves_an_unowned_tmp_neighbor() {
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-migration-unowned-journal-tmp-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join("migration.json");
+        let unowned_tmp = path.with_extension("tmp");
+        let contents = b"unrelated application data";
+        fs::write(&unowned_tmp, contents).unwrap();
+        let report = MigrationReport {
+            schema: 1,
+            items: Vec::new(),
+        };
+
+        persist(&path, &report).unwrap();
+
+        assert_eq!(fs::read(&unowned_tmp).unwrap(), contents);
+        assert_eq!(load_journal(&path).unwrap(), Some(report));
         let _ = fs::remove_dir_all(root);
     }
 
@@ -575,11 +633,13 @@ mod tests {
             .unwrap();
         assert_eq!(child.code(), Some(78));
         assert_eq!(load_journal(&path).unwrap(), Some(previous));
-        assert!(path.with_extension("tmp").exists());
+        let orphaned_staging = migration_staging_files(&path);
+        assert_eq!(orphaned_staging.len(), 1);
+        let orphaned_bytes = fs::read(&orphaned_staging[0]).unwrap();
 
         persist(&path, &next).unwrap();
         assert_eq!(load_journal(&path).unwrap(), Some(next));
-        assert!(!path.with_extension("tmp").exists());
+        assert_eq!(fs::read(&orphaned_staging[0]).unwrap(), orphaned_bytes);
         let _ = fs::remove_dir_all(root);
     }
 
@@ -631,7 +691,7 @@ mod tests {
             fs::read(&path).unwrap(),
             serde_json::to_vec_pretty(&previous).unwrap()
         );
-        assert!(!path.with_extension("tmp").exists());
+        assert!(migration_staging_files(&path).is_empty());
         let _ = fs::remove_dir_all(root);
     }
 
@@ -667,7 +727,7 @@ mod tests {
             fs::read(&path).unwrap(),
             serde_json::to_vec_pretty(&previous).unwrap()
         );
-        assert!(!path.with_extension("tmp").exists());
+        assert!(migration_staging_files(&path).is_empty());
         let _ = fs::remove_dir_all(root);
     }
 
@@ -699,12 +759,18 @@ mod tests {
             .unwrap();
         assert_eq!(child.code(), Some(77));
         assert!(!path.exists());
-        assert!(path.with_extension("tmp").exists());
+        let orphaned_staging = migration_staging_files(&path);
+        assert_eq!(orphaned_staging.len(), 1);
+        assert_eq!(
+            serde_json::from_slice::<MigrationReport>(&fs::read(&orphaned_staging[0]).unwrap())
+                .unwrap(),
+            next
+        );
         assert_eq!(load_journal(&path).unwrap(), Some(previous.clone()));
 
         persist(&path, &next).unwrap();
         assert_eq!(load_journal(&path).unwrap(), Some(next));
-        assert!(!path.with_extension("tmp").exists());
+        assert!(orphaned_staging[0].exists());
         fs::write(&path, b"{").unwrap();
         assert_eq!(load_journal(&path).unwrap(), Some(previous));
         let _ = fs::remove_dir_all(root);
@@ -1012,16 +1078,14 @@ fn persist_with_backup_and_install(
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    let tmp = path.with_extension("tmp");
     let bytes = serde_json::to_vec_pretty(report).map_err(|e| e.to_string())?;
-    let staged = (|| -> Result<(), String> {
-        let mut file = fs::File::create(&tmp).map_err(|e| e.to_string())?;
-        stage(&mut file, &bytes).map_err(|e| e.to_string())
-    })();
-    if let Err(error) = staged {
+    let (tmp, mut file) = create_staging_file(path)?;
+    if let Err(error) = stage(&mut file, &bytes) {
+        drop(file);
         let _ = fs::remove_file(&tmp);
-        return Err(error);
+        return Err(error.to_string());
     }
+    drop(file);
     let had_previous = path.is_file();
     let backup = path.with_extension("bak");
     if had_previous {
