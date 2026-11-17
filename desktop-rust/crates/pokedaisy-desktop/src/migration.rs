@@ -177,19 +177,7 @@ pub fn apply(journal_path: &Path, report: &MigrationReport) -> Result<(), String
             persist(journal_path, &journal)?;
             continue;
         }
-        let parent = item.destination.parent().ok_or("Destino sin carpeta")?;
-        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        let staging = item.destination.with_extension("migration-tmp");
-        let mut src = fs::File::open(&item.source).map_err(|e| e.to_string())?;
-        let mut dst = fs::File::create(&staging).map_err(|e| e.to_string())?;
-        std::io::copy(&mut src, &mut dst).map_err(|e| e.to_string())?;
-        dst.sync_all().map_err(|e| e.to_string())?;
-        drop(dst);
-        if identity::sha256_file(&staging).map_err(|e| e.to_string())? != item.sha256 {
-            let _ = fs::remove_file(&staging);
-            return Err("La copia migrada no coincide con el hash del origen".into());
-        }
-        fs::rename(&staging, &item.destination).map_err(|e| e.to_string())?;
+        install_payload(&item)?;
         journal.items[index].status = MigrationStatus::Committed;
         journal.items[index].reason = None;
         persist(journal_path, &journal)?;
@@ -197,11 +185,28 @@ pub fn apply(journal_path: &Path, report: &MigrationReport) -> Result<(), String
     Ok(())
 }
 
+fn install_payload(item: &MigrationItem) -> Result<(), String> {
+    let parent = item.destination.parent().ok_or("Destino sin carpeta")?;
+    fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    let staging = item.destination.with_extension("migration-tmp");
+    let mut src = fs::File::open(&item.source).map_err(|e| e.to_string())?;
+    let mut dst = fs::File::create(&staging).map_err(|e| e.to_string())?;
+    std::io::copy(&mut src, &mut dst).map_err(|e| e.to_string())?;
+    dst.sync_all().map_err(|e| e.to_string())?;
+    drop(dst);
+    if identity::sha256_file(&staging).map_err(|e| e.to_string())? != item.sha256 {
+        let _ = fs::remove_file(&staging);
+        return Err("La copia migrada no coincide con el hash del origen".into());
+    }
+    fs::rename(&staging, &item.destination).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        MigrationItem, MigrationReport, MigrationStatus, apply, load_journal, persist,
-        persist_with, persist_with_install, preview,
+        MigrationItem, MigrationReport, MigrationStatus, apply, install_payload, load_journal,
+        persist, persist_with, persist_with_install, preview,
     };
     use std::fs;
     use std::io::Write;
@@ -341,6 +346,74 @@ mod tests {
         let recovered = load_journal(&journal_path).unwrap().unwrap();
         assert_eq!(recovered.items[0].status, MigrationStatus::Committed);
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn migration_recovers_after_child_exit_between_install_and_journal_commit() {
+        const SOURCE_ENV: &str = "VYNTRA_MIGRATION_INSTALL_SOURCE";
+        const DEST_ENV: &str = "VYNTRA_MIGRATION_INSTALL_DEST";
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-migration-install-crash-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("legacy.sav");
+        let destination = root.join("by-id/game/battery.sav");
+        let journal_path = root.join("migration.json");
+        fs::write(&source, b"verified legacy save").unwrap();
+        let item = MigrationItem::new(
+            source.clone(),
+            destination.clone(),
+            "game".into(),
+            "battery".into(),
+        );
+        let report = preview(&[item]).unwrap();
+        persist(&journal_path, &report).unwrap();
+
+        let child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "migration::tests::terminate_after_migration_destination_install",
+            ])
+            .env(SOURCE_ENV, &source)
+            .env(DEST_ENV, &destination)
+            .status()
+            .unwrap();
+
+        assert_eq!(child.code(), Some(76));
+        assert_eq!(fs::read(&destination).unwrap(), b"verified legacy save");
+        let interrupted: MigrationReport =
+            serde_json::from_slice(&fs::read(&journal_path).unwrap()).unwrap();
+        assert_eq!(interrupted.items[0].status, MigrationStatus::Ready);
+
+        apply(&journal_path, &report).unwrap();
+        apply(&journal_path, &report).unwrap();
+        let recovered: MigrationReport =
+            serde_json::from_slice(&fs::read(&journal_path).unwrap()).unwrap();
+        assert_eq!(recovered.items[0].status, MigrationStatus::Committed);
+        assert_eq!(fs::read(&destination).unwrap(), b"verified legacy save");
+        assert_eq!(fs::read(&source).unwrap(), b"verified legacy save");
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn terminate_after_migration_destination_install() {
+        const SOURCE_ENV: &str = "VYNTRA_MIGRATION_INSTALL_SOURCE";
+        const DEST_ENV: &str = "VYNTRA_MIGRATION_INSTALL_DEST";
+        let (Some(source), Some(destination)) =
+            (std::env::var_os(SOURCE_ENV), std::env::var_os(DEST_ENV))
+        else {
+            return;
+        };
+        let item = MigrationItem::new(
+            source.into(),
+            destination.into(),
+            "game".into(),
+            "battery".into(),
+        );
+        install_payload(&item).unwrap();
+        std::process::exit(76);
     }
 
     #[test]
