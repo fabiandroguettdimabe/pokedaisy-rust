@@ -1400,6 +1400,15 @@ fn scan_games(root: &Path, recursive: bool) -> Vec<Game> {
 }
 
 fn scan_games_controlled(root: &Path, recursive: bool, cancelled: &AtomicBool) -> Vec<Game> {
+    scan_games_controlled_with(root, recursive, cancelled, |_| {})
+}
+
+fn scan_games_controlled_with(
+    root: &Path,
+    recursive: bool,
+    cancelled: &AtomicBool,
+    mut on_entry: impl FnMut(&Path),
+) -> Vec<Game> {
     let mut out = Vec::new();
     let mut stack = vec![root.to_path_buf()];
     while let Some(dir) = stack.pop().filter(|_| !cancelled.load(Ordering::Acquire)) {
@@ -1412,14 +1421,16 @@ fn scan_games_controlled(root: &Path, recursive: bool, cancelled: &AtomicBool) -
             }
             let p = entry.path();
             if p.is_symlink() {
-                continue;
-            }
-            if p.is_dir() {
+            } else if p.is_dir() {
                 if recursive {
-                    stack.push(p);
+                    stack.push(p.clone());
                 }
             } else if supported(&p) {
-                out.push(game_from_path(p));
+                out.push(game_from_path(p.clone()));
+            }
+            on_entry(&p);
+            if cancelled.load(Ordering::Acquire) {
+                return Vec::new();
             }
         }
     }
@@ -2519,7 +2530,7 @@ fn text(c: &mut Canvas<Window>, font: &Font, s: &str, x: i32, y: i32, size: u32,
 mod tests {
     use super::{atomic_write, core_names, find_core_in_dirs, scan_games_controlled};
     use std::fs;
-    use std::sync::atomic::AtomicBool;
+    use std::sync::atomic::{AtomicBool, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
@@ -2530,6 +2541,38 @@ mod tests {
         fs::write(&rom, vec![0u8; 0xc0]).unwrap();
         let cancelled = AtomicBool::new(true);
         assert!(scan_games_controlled(&dir, true, &cancelled).is_empty());
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn superseded_library_scan_discards_results_after_io_has_started() {
+        let dir =
+            std::env::temp_dir().join(format!("vyntra-cancel-mid-scan-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("first.gba"), {
+            let mut rom = vec![0u8; 0xc0];
+            rom[0xb2] = 0x96;
+            rom[0xac..0xb0].copy_from_slice(b"ABCD");
+            rom[0xbc] = 0x19;
+            rom
+        })
+        .unwrap();
+        fs::write(dir.join("second.gba"), {
+            let mut rom = vec![0u8; 0xc0];
+            rom[0xb2] = 0x96;
+            rom[0xac..0xb0].copy_from_slice(b"EFGH");
+            rom[0xbc] = 0x19;
+            rom
+        })
+        .unwrap();
+        let cancelled = AtomicBool::new(false);
+
+        let found = super::scan_games_controlled_with(&dir, false, &cancelled, |_| {
+            cancelled.store(true, Ordering::Release);
+        });
+
+        assert!(found.is_empty());
         let _ = fs::remove_dir_all(dir);
     }
 
