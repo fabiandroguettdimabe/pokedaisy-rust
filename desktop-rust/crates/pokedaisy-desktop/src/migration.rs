@@ -277,6 +277,7 @@ mod tests {
 
     #[test]
     fn journal_load_recovers_backup_after_interrupted_replacement() {
+        const JOURNAL_ENV: &str = "VYNTRA_MIGRATION_JOURNAL_CRASH_PATH";
         let root =
             std::env::temp_dir().join(format!("vyntra-migration-cut-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
@@ -291,13 +292,47 @@ mod tests {
             items: Vec::new(),
         };
         persist(&path, &previous).unwrap();
-        persist(&path, &next).unwrap();
 
-        // Simulate termination after the old journal was removed but before
-        // the staged replacement became the active file.
-        fs::remove_file(&path).unwrap();
+        let child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "migration::tests::terminate_during_journal_install",
+            ])
+            .env(JOURNAL_ENV, &path)
+            .status()
+            .unwrap();
+        assert_eq!(child.code(), Some(77));
+        assert!(!path.exists());
+        assert!(path.with_extension("tmp").exists());
         assert_eq!(load_journal(&path).unwrap(), Some(previous));
+
+        persist(&path, &next).unwrap();
+        assert_eq!(load_journal(&path).unwrap(), Some(next));
+        assert!(!path.with_extension("tmp").exists());
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn terminate_during_journal_install() {
+        const JOURNAL_ENV: &str = "VYNTRA_MIGRATION_JOURNAL_CRASH_PATH";
+        let Some(path) = std::env::var_os(JOURNAL_ENV) else {
+            return;
+        };
+        let path = std::path::PathBuf::from(path);
+        let next = MigrationReport {
+            schema: 2,
+            items: Vec::new(),
+        };
+        let _ = persist_with_install(
+            &path,
+            &next,
+            |file, bytes| {
+                file.write_all(bytes)?;
+                file.sync_all()
+            },
+            |_, _| std::process::exit(77),
+        );
+        unreachable!("the subprocess exits after removing the previous journal");
     }
 
     #[test]
