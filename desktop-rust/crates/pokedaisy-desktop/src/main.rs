@@ -530,6 +530,7 @@ fn sdl_main() -> Result<(), String> {
                         let c = core.as_mut().ok_or("No hay un juego activo")?;
                         let g = session_save_owner(&active_game)
                             .ok_or("La sesión no tiene una ROM activa")?;
+                        validate_game_identity(g)?;
                         let core_hash = active_core_hash
                             .as_deref()
                             .ok_or("No se pudo verificar el núcleo activo")?;
@@ -847,6 +848,10 @@ fn sdl_main() -> Result<(), String> {
                             if let (Some(c), Some(g)) =
                                 (core.as_mut(), session_save_owner(&active_game))
                             {
+                                if let Err(error) = validate_game_identity(g) {
+                                    last_error = Some(error);
+                                    continue 'app;
+                                }
                                 match c.serialize() {
                                     Ok(bytes) => {
                                         let path = state_path(g, &state_dir);
@@ -1556,11 +1561,14 @@ fn write_save_manifest_checked(
     core_hash: Option<&str>,
     status: &str,
 ) -> Result<(), String> {
+    validate_game_identity(game)?;
     let key = game_storage_key(game);
+    let rom_hash = identity::sha256_file(&game.path)
+        .map_err(|error| format!("No se pudo verificar ROM para el manifiesto: {error}"))?;
     let manifest = domain::SaveManifest {
         save_id: format!("{key}-{:?}", kind).to_lowercase(),
         kind,
-        rom_sha256: identity::sha256_file(&game.path).ok(),
+        rom_sha256: Some(rom_hash),
         core_hash: core_hash.map(str::to_owned),
         state_format: (kind == domain::SaveKind::SaveState)
             .then(|| "libretro-serialize-v1".to_string()),
@@ -1583,6 +1591,10 @@ fn write_save_manifest_checked(
 }
 
 fn save_battery(core: &mut LibretroCore, game: &Game, dir: &Path, core_hash: Option<&str>) {
+    if let Err(error) = validate_game_identity(game) {
+        eprintln!("No se guardó SRAM porque cambió la ROM activa: {error}");
+        return;
+    }
     match core.read_save_ram() {
         Ok(data) => {
             let path = preferred_battery_path(game, dir);
@@ -2708,6 +2720,22 @@ mod tests {
         assert_eq!(parsed.kind, super::domain::SaveKind::BatteryRam);
         assert!(parsed.sha256.is_some());
         assert!(parsed.state_format.is_none());
+        let committed_manifest = fs::read(&manifest_path).unwrap();
+        fs::write(&game.path, b"ROM changed during the active session").unwrap();
+        assert!(
+            super::write_save_manifest_checked(
+                &game,
+                &dir,
+                super::domain::SaveKind::BatteryRam,
+                b"new ram",
+                None,
+                Some(&core_hash),
+                "committed",
+            )
+            .is_err()
+        );
+        assert_eq!(fs::read(&manifest_path).unwrap(), committed_manifest);
+        fs::write(&game.path, b"rom").unwrap();
         fs::write(super::preferred_battery_path(&game, &dir), b"ram").unwrap();
         let battery_backup = super::backup_verified_battery(&game, &dir, Some(&core_hash))
             .unwrap()

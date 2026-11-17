@@ -999,6 +999,7 @@ fn commit_bundle_restore_with(
     config: &Settings,
     mut write: impl FnMut(&Path, &[u8]) -> Result<(), String>,
 ) -> Result<(), String> {
+    validate_game_identity(&prepared.game)?;
     let is_state = prepared.manifest.kind == domain::SaveKind::SaveState;
     let backup = if is_state {
         backup_verified_state(
