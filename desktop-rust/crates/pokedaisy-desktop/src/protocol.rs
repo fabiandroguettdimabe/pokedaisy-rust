@@ -185,8 +185,41 @@ pub fn parse_legacy_action(body: &str) -> Result<UiCommandEnvelope, AppError> {
     let action = payload
         .get("action")
         .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
+        .filter(|action| !action.trim().is_empty())
+        .ok_or_else(|| AppError::new("invalid_action", "Falta una acción válida"))?;
+    const SUPPORTED_ACTIONS: &[&str] = &[
+        "ready",
+        "scan",
+        "reset_settings_section",
+        "favorite",
+        "game_note",
+        "library_view",
+        "library_filter",
+        "library_selection",
+        "relink",
+        "type_matchup",
+        "import",
+        "import_roots",
+        "cancel_import",
+        "choose",
+        "set",
+        "play",
+        "stop_player",
+        "pause_player",
+        "save_player_state",
+        "load_player_state",
+        "export_vault_bundle",
+        "import_vault_bundle",
+        "export_save",
+        "migration_preview",
+        "migration_apply",
+        "probe_core",
+        "open_folder",
+    ];
+    if !SUPPORTED_ACTIONS.contains(&action) {
+        return Err(AppError::new("unknown_action", "Acción no disponible"));
+    }
+    let action = action.to_owned();
     Ok(UiCommandEnvelope {
         protocol_version: CONTRACT_VERSION,
         command_id: format!("legacy-{action}"),
@@ -230,6 +263,17 @@ mod tests {
             let error = parse_legacy_action(body).unwrap_err();
             assert_eq!(error.code, "invalid_json");
             assert!(!error.reason.is_empty());
+        }
+    }
+
+    #[test]
+    fn missing_and_unknown_actions_are_rejected_with_stable_codes() {
+        for (body, code) in [
+            (r#"{}"#, "invalid_action"),
+            (r#"{"action":"  "}"#, "invalid_action"),
+            (r#"{"action":"run_shell"}"#, "unknown_action"),
+        ] {
+            assert_eq!(parse_legacy_action(body).unwrap_err().code, code);
         }
     }
 

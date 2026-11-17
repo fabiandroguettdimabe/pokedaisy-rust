@@ -263,6 +263,11 @@ pub fn run() -> Result<(), String> {
                 let cmd = match protocol::parse_legacy_action(&body) {
                     Ok(cmd) => cmd,
                     Err(error) => {
+                        let ack = protocol::UiAck::failure("legacy-invalid", error.clone());
+                        let _ = webview.evaluate_script(&format!(
+                            "window.vyntraAck&&window.vyntraAck({});",
+                            json!(ack)
+                        ));
                         let _ = webview.evaluate_script(&format!(
                             "window.vyntraError&&window.vyntraError({});",
                             json!(error.reason)
