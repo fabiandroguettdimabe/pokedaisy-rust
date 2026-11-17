@@ -4,10 +4,28 @@ import {chromium} from 'playwright-core';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 
+function expectVersionedCommand(page){
+ const ids=new Set();
+ return async(action,payload={},context={})=>{
+  const command=await page.evaluate(()=>window.commands.at(-1));
+  const commands=await page.evaluate(()=>window.commands);
+  assert.equal(command.protocol_version,1);
+  assert.match(command.command_id,/^ui-\d+-\d+$/);
+  assert.equal(ids.has(command.command_id),false);
+  assert.equal(new Set(commands.map(item=>item.command_id)).size,commands.length);
+  ids.add(command.command_id);
+  assert.equal(command.action,action);
+  assert.deepEqual(command.payload,payload);
+  for(const key of ['session_id','epoch','expected_revision'])assert.equal(command[key],context[key]);
+  return command;
+ };
+}
+
 test('offline UI: navigation, filtering, configuration IPC and missing-core state',async()=>{
  const browser=await chromium.launch({channel:'msedge',headless:true});
  try{
   const page=await browser.newPage({viewport:{width:1360,height:880}});
+  const expectCommand=expectVersionedCommand(page);
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{window.commands=[];window.ipc={postMessage:body=>window.commands.push(JSON.parse(body))};});
   await page.goto(pathToFileURL(resolve('dist/index.html')).href);
@@ -20,11 +38,11 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   }));
   assert.equal(await page.locator('.game-card').count(),2);
   await page.getByRole('button',{name:'Importar carpetas',exact:true}).click();
-  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'import_roots'});
+  await expectCommand('import_roots');
   assert.equal(await page.getByRole('button',{name:'Jugar',exact:true}).isDisabled(),true);
   await page.getByRole('textbox',{name:'Nota del juego'}).fill('Usar partida del bosque');
   await page.getByRole('button',{name:'Guardar nota'}).click();
-  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'game_note',storage_id:'gb-fixture',value:'Usar partida del bosque'});
+  await expectCommand('game_note',{storage_id:'gb-fixture',value:'Usar partida del bosque'});
   await page.getByRole('textbox',{name:'Buscar juegos'}).fill('Synthetic GBA');
   assert.equal(await page.locator('.game-card').count(),1);
   await page.getByRole('button',{name:'Limpiar búsqueda'}).click();
@@ -32,34 +50,34 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   assert.equal(await page.locator('.game-card').count(),1);
   await page.getByRole('button',{name:'Configuración',exact:true}).click();
   await page.getByRole('switch',{name:'Reducir animaciones'}).click();
-  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'set',field:'reduced_motion',value:true});
+  await expectCommand('set',{field:'reduced_motion',value:true});
   await page.getByRole('button',{name:'Restablecer sección'}).click();
-  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'reset_settings_section',section:'general'});
+  await expectCommand('reset_settings_section',{section:'general'});
   await page.getByRole('button',{name:'Carpetas',exact:true}).click();
   await page.getByRole('button',{name:'Cambiar…',exact:true}).first().click();
-  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'choose',field:'library'});
+  await expectCommand('choose',{field:'library'});
   await page.getByRole('button',{name:'Controles',exact:true}).click();
   await page.getByRole('button',{name:'Z',exact:true}).click();
   await page.getByRole('button',{name:'Pulsa una tecla…',exact:true}).waitFor();
   await page.keyboard.press('c');
-  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'set',field:'key',index:0,value:'c'});
+  await expectCommand('set',{field:'key',index:0,value:'c'});
   await page.getByRole('button',{name:'Vyntra Vault',exact:true}).click();
   await page.getByRole('button',{name:'Importar paquete',exact:true}).click();
-  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'import_vault_bundle'});
+  await expectCommand('import_vault_bundle');
   await page.getByRole('button',{name:'Revisar migración antigua'}).click();
-  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'migration_preview'});
+  await expectCommand('migration_preview');
   await page.evaluate(()=>window.vyntraAck({ok:true,result:{migration:{schema:1,items:[]}}}));
   assert.equal(await page.getByText('No se encontraron guardados heredados.').isVisible(),true);
   assert.equal(await page.getByText('No hay guardados en las carpetas configuradas.').isVisible(),true);
   await page.getByRole('button',{name:'Núcleos',exact:true}).last().click();
   await page.getByRole('button',{name:'Probar',exact:true}).nth(1).click();
-  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'probe_core',index:1});
+  await expectCommand('probe_core',{index:1});
   await page.getByRole('button',{name:'Acompañante',exact:true}).click();
   await page.getByLabel('Ataque').selectOption('10');
   await page.getByLabel('Defensa 1').selectOption('12');
   await page.getByLabel('Defensa 2').selectOption('8');
   await page.getByRole('button',{name:'Calcular',exact:true}).click();
-  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'type_matchup',attack:10,defenses:[12,8]});
+  await expectCommand('type_matchup',{attack:10,defenses:[12,8]});
   await page.evaluate(()=>window.vyntraAck({ok:true,result:{dataset_id:'pokemon-gen3-type-chart',attack_type:'Fire',defense_types:['Grass','Steel'],multiplier_percent:400}}));
   assert.equal(await page.getByText('4×').isVisible(),true);
   await page.evaluate(()=>window.vyntraImportProgress({phase:'scan',member:'Revisando carpetas',completed_bytes:256,total_bytes:100000}));
@@ -68,7 +86,7 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   assert.equal(await page.getByText('Pokemon.gba').isVisible(),true);
   assert.equal(await page.getByText('Importando ROM 2 de 5').isVisible(),true);
   await page.getByRole('button',{name:'Cancelar',exact:true}).click();
-  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'cancel_import'});
+  await expectCommand('cancel_import');
   await page.evaluate(()=>window.vyntraImportDone({imported:0,duplicates:0,rejected:0,cancelled:true}));
   assert.equal(await page.getByText('Importación cancelada · Importadas: 0 · duplicadas: 0 · rechazadas: 0').isVisible(),true);
   await page.screenshot({path:resolve('../../.taste-skill/companion/companion-desktop.png'),fullPage:true});
@@ -79,15 +97,15 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
   await page.evaluate(()=>{window.testState={...window.testState,session:{session_id:'test-session',epoch:2},command_revision:7};window.vyntraState(window.testState);window.vyntraPlayerSnapshot({title:'Synthetic GBA fixture',system:'GBA',screen:'playing',paused:false});});
   await page.getByRole('button',{name:'Pausar',exact:true}).click();
-  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'pause_player',value:true,session_id:'test-session',epoch:2,expected_revision:7});
+  await expectCommand('pause_player',{value:true},{session_id:'test-session',epoch:2,expected_revision:7});
   await page.getByRole('button',{name:'Guardar estado',exact:true}).click();
-  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'save_player_state',session_id:'test-session',epoch:2,expected_revision:7});
+  await expectCommand('save_player_state',{}, {session_id:'test-session',epoch:2,expected_revision:7});
   await page.evaluate(()=>window.vyntraAck({ok:true,result:{player_command:{started:true,id:1,command:'save_player_state'}}}));
   assert.equal(await page.getByText('Player está procesando el estado…').isVisible(),true);
   await page.evaluate(()=>window.vyntraAck({ok:true,result:{player_command:{id:1,command:'save_state',ok:false,error:'Disco sin espacio'}}}));
   assert.equal(await page.getByText('Falló la operación de Player: Disco sin espacio').isVisible(),true);
   await page.getByRole('button',{name:'Cargar estado',exact:true}).click();
-  assert.deepEqual(await page.evaluate(()=>window.commands.at(-1)),{action:'load_player_state',session_id:'test-session',epoch:2,expected_revision:7});
+  await expectCommand('load_player_state',{}, {session_id:'test-session',epoch:2,expected_revision:7});
   await page.evaluate(()=>window.vyntraAck({ok:false,revision:8,error:{code:'stale_revision',reason:'La configuración cambió en otra ventana.'}}));
   assert.equal(await page.getByText('La configuración cambió en otra ventana. Se actualizó el estado; revisa los valores y vuelve a aplicar.').isVisible(),true);
   assert.deepEqual(errors,[]);

@@ -73,7 +73,6 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
         "type_matchup" => &[
             ("attack", PayloadFieldType::Number),
             ("defenses", PayloadFieldType::Array),
-            ("index", PayloadFieldType::Number),
         ],
         "choose" | "open_folder" => &[("field", PayloadFieldType::String)],
         "set" => &[
@@ -157,7 +156,6 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
             object["attack"]
                 .as_u64()
                 .is_some_and(|value| value > u8::MAX as u64)
-                || object["index"].as_u64().is_some_and(|value| value >= 3)
                 || object["defenses"].as_array().is_some_and(|values| {
                     values
                         .iter()
@@ -538,7 +536,7 @@ mod tests {
             ("library_filter", serde_json::json!({"value":"GBC+"})),
             (
                 "type_matchup",
-                serde_json::json!({"attack":1,"defenses":[2],"index":3}),
+                serde_json::json!({"attack":256,"defenses":[2]}),
             ),
             ("set", serde_json::json!({"field":"volume","value":101})),
             ("set", serde_json::json!({"field":"autosave","value":5})),
