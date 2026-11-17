@@ -137,6 +137,28 @@ fn validate_versioned_payload(action: &str, payload: &Value) -> Result<(), AppEr
                         .any(|value| value.as_u64().is_none_or(|id| id > u8::MAX as u64))
                 })
         }
+        "set" => {
+            let field = object["field"].as_str().unwrap_or_default();
+            let value = &object["value"];
+            match field {
+                "volume" => value.as_u64().is_none_or(|number| number > 100),
+                "smooth" | "fullscreen" | "recursive" | "reduced_motion" => !value.is_boolean(),
+                "fast_forward" => value
+                    .as_u64()
+                    .is_none_or(|number| !(2..=4).contains(&number)),
+                "autosave" => value
+                    .as_u64()
+                    .is_none_or(|number| !(10..=120).contains(&number)),
+                "key" => {
+                    value
+                        .as_str()
+                        .is_none_or(|key| key.is_empty() || key.len() > 32)
+                        || object["index"].as_u64().is_none_or(|index| index >= 14)
+                }
+                "keys_reset" | "cores_reset" => !value.is_boolean(),
+                _ => true,
+            }
+        }
         _ => false,
     };
     if invalid {
@@ -453,6 +475,12 @@ mod tests {
                 "type_matchup",
                 serde_json::json!({"attack":1,"defenses":[2],"index":3}),
             ),
+            ("set", serde_json::json!({"field":"volume","value":101})),
+            ("set", serde_json::json!({"field":"autosave","value":5})),
+            (
+                "set",
+                serde_json::json!({"field":"unknown_setting","value":true}),
+            ),
             (
                 "game_note",
                 serde_json::json!({"storage_id":"g1","value":"bad\u{0001}note"}),
@@ -466,6 +494,22 @@ mod tests {
             })
             .to_string();
             assert_eq!(parse_ui_command(&body).unwrap_err().code, "invalid_payload");
+        }
+        for payload in [
+            serde_json::json!({"field":"volume","value":25}),
+            serde_json::json!({"field":"fast_forward","value":4}),
+            serde_json::json!({"field":"autosave","value":120}),
+            serde_json::json!({"field":"key","index":0,"value":"A"}),
+            serde_json::json!({"field":"keys_reset","value":true}),
+        ] {
+            let body = serde_json::json!({
+                "protocol_version": 1,
+                "command_id": "valid-setting",
+                "action": "set",
+                "payload": payload,
+            })
+            .to_string();
+            assert!(parse_ui_command(&body).is_ok());
         }
     }
 
