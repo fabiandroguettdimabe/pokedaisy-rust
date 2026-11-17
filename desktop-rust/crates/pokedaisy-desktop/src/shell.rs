@@ -14,6 +14,7 @@ enum Message {
     Action(String),
     Scanned(u64, Vec<Game>),
     CoreProbed(u64, serde_json::Value),
+    Pipe(crate::player_pipe::PipeEvent),
 }
 
 pub fn run() -> Result<(), String> {
@@ -115,6 +116,27 @@ pub fn run() -> Result<(), String> {
             TaoEvent::UserEvent(Message::CoreProbed(id, report)) if id == probe_generation => {
                 core_probe = Some(report);
                 publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
+            },
+            TaoEvent::UserEvent(Message::Pipe(event)) => {
+                let matches_session = session.as_ref().is_some_and(|active| {
+                    active.session_id == event.session_id && active.epoch == event.epoch
+                });
+                if matches_session {
+                    match event.kind {
+                        crate::player_pipe::PipeEventKind::Authenticated => {},
+                        crate::player_pipe::PipeEventKind::Disconnected => {
+                            session = None;
+                            session_epoch = session_epoch.saturating_add(1);
+                            publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
+                        },
+                        crate::player_pipe::PipeEventKind::Failed(reason) => {
+                            eprintln!("Falló el canal de la sesión Player: {reason}");
+                            session = None;
+                            session_epoch = session_epoch.saturating_add(1);
+                            publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe);
+                        },
+                    }
+                }
             },
             TaoEvent::UserEvent(Message::Action(body)) => {
                 let cmd = match protocol::parse_legacy_action(&body) {
@@ -231,14 +253,24 @@ pub fn run() -> Result<(), String> {
                             crate::validate_game_identity(game)?;
                             let core=config.core(game.system)?;
                             if !core.is_file(){return Err("La DLL seleccionada no existe. Revisa Ajustes > Nǧcleos.".into());}
-                            child=Some(std::process::Command::new(env::current_exe().map_err(|e|e.to_string())?).arg("--emulator").arg("--data").arg(&root).arg(&game.path).spawn().map_err(|e|e.to_string())?);
                             let game_id = game_storage_key(game);
                             if library::mark_played(&mut imported, &game_id, now_unix()) {
                                 library::save(&index_path, &imported)?;
                             }
-                            session_epoch = session_epoch.saturating_add(1);
+                            let next_epoch = session_epoch.saturating_add(1);
+                            let session_id = format!("sess-{}-{next_epoch}", std::process::id());
+                            let pipe_proxy = proxy.clone();
+                            let pipe = crate::player_pipe::start(session_id.clone(), next_epoch, move |event| {
+                                let _ = pipe_proxy.send_event(Message::Pipe(event));
+                            })?;
+                            child=Some(std::process::Command::new(env::current_exe().map_err(|e|e.to_string())?)
+                                .arg("--emulator").arg("--data").arg(&root).arg(&game.path)
+                                .arg("--pipe").arg(&pipe.name).arg("--nonce").arg(&pipe.nonce)
+                                .arg("--session-id").arg(&session_id).arg("--session-epoch").arg(next_epoch.to_string())
+                                .spawn().map_err(|e|e.to_string())?);
+                            session_epoch = next_epoch;
                             session = Some(domain::SessionIdentity {
-                                session_id: format!("sess-{}-{}", std::process::id(), session_epoch),
+                                session_id,
                                 game_id: game_storage_key(game),
                                 rom_sha256: identity::sha256_file(&game.path).ok(),
                                 core_hash: identity::sha256_file(&core).ok(),

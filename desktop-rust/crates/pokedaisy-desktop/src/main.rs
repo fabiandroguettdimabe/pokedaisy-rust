@@ -4,6 +4,8 @@ mod import;
 mod inspect;
 mod library;
 mod migration;
+#[cfg(target_os = "windows")]
+mod player_pipe;
 mod probe;
 mod probe_pe;
 mod protocol;
@@ -280,21 +282,56 @@ fn sdl_main() -> Result<(), String> {
     let args: Vec<String> = env::args().skip(1).collect();
     let mut root = env::current_dir().map_err(|e| e.to_string())?;
     let mut rom_arg = None;
+    let mut pipe_name = None;
+    let mut pipe_nonce = None;
+    let mut pipe_session = None;
+    let mut pipe_epoch = None;
     let mut arg = 0;
     while arg < args.len() {
-        if args[arg] == "--data" {
-            if let Some(value) = args.get(arg + 1) {
-                root = PathBuf::from(value);
+        match args[arg].as_str() {
+            "--data" => {
+                if let Some(value) = args.get(arg + 1) {
+                    root = PathBuf::from(value);
+                }
+                arg += 2;
             }
-            arg += 2;
-        } else {
-            let path = PathBuf::from(&args[arg]);
-            if supported(&path) && path.exists() {
-                rom_arg = Some(path);
+            "--pipe" => {
+                pipe_name = args.get(arg + 1).cloned();
+                arg += 2;
             }
-            arg += 1;
+            "--nonce" => {
+                pipe_nonce = args.get(arg + 1).cloned();
+                arg += 2;
+            }
+            "--session-id" => {
+                pipe_session = args.get(arg + 1).cloned();
+                arg += 2;
+            }
+            "--session-epoch" => {
+                pipe_epoch = args
+                    .get(arg + 1)
+                    .and_then(|value| value.parse::<u64>().ok());
+                arg += 2;
+            }
+            _ => {
+                let path = PathBuf::from(&args[arg]);
+                if supported(&path) && path.exists() {
+                    rom_arg = Some(path);
+                }
+                arg += 1;
+            }
         }
     }
+    #[cfg(target_os = "windows")]
+    let _player_pipe = match (pipe_name, pipe_nonce, pipe_session, pipe_epoch) {
+        (Some(name), Some(nonce), Some(session), Some(epoch)) => {
+            Some(player_pipe::connect(&name, &nonce, &session, epoch)?)
+        }
+        (None, None, None, None) => None,
+        _ => return Err("Contexto de named pipe Player incompleto".into()),
+    };
+    #[cfg(not(target_os = "windows"))]
+    let _ = (pipe_name, pipe_nonce, pipe_session, pipe_epoch);
     let data = root.join("data");
     fs::create_dir_all(&data).map_err(|e| e.to_string())?;
     let config_path = data.join("vyntra-settings.json");
