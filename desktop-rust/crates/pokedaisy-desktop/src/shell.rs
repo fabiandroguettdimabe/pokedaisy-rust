@@ -75,6 +75,28 @@ fn companion_position(
     )
 }
 
+fn companion_logical_size(
+    monitor_size: tao::dpi::PhysicalSize<u32>,
+    scale_factor: f64,
+) -> (tao::dpi::LogicalSize<f64>, tao::dpi::LogicalSize<f64>) {
+    let scale = if scale_factor.is_finite() && scale_factor > 0.0 {
+        scale_factor
+    } else {
+        1.0
+    };
+    let available_width = f64::from(monitor_size.width) / scale;
+    let available_height = f64::from(monitor_size.height) / scale;
+    let width = 1120.0_f64.min(available_width.max(1.0));
+    let height = 820.0_f64.min(available_height.max(1.0));
+    let min_width = 760.0_f64.min(width);
+    let min_height = 600.0_f64.min(height);
+
+    (
+        tao::dpi::LogicalSize::new(width, height),
+        tao::dpi::LogicalSize::new(min_width, min_height),
+    )
+}
+
 enum ImportSource {
     Loose(PathBuf),
     Archive(PathBuf, Vec<String>),
@@ -447,9 +469,14 @@ pub fn run() -> Result<(), String> {
                                 let mut builder=WindowBuilder::new().with_title("Vyntra Companion").with_inner_size(tao::dpi::LogicalSize::new(1120.0,820.0)).with_min_inner_size(tao::dpi::LogicalSize::new(760.0,600.0));
                                 if let (Ok(position), Some(monitor)) = (window.outer_position(), window.current_monitor()) {
                                     let scale = monitor.scale_factor();
+                                    let (inner_size, min_inner_size) =
+                                        companion_logical_size(monitor.size(), scale);
+                                    builder = builder
+                                        .with_inner_size(inner_size)
+                                        .with_min_inner_size(min_inner_size);
                                     let requested_size = tao::dpi::PhysicalSize::new(
-                                        (1120.0 * scale).round() as u32,
-                                        (820.0 * scale).round() as u32,
+                                        (inner_size.width * scale).round() as u32,
+                                        (inner_size.height * scale).round() as u32,
                                     );
                                     let desired = tao::dpi::PhysicalPosition::new(
                                         position.x.saturating_add(80),
@@ -1721,6 +1748,14 @@ mod tests {
             ),
             tao::dpi::PhysicalPosition::new(-1120, 260)
         );
+    }
+
+    #[test]
+    fn companion_size_fits_small_high_dpi_monitor() {
+        let (size, minimum) = companion_logical_size(tao::dpi::PhysicalSize::new(900, 600), 1.5);
+
+        assert_eq!(size, tao::dpi::LogicalSize::new(600.0, 400.0));
+        assert_eq!(minimum, tao::dpi::LogicalSize::new(600.0, 400.0));
     }
 
     #[test]
