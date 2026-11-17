@@ -484,20 +484,23 @@ pub fn run() -> Result<(), String> {
                         "library_view" => {
                             let view = action["value"].as_str().ok_or("Vista inválida")?;
                             if !matches!(view, "grid" | "list") { return Err("Vista inválida".into()); }
-                            config.library_view = view.into();
-                            config.save(&config_path)?;
+                            let mut next = config.clone();
+                            next.library_view = view.into();
+                            persist_settings(&mut config, next, &config_path)?;
                         },
                         "library_filter" => {
                             let filter = action["value"].as_str().ok_or("Filtro inválido")?;
                             if !matches!(filter, "Todos" | "Favoritos" | "GB" | "GBC" | "GBA" | "DS") { return Err("Filtro inválido".into()); }
-                            config.library_filter = filter.into();
-                            config.save(&config_path)?;
+                            let mut next = config.clone();
+                            next.library_filter = filter.into();
+                            persist_settings(&mut config, next, &config_path)?;
                         },
                         "library_selection" => {
                             let selection = action["value"].as_str().ok_or("Selección inválida")?;
                             if selection.len() > 64 || !selection.bytes().all(|byte| byte.is_ascii_alphanumeric() || b"-_".contains(&byte)) { return Err("Selección inválida".into()); }
-                            config.library_selection = Some(selection.into());
-                            config.save(&config_path)?;
+                            let mut next = config.clone();
+                            next.library_selection = Some(selection.into());
+                            persist_settings(&mut config, next, &config_path)?;
                         },
                         "relink" => {
                             let id = action["storage_id"].as_str().ok_or("Juego inválido")?;
@@ -1153,6 +1156,12 @@ fn settings_fingerprint(path: &Path) -> Result<Option<String>, String> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(error) => Err(format!("No se pudo revisar la configuración: {error}")),
     }
+}
+
+fn persist_settings(current: &mut Settings, next: Settings, path: &Path) -> Result<(), String> {
+    next.save(path)?;
+    *current = next;
+    Ok(())
 }
 
 fn reload_external_settings(
@@ -1844,6 +1853,27 @@ mod tests {
         assert!(validate_command_revision(Some(0), 1).is_err());
         assert_eq!(stale_window.volume, 80);
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn failed_settings_write_keeps_active_preferences_unchanged() {
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-settings-write-failure-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join("settings.json");
+        let mut active = Settings::default();
+        active.save(&path).unwrap();
+        let original = fs::read(&path).unwrap();
+        fs::create_dir(path.with_extension("tmp")).unwrap();
+        let mut next = active.clone();
+        next.library_view = "list".into();
+        assert!(persist_settings(&mut active, next, &path).is_err());
+        assert_eq!(active.library_view, "grid");
+        assert_eq!(fs::read(&path).unwrap(), original);
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
