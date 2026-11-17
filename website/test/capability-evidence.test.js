@@ -9,7 +9,7 @@ const root = join(import.meta.dirname, '../..');
 test('ready capabilities require a reproducible test ID and commit', () => {
   const header = '| Plataforma | Sistema | Núcleo/ruta observada | Arranque A/V/input | SRAM/estados/FF/rewind | Companion / datos live | Link | Evidencia | Próxima verificación |';
   const separator = '|---|---|---|---|---|---|---|---|---|';
-  const valid = '| Windows | GB | mGBA | Ready | No probado | No probado | No probado | cell=av testId=gb.boot commit=abcdef1 | - |';
+  const valid = `| Windows | GB | mGBA | Ready | No probado | No probado | No probado | cell=av testId=gb.boot build=v1.2.3 commit=abcdef1 coreHash=${'a'.repeat(64)} | - |`;
   const invalid = '| Android | GBA | mGBA | No probado | Listo | No probado | No probado | cell=av testId=gb.boot commit=abcdef1 | - |';
   const findings = readyCapabilitiesMissingEvidence([header, separator, valid, invalid].join('\n'));
 
@@ -37,10 +37,20 @@ test('each capability column accepts evidence scoped to its own cell', () => {
   ];
 
   for (const [cell, column] of cases) {
-    const row = ['Windows', 'GB', 'mGBA', 'No probado', 'No probado', 'No probado', 'No probado', `cell=${cell} testId=${cell}.test commit=abcdef1`, '-'];
+    const row = ['Windows', 'GB', 'mGBA', 'No probado', 'No probado', 'No probado', 'No probado', `cell=${cell} testId=${cell}.test build=v1.2.3 commit=abcdef1 coreHash=${'a'.repeat(64)}`, '-'];
     row[column] = 'Ready';
     assert.deepEqual(readyCapabilitiesMissingEvidence([header, separator, `| ${row.join(' | ')} |`].join('\n')), [], cell);
   }
+});
+
+test('ready capabilities require a build and exact core hash', () => {
+  const header = '| Plataforma | Sistema | Núcleo/ruta observada | Arranque A/V/input | SRAM/estados/FF/rewind | Companion / datos live | Link | Evidencia | Próxima verificación |';
+  const separator = '|---|---|---|---|---|---|---|---|---|';
+  const missingBuild = '| Windows | GB | mGBA | Ready | No probado | No probado | No probado | cell=av testId=gb.boot commit=abcdef1 coreHash=a'.concat('a'.repeat(63), ' | - |');
+  const missingCoreHash = '| Windows | GB | mGBA | Ready | No probado | No probado | No probado | cell=av testId=gb.boot build=v1.2.3 commit=abcdef1 | - |';
+
+  assert.equal(readyCapabilitiesMissingEvidence([header, separator, missingBuild].join('\n')).length, 1);
+  assert.equal(readyCapabilitiesMissingEvidence([header, separator, missingCoreHash].join('\n')).length, 1);
 });
 
 test('the checked-in capability matrix has no ready claim without test evidence', () => {

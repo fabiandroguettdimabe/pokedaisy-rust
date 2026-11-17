@@ -23,8 +23,10 @@ function hasReproducibleEvidence(evidence, capability) {
   return evidence.split(';').some((record) => {
     const cell = new RegExp(`(?:^|\\s)cell=${capability}(?:\\s|$)`, 'i').test(record);
     const testId = /(?:^|\s)testId=[A-Za-z0-9_.:-]+(?:\s|$)/i.test(record);
+    const build = /(?:^|\s)build=[A-Za-z0-9._+-]{1,64}(?:\s|$)/i.test(record);
     const commit = /(?:^|\s)commit=[a-f0-9]{7,40}(?:\s|$)/i.test(record);
-    return cell && testId && commit;
+    const coreHash = /(?:^|\s)coreHash=[a-f0-9]{64}(?:\s|$)/i.test(record);
+    return cell && testId && build && commit && coreHash;
   });
 }
 
