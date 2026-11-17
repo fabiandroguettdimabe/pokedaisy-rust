@@ -29,6 +29,14 @@ class SessionSnapshotContractTest {
     }
 
     @Test
+    fun previousMajorFixtureIsRejectedInsteadOfSilentlyMigrated() {
+        val fixture = File(root, "contracts/vyntra/v1/session-snapshot-v0-incompatible.json").readText()
+        assertThrows(IllegalArgumentException::class.java) {
+            CompanionSessionSnapshot.parse(fixture)
+        }
+    }
+
+    @Test
     fun nonObjectPayloadIsRejected() {
         val fixture = File(root, "contracts/vyntra/v1/session-snapshot-v1.json")
             .readText().replace("\"payload\": { \"game_code\": \"BPRE\", \"paused\": false }", "\"payload\": []")

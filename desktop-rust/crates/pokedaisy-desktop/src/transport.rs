@@ -294,6 +294,16 @@ mod tests {
     }
 
     #[test]
+    fn previous_major_session_snapshot_is_explicitly_unsupported() {
+        let value: SessionSnapshot = serde_json::from_str(include_str!(
+            "../../../../contracts/vyntra/v1/session-snapshot-v0-incompatible.json"
+        ))
+        .unwrap();
+        let slot = LatestSnapshot::new("fixture-session", 3);
+        assert_eq!(slot.publish(value), Err(SnapshotError::WrongVersion));
+    }
+
+    #[test]
     fn snapshot_payload_must_be_an_object() {
         let mut value = snapshot("fixture-session", 3, 8);
         value.payload = json!("not-an-object");
