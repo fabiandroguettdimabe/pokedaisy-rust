@@ -206,7 +206,7 @@ fn install_payload(item: &MigrationItem) -> Result<(), String> {
 mod tests {
     use super::{
         MigrationItem, MigrationReport, MigrationStatus, apply, install_payload, load_journal,
-        persist, persist_with, persist_with_install, preview,
+        persist, persist_with, persist_with_backup_and_install, persist_with_install, preview,
     };
     use std::fs;
     use std::io::Write;
@@ -358,6 +358,42 @@ mod tests {
             &next,
             |file, bytes| file.write_all(bytes),
             |_, _| Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied)),
+        );
+
+        assert!(error.is_err());
+        assert_eq!(
+            fs::read(&path).unwrap(),
+            serde_json::to_vec_pretty(&previous).unwrap()
+        );
+        assert!(!path.with_extension("tmp").exists());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn failed_journal_backup_copy_preserves_previous_journal() {
+        let root = std::env::temp_dir().join(format!(
+            "vyntra-migration-backup-failure-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join("migration.json");
+        let previous = MigrationReport {
+            schema: 1,
+            items: Vec::new(),
+        };
+        let next = MigrationReport {
+            schema: 2,
+            items: Vec::new(),
+        };
+        persist(&path, &previous).unwrap();
+
+        let error = persist_with_backup_and_install(
+            &path,
+            &next,
+            |file, bytes| file.write_all(bytes),
+            |_, _| Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied)),
+            |from, to| fs::rename(from, to),
         );
 
         assert!(error.is_err());
@@ -609,6 +645,22 @@ fn persist_with_install(
     stage: impl FnOnce(&mut fs::File, &[u8]) -> std::io::Result<()>,
     install: impl FnOnce(&Path, &Path) -> std::io::Result<()>,
 ) -> Result<(), String> {
+    persist_with_backup_and_install(
+        path,
+        report,
+        stage,
+        |source, backup| fs::copy(source, backup).map(|_| ()),
+        install,
+    )
+}
+
+fn persist_with_backup_and_install(
+    path: &Path,
+    report: &MigrationReport,
+    stage: impl FnOnce(&mut fs::File, &[u8]) -> std::io::Result<()>,
+    backup_file: impl FnOnce(&Path, &Path) -> std::io::Result<()>,
+    install: impl FnOnce(&Path, &Path) -> std::io::Result<()>,
+) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
@@ -625,7 +677,7 @@ fn persist_with_install(
     let had_previous = path.is_file();
     let backup = path.with_extension("bak");
     if had_previous {
-        if let Err(error) = fs::copy(path, &backup) {
+        if let Err(error) = backup_file(path, &backup) {
             let _ = fs::remove_file(&tmp);
             return Err(error.to_string());
         }
