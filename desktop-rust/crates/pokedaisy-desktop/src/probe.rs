@@ -224,7 +224,7 @@ pub fn extensions_match(system: &str, extensions: Option<&str>) -> bool {
 
 #[cfg(all(test, windows))]
 mod tests {
-    use super::wait_for_child;
+    use super::{probe_child, wait_for_child};
     use std::process::{Command, Stdio};
     use std::time::Duration;
 
@@ -239,5 +239,29 @@ mod tests {
 
         let error = wait_for_child(child, Duration::from_millis(100)).unwrap_err();
         assert!(error.contains("límite de diagnóstico"));
+    }
+
+    #[test]
+    #[ignore = "smoke manual de un núcleo local; requiere VYNTRA_CORE_SMOKE_PATH y VYNTRA_CORE_SMOKE_SYSTEM"]
+    fn configured_local_core_loads_inside_bounded_probe_child() {
+        let core_path = std::path::PathBuf::from(
+            std::env::var_os("VYNTRA_CORE_SMOKE_PATH").expect("define VYNTRA_CORE_SMOKE_PATH"),
+        );
+        let system =
+            std::env::var("VYNTRA_CORE_SMOKE_SYSTEM").expect("define VYNTRA_CORE_SMOKE_SYSTEM");
+        let mut directory = std::env::current_exe().unwrap();
+        let executable = loop {
+            directory = directory
+                .parent()
+                .expect("carpeta del ejecutable Vyntra")
+                .to_path_buf();
+            let candidate = directory.join("vyntra-desktop.exe");
+            if candidate.is_file() {
+                break candidate;
+            }
+        };
+        let report = probe_child(&executable, &core_path, &system, Duration::from_secs(8)).unwrap();
+        assert_eq!(report["status"], "loadable", "{report}");
+        assert_eq!(report["system_match"], true, "{report}");
     }
 }
