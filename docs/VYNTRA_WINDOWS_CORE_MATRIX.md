@@ -19,6 +19,8 @@ Actualizado: 2026-11-17. Hito T07 / WIN-CORE-02, build y smoke GBC en Windows x6
 
 Los scripts `linux/dsperate/gen_data.py` y `gen_guide.py` ahora especifican UTF-8 al leer/escribir. Esto corrige el fallo del generador al leer Kotlin UTF-8 bajo la página de códigos Windows. Ambos generadores se ejecutaron con salidas temporales y finalizaron correctamente; el generador de datos informó que coincide con las declaraciones Kotlin.
 
+Evidencia adicional GBA input (commit `b295334bd5e4e313332de9099d855c5660d620c1`): `configured_local_gba_core_receives_a_button_from_libretro_input` ejecuta `linux/make_diagnostic_gba_input.py` contra la DLL local y obtiene el pixel rojo `[0,248]` sin A y verde `[192,7]` con A; `configured_keyboard_bindings_map_to_libretro_buttons` verifica que Z se asigna a A. Core SHA-256 `5b2c7819a12d9cee28eada6c91f69e72377cff469c4d55df9f2c211d2d4359fd`; ROM input SHA-256 `11d8dcec6d21371a8754d1d0a0682dc5da6fbbd20af928123395651ee2d855`. Esto comprueba el core por API y la función de mapeo, pero no una tecla real dentro de la ventana SDL.
+
 ## Fuentes y límites
 
 Submódulos observados en los commits fijados del checkout: mGBA `26b7884` (MPL-2.0), armGBA `f83c373` (GPL-2 identificada en su LICENSE local), DSperate-lr `801a2dc` (GPL-3). La presencia de un archivo LICENSE no sustituye revisión de composición, obligaciones de distribución ni procedencia de DLL. La DLL GBC se generó solo bajo `desktop-rust/target`; no se añadió al repositorio ni se redistribuyó.
