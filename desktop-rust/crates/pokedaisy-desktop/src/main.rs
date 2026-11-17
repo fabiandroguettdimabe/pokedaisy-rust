@@ -2753,12 +2753,16 @@ mod tests {
             super::load_compatible_state(&game, &dir, Some("corehash")).unwrap(),
             b"state"
         );
+        let committed_manifest = fs::read(&state_manifest_path).unwrap();
         let backup = super::backup_verified_state(&game, &dir, Some("corehash"))
             .unwrap()
             .unwrap();
         assert_eq!(fs::read(backup.join("slot1.ss")).unwrap(), b"state");
         fs::create_dir(backup.parent().unwrap().join("zz-incomplete-backup")).unwrap();
+        // Model a crash after the replacement payload lands but before its
+        // matching manifest can be committed.
         fs::write(super::state_path(&game, &dir), b"tampered").unwrap();
+        assert_eq!(fs::read(&state_manifest_path).unwrap(), committed_manifest);
         assert_eq!(
             super::load_compatible_state(&game, &dir, Some("corehash")).unwrap(),
             b"state"
