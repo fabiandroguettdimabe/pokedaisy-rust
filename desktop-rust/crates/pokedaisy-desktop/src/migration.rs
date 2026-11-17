@@ -325,7 +325,8 @@ mod tests {
     use super::{
         MigrationItem, MigrationReport, MigrationStatus, apply, install_payload,
         install_payload_with, load_journal, persist, persist_with, persist_with_backup_and_install,
-        persist_with_install, preview, read_file_bounded, sha256_file_bounded,
+        persist_with_install, preview, read_file_bounded, serialize_journal_bounded,
+        sha256_file_bounded,
     };
     use std::fs;
     use std::io::Write;
@@ -619,6 +620,17 @@ mod tests {
         let error = read_file_bounded(&path, 8).unwrap_err();
         assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn journal_serializer_rejects_reports_over_its_byte_limit() {
+        let report = MigrationReport {
+            schema: 1,
+            items: Vec::new(),
+        };
+
+        assert!(serialize_journal_bounded(&report, 4096).is_ok());
+        assert!(serialize_journal_bounded(&report, 8).is_err());
     }
 
     #[test]
@@ -1077,7 +1089,7 @@ fn read_file_bounded(path: &Path, max_bytes: u64) -> std::io::Result<Vec<u8>> {
     if bytes.len() as u64 > max_bytes {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
-            "El journal supera el límite de 64 MiB",
+            "El journal supera el límite configurado",
         ));
     }
     Ok(bytes)
@@ -1088,6 +1100,36 @@ fn persist(path: &Path, report: &MigrationReport) -> Result<(), String> {
         file.write_all(bytes)?;
         file.sync_all()
     })
+}
+
+fn serialize_journal_bounded(report: &MigrationReport, max_bytes: u64) -> Result<Vec<u8>, String> {
+    struct LimitedBuffer {
+        bytes: Vec<u8>,
+        max_bytes: usize,
+    }
+    impl Write for LimitedBuffer {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            if self.bytes.len().saturating_add(bytes.len()) > self.max_bytes {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "El journal supera el límite configurado",
+                ));
+            }
+            self.bytes.extend_from_slice(bytes);
+            Ok(bytes.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let mut output = LimitedBuffer {
+        bytes: Vec::new(),
+        max_bytes: usize::try_from(max_bytes).unwrap_or(usize::MAX),
+    };
+    serde_json::to_writer_pretty(&mut output, report).map_err(|error| error.to_string())?;
+    Ok(output.bytes)
 }
 
 fn persist_with(
@@ -1123,7 +1165,7 @@ fn persist_with_backup_and_install(
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    let bytes = serde_json::to_vec_pretty(report).map_err(|e| e.to_string())?;
+    let bytes = serialize_journal_bounded(report, MAX_JOURNAL_BYTES)?;
     let (tmp, mut file) = create_staging_file(path)?;
     if let Err(error) = stage(&mut file, &bytes) {
         drop(file);
