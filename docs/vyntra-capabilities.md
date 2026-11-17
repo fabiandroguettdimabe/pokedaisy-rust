@@ -70,16 +70,19 @@ Actualizado: 2026-11-16. Este documento inicia la ejecución del plan técnico (
 |---|---|---|---|
 | Generadores gamedata | `python scripts/gen_gamedata.py` | Ejecutó y reportó generación de configs/registros/salidas | Modificó archivos generados en working tree; se revirtieron tras la prueba para no introducir diffs no solicitados. Equivalencia de contenido no validada. |
 
-## Registro de ejecuciones futuras (plantilla)
+## Registro de ejecuciones
 
-Añadir filas solo con evidencia adjunta o referenciable:
+Las filas siguientes son verificaciones adicionales posteriores al baseline del 2026-11-16. El commit identifica el checkout evaluado; los resultados negativos o incompletos también se conservan para evitar inferir soporte.
 
 | Fecha | Build/commit | Plataforma | Sistema/core hash | ROM identity o fixtureId | Prueba (testId/acción) | Resultado | Limitación |
 |---|---|---|---|---|---|---|---|
+| 2026-11-17 | `fba34a5` (código T19; commits posteriores solo actualizaron docs) | Windows x86_64 GNU / Desktop Rust | Core sintético `av_core_fixture.c` | Party sintética GBA, identidad exacta de fixture | `synthetic_libretro_map_flows_through_gen3_party_adapter_and_poller`; `cargo fmt --manifest-path desktop-rust/Cargo.toml --all -- --check`; `cargo test --manifest-path desktop-rust/Cargo.toml -p vyntra-desktop --no-default-features --message-format short` | Formato OK; suite Desktop 171 passed, 0 failed, 4 ignored; `core_probe` 5 passed/1 ignored; Libretro A/V 1/1 | Prueba contrato y decoder con bytes sintéticos; no acredita perfil de juego ni datos live. Registro de producción vacío. |
+| 2026-11-17 | `6c02a60` | Web/manual | No aplica | Corpus de pruebas del sitio | `node --test test/*.test.js` en `website/` | 82/82 passed | No incluye build en esta ejecución; el build anterior generó 146 páginas. |
+| 2026-11-17 | `6c02a60` | Android Pocket | NDK 28.2.13676358 | `RomIntakeTest`, `SaveStatesTest` | `:app:testDebugUnitTest --no-daemon` | No ejecutado: Gradle detuvo la configuración en `LicenceNotAcceptedException` | No se aceptó la licencia solicitada; sin resultado de compilación Kotlin, firma ni validación en dispositivo. |
 
 ## Próximos pasos inmediatos (alineados al plan)
 
-1. **T01/QA-02:** ampliar esta matriz con inventario fino por feature y registrar toolchains disponibles en el entorno de trabajo.
+1. **T01/QA-02:** mantener el inventario por feature y añadir una fila por ejecución reproducible; runtime, hashes de cores y pruebas manuales deben conservar identidad concreta.
 2. **T02/INFRA-01:** introducir contratos de dominio/protocolo versionados en Desktop (`domain.rs`, `protocol.rs`) sin romper el flujo actual.
 3. **T03/T05/T08:** abordar identidad por hash, guardados atómicos/aislados y sesión inmutable (P0) con fixtures sintéticos antes de ampliar UI.
-4. **Baseline de checks:** ejecutar, cuando el entorno esté listo, los comandos futuros documentados (UI, Rust, Android, web, generadores) y registrar resultados aquí.
+4. **Baseline de checks:** el sitio web y Desktop Rust tienen verificaciones recientes registradas; Android sigue pendiente de licencia NDK y entorno de hardware/firma, y el baseline completo de generadores aún requiere repetir equivalencia sin dejar diffs.
