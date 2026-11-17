@@ -199,7 +199,10 @@ pub fn apply(journal_path: &Path, report: &MigrationReport) -> Result<(), String
 
 #[cfg(test)]
 mod tests {
-    use super::{MigrationReport, load_journal, persist, persist_with, persist_with_install};
+    use super::{
+        MigrationItem, MigrationReport, MigrationStatus, apply, load_journal, persist,
+        persist_with, persist_with_install, preview,
+    };
     use std::fs;
     use std::io::Write;
 
@@ -289,6 +292,41 @@ mod tests {
         // the staged replacement became the active file.
         fs::remove_file(&path).unwrap();
         assert_eq!(load_journal(&path).unwrap(), Some(previous));
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn migration_retry_replaces_partial_staging_after_interrupted_copy() {
+        let root =
+            std::env::temp_dir().join(format!("vyntra-migration-copy-cut-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("legacy.sav");
+        let destination = root.join("by-id/game/battery.sav");
+        let journal_path = root.join("migration.json");
+        let bytes = b"complete legacy save bytes";
+        fs::write(&source, bytes).unwrap();
+        let item = MigrationItem::new(
+            source.clone(),
+            destination.clone(),
+            "game".into(),
+            "battery".into(),
+        );
+        let report = preview(&[item]).unwrap();
+        assert_eq!(report.items[0].status, MigrationStatus::Ready);
+        persist(&journal_path, &report).unwrap();
+
+        fs::create_dir_all(destination.parent().unwrap()).unwrap();
+        let staging = destination.with_extension("migration-tmp");
+        fs::write(&staging, b"partial bytes before process interruption").unwrap();
+
+        apply(&journal_path, &report).unwrap();
+
+        assert_eq!(fs::read(&destination).unwrap(), bytes);
+        assert_eq!(fs::read(&source).unwrap(), bytes);
+        assert!(!staging.exists());
+        let recovered = load_journal(&journal_path).unwrap().unwrap();
+        assert_eq!(recovered.items[0].status, MigrationStatus::Committed);
         let _ = fs::remove_dir_all(root);
     }
 }
