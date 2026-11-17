@@ -593,9 +593,17 @@ pub fn run() -> Result<(), String> {
                             });
                         },
                         "stop_player" => {
-                            player_commands.as_ref().ok_or("No hay una partida conectada")?
-                                .send(crate::transport::PlayerCommand::Stop)
-                                .map_err(|error| format!("No se pudo detener Player: {error:?}"))?;
+                            let sent = player_commands.as_ref().is_some_and(|commands| {
+                                commands
+                                    .send(crate::transport::PlayerCommand::Stop)
+                                    .is_ok()
+                            });
+                            if !sent {
+                                terminate_child_process(&mut child)?;
+                                player_commands = None;
+                                session = None;
+                                session_epoch = session_epoch.saturating_add(1);
+                            }
                         },
                         "pause_player" => {
                             let paused = action["value"].as_bool().ok_or("Estado de pausa inválido")?;
@@ -822,11 +830,43 @@ fn window_icon() -> Option<tao::window::Icon> {
     tao::window::Icon::from_rgba(pixels, 64, 64).ok()
 }
 
+fn terminate_child_process(child: &mut Option<std::process::Child>) -> Result<(), String> {
+    let Some(mut process) = child.take() else {
+        return Ok(());
+    };
+    match process.try_wait() {
+        Ok(Some(_)) => Ok(()),
+        Ok(None) => {
+            if let Err(kill_error) = process.kill() {
+                if process.try_wait().ok().flatten().is_some() {
+                    return Ok(());
+                }
+                *child = Some(process);
+                return Err(kill_error.to_string());
+            }
+            match process.wait() {
+                Ok(_) => Ok(()),
+                Err(error) => {
+                    *child = Some(process);
+                    Err(error.to_string())
+                }
+            }
+        }
+        Err(error) => {
+            *child = Some(process);
+            Err(error.to_string())
+        }
+    }
+}
+
 fn validate_command_session(
     session: &Option<domain::SessionIdentity>,
     session_epoch: u64,
     cmd: &protocol::UiCommandEnvelope,
 ) -> Result<(), String> {
+    if cmd.action == "stop_player" && session.is_none() {
+        return Ok(());
+    }
     if let Some(expected_session) = cmd.session_id.as_deref() {
         if session.as_ref().map(|s| s.session_id.as_str()) != Some(expected_session) {
             return Err("La sesión ya no está activa. Vuelve a abrir el juego.".into());
@@ -1215,6 +1255,57 @@ mod tests {
         c.epoch = Some(2);
         assert!(validate_command_session(&Some(session()), 3, &c).is_err());
         assert!(validate_command_session(&None, 3, &c).is_err());
+    }
+
+    #[test]
+    fn stop_is_allowed_after_its_player_session_disconnects() {
+        let mut stop = cmd("stop_player");
+        stop.session_id = Some("sess-1".into());
+        stop.epoch = Some(3);
+        assert!(validate_command_session(&None, 4, &stop).is_ok());
+    }
+
+    #[test]
+    fn disconnected_player_process_can_be_terminated_explicitly() {
+        const HOLD_ENV: &str = "VYNTRA_TEST_HOLD_PLAYER_CHILD";
+        const READY_ENV: &str = "VYNTRA_TEST_PLAYER_CHILD_READY";
+        let ready_path =
+            std::env::temp_dir().join(format!("vyntra-player-child-ready-{}", std::process::id()));
+        let _ = fs::remove_file(&ready_path);
+        let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "shell::tests::hold_player_child_until_killed"])
+            .env(HOLD_ENV, "1")
+            .env(READY_ENV, &ready_path)
+            .spawn()
+            .unwrap();
+        for _ in 0..200 {
+            if ready_path.exists() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(25));
+        }
+        if !ready_path.exists() {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!("child process did not start its hold test");
+        }
+        let mut owned_child = Some(child);
+
+        terminate_child_process(&mut owned_child).unwrap();
+
+        assert!(owned_child.is_none());
+        let _ = fs::remove_file(ready_path);
+    }
+
+    #[test]
+    fn hold_player_child_until_killed() {
+        if std::env::var_os("VYNTRA_TEST_HOLD_PLAYER_CHILD").is_some() {
+            let ready_path = std::env::var_os("VYNTRA_TEST_PLAYER_CHILD_READY").unwrap();
+            fs::write(ready_path, b"ready").unwrap();
+            loop {
+                std::thread::sleep(std::time::Duration::from_secs(60));
+            }
+        }
     }
 
     #[test]
