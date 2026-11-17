@@ -213,6 +213,13 @@ pub fn run() -> Result<(), String> {
                             if !library::set_favorite(&mut imported, id, favorite) { return Err("El juego ya no está en la biblioteca".into()); }
                             library::save(&index_path, &imported)?;
                         },
+                        "game_note" => {
+                            let id = action["storage_id"].as_str().ok_or("Juego inválido")?;
+                            let note = action["value"].as_str().ok_or("Nota inválida")?;
+                            if note.len() > 2000 || note.chars().any(|ch| ch.is_control() && ch != '\n' && ch != '\r' && ch != '\t') { return Err("La nota debe tener hasta 2000 bytes y texto válido".into()); }
+                            if !library::set_note(&mut imported, id, note.to_owned()) { return Err("El juego ya no está en la biblioteca".into()); }
+                            library::save(&index_path, &imported)?;
+                        },
                         "library_view" => {
                             let view = action["value"].as_str().ok_or("Vista inválida")?;
                             if !matches!(view, "grid" | "list") { return Err("Vista inválida".into()); }
@@ -696,7 +703,7 @@ fn publish(
     command_revision: u64,
     core_probe: &Option<serde_json::Value>,
 ) {
-    let games:Vec<_>=games.iter().enumerate().map(|(id,g)|{let storage_id=game_storage_key(g);let metadata=imported.iter().find(|entry|entry.id==storage_id);json!({"id":id,"storage_id":storage_id,"title":g.title,"system":g.system,"path":g.path,"missing":!g.path.is_file(),"core":config.core(g.system).is_ok_and(|p|p.is_file()),"favorite":metadata.is_some_and(|entry|entry.favorite),"last_played_unix":metadata.and_then(|entry|entry.last_played_unix)})}).collect();
+    let games:Vec<_>=games.iter().enumerate().map(|(id,g)|{let storage_id=game_storage_key(g);let metadata=imported.iter().find(|entry|entry.id==storage_id);json!({"id":id,"storage_id":storage_id,"title":g.title,"system":g.system,"path":g.path,"missing":!g.path.is_file(),"core":config.core(g.system).is_ok_and(|p|p.is_file()),"favorite":metadata.is_some_and(|entry|entry.favorite),"last_played_unix":metadata.and_then(|entry|entry.last_played_unix),"note":metadata.and_then(|entry|entry.note.clone()).unwrap_or_default()})}).collect();
     let cores:Vec<_>=["GBC","GBA","DS"].iter().enumerate().map(|(id,s)| {let path=config.core(s).ok();json!({"id":id,"system":s,"path":path,"installed":path.as_ref().is_some_and(|p|p.is_file())})}).collect();
     let saves:Vec<_>=save_files(config).iter().enumerate().map(|(id,p)|{let meta=p.metadata().ok();json!({"id":id,"path":p,"name":p.file_name().unwrap_or_default().to_string_lossy(),"bytes":meta.as_ref().map(|m|m.len()),"date":meta.and_then(|m|m.modified().ok()).and_then(|t|t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d|d.as_secs()),"state":p.starts_with(&config.states)})}).collect();
     let value = json!({

@@ -35,6 +35,8 @@ pub struct LibraryEntry {
     pub favorite: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_played_unix: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
 }
 
 impl LibraryEntry {
@@ -74,6 +76,7 @@ impl LibraryEntry {
             last_seen_unix: None,
             favorite: false,
             last_played_unix: None,
+            note: None,
         }
     }
 
@@ -106,6 +109,15 @@ pub fn set_favorite(entries: &mut [LibraryEntry], id: &str, favorite: bool) -> b
         return false;
     };
     entry.favorite = favorite;
+    true
+}
+
+pub fn set_note(entries: &mut [LibraryEntry], id: &str, note: String) -> bool {
+    let Some(entry) = entries.iter_mut().find(|entry| entry.id == id) else {
+        return false;
+    };
+    let note = note.trim().to_owned();
+    entry.note = (!note.is_empty()).then_some(note);
     true
 }
 
@@ -264,12 +276,24 @@ mod tests {
             last_seen_unix: None,
             favorite: false,
             last_played_unix: None,
+            note: None,
         }];
         assert!(set_favorite(&mut entries, "game-a", true));
         assert!(mark_played(&mut entries, "game-a", 42));
         assert!(!mark_played(&mut entries, "missing", 50));
         assert!(entries[0].favorite);
         assert_eq!(entries[0].last_played_unix, Some(42));
+    }
+
+    #[test]
+    fn notes_are_trimmed_and_stored_by_stable_id() {
+        let mut entries = vec![LibraryEntry::from_path(PathBuf::from("note-fixture.gba"))];
+        let id = entries[0].id.clone();
+        assert!(set_note(&mut entries, &id, "  ruta al bosque  ".into()));
+        assert_eq!(entries[0].note.as_deref(), Some("ruta al bosque"));
+        assert!(set_note(&mut entries, &id, "   ".into()));
+        assert_eq!(entries[0].note, None);
+        assert!(!set_note(&mut entries, "stale-id", "nota".into()));
     }
 
     #[test]
@@ -332,6 +356,7 @@ mod tests {
             last_seen_unix: Some(1),
             favorite: false,
             last_played_unix: None,
+            note: None,
         };
         let value = serde_json::json!([entry]);
         let parsed = parse_value(value).unwrap();
@@ -356,6 +381,7 @@ mod tests {
             last_seen_unix: None,
             favorite: false,
             last_played_unix: None,
+            note: None,
         }];
         save(&path, &entries).unwrap();
         assert!(!path.with_extension("tmp").exists());
