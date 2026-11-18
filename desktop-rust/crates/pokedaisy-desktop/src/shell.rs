@@ -1205,12 +1205,12 @@ pub fn run() -> Result<(), String> {
                             if !core_path.is_file() { return Err("El archivo del núcleo no existe".into()); }
                             probe_generation = probe_generation.saturating_add(1);
                             let id = probe_generation;
-                            core_probe = Some(json!({"path":core_path,"status":"probing","reason":null}));
+                            core_probe = Some(json!({"path":core_path,"expected_system":expected_system.clone(),"system_match":null,"status":"probing","reason":null}));
                             let exe = env::current_exe().map_err(|e|e.to_string())?;
                             let tx = proxy.clone();
                             std::thread::spawn(move || {
                                 let report = crate::probe::probe_child(&exe,&core_path,&expected_system,std::time::Duration::from_secs(8))
-                                    .unwrap_or_else(|reason| json!({"path":core_path,"status":"process_failed","reason":reason}));
+                                    .unwrap_or_else(|reason| json!({"path":core_path,"expected_system":expected_system,"system_match":false,"status":"process_failed","reason":reason}));
                                 let _ = tx.send_event(Message::CoreProbed(id,report));
                             });
                         },
