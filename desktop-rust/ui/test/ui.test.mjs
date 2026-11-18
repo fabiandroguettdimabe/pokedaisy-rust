@@ -318,6 +318,8 @@ test('offline UI: navigation, filtering, configuration IPC and missing-core stat
   await expectCommand('cancel_import');
   await page.evaluate(()=>window.vyntraImportDone({imported:0,duplicates:0,rejected:0,cancelled:true}));
   assert.equal(await page.getByText('Importación cancelada · Importadas: 0 · duplicadas: 0 · rechazadas: 0').isVisible(),true);
+  await page.evaluate(()=>window.vyntraAck({ok:true,result:{import:{completed:true,imported:0,duplicates:0,rejected:0,cancelled:true}}}));
+  assert.equal(await page.getByText('Importación cancelada · Importadas: 0 · duplicadas: 0 · rechazadas: 0').isVisible(),true);
   await page.getByRole('button',{name:'Cerrar aviso'}).click();
   await page.evaluate(()=>{window.testState={...window.testState,session:{session_id:'test-session',epoch:2},command_revision:7};window.vyntraState(window.testState);window.vyntraPlayerSnapshot({title:'Synthetic GBA fixture',system:'GBA',screen:'playing',paused:false,core:{name:'Synthetic Core',version:'1.0'},capabilities:{pause:true,stop:true,save_state:false,load_state:false},audio:{depth_ms:42,high_water_ms:100,empty_episodes:2,underrun_frames:7,dropped_frames:12}});});
   const audioMetrics=page.locator('[role="status"]').filter({hasText:'Audio'});

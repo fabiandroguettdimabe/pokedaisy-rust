@@ -17,11 +17,13 @@ use wry::WebViewBuilder;
 enum Message {
     Action(String, ActionSource),
     Scanned(u64, Vec<Game>),
-    CoreProbed(u64, serde_json::Value),
+    CoreProbed(u64, String, Option<String>, serde_json::Value),
     Pipe(crate::player_pipe::PipeEvent),
     ImportProgress(u64, crate::import::ArchiveProgress),
     ImportFinished(
         u64,
+        String,
+        Option<String>,
         Vec<library::LibraryEntry>,
         crate::import::ImportSummary,
     ),
@@ -32,6 +34,50 @@ enum Message {
         Result<(crate::vault::SaveBundleManifest, Vec<u8>), String>,
     ),
     VaultExportFinished(u64, String, Option<String>, Result<(), String>),
+}
+
+fn import_terminal_ack(
+    command_id: String,
+    request_id: Option<String>,
+    summary: &crate::import::ImportSummary,
+) -> protocol::UiAck {
+    protocol::UiAck::terminal(
+        command_id,
+        request_id,
+        Ok(Some(json!({
+            "import": {
+                "completed": true,
+                "imported": summary.imported,
+                "duplicates": summary.duplicates,
+                "rejected": summary.rejected,
+                "cancelled": summary.cancelled,
+            }
+        }))),
+    )
+}
+
+fn core_probe_terminal_ack(
+    command_id: String,
+    request_id: Option<String>,
+    report: &serde_json::Value,
+) -> protocol::UiAck {
+    if report["status"] == "loadable" && report["system_match"] == true {
+        protocol::UiAck::terminal(
+            command_id,
+            request_id,
+            Ok(Some(json!({"core_probe": report}))),
+        )
+    } else {
+        let reason = report["reason"]
+            .as_str()
+            .unwrap_or("No se pudo verificar la carga del núcleo")
+            .to_owned();
+        protocol::UiAck::terminal(
+            command_id,
+            request_id,
+            Err(protocol::AppError::new("command_failed", reason)),
+        )
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -340,8 +386,10 @@ pub fn run() -> Result<(), String> {
                 }
                 publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe, companion_webview.as_ref());
             },
-            TaoEvent::UserEvent(Message::CoreProbed(id, report)) if id == probe_generation => {
+            TaoEvent::UserEvent(Message::CoreProbed(id, command_id, request_id, report)) if id == probe_generation => {
+                let ack = core_probe_terminal_ack(command_id, request_id, &report);
                 core_probe = Some(report);
+                let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
                 publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe, companion_webview.as_ref());
             },
             TaoEvent::UserEvent(Message::ImportProgress(id, progress)) if id == import_generation => {
@@ -356,7 +404,7 @@ pub fn run() -> Result<(), String> {
                     let _ = webview.evaluate_script(&format!("window.vyntraImportProgress&&window.vyntraImportProgress({payload});"));
                 }
             },
-            TaoEvent::UserEvent(Message::ImportFinished(id, new_entries, summary)) if id == import_generation => {
+            TaoEvent::UserEvent(Message::ImportFinished(id, command_id, request_id, new_entries, summary)) if id == import_generation => {
                 imported = new_entries;
                 active_import = None;
                 if summary.imported > 0 {
@@ -371,6 +419,8 @@ pub fn run() -> Result<(), String> {
                 if let Ok(payload) = serde_json::to_string(&done) {
                     let _ = webview.evaluate_script(&format!("window.vyntraImportDone&&window.vyntraImportDone({payload});"));
                 }
+                let ack = import_terminal_ack(command_id, request_id, &summary);
+                let _ = webview.evaluate_script(&format!("window.vyntraAck&&window.vyntraAck({});", json!(ack)));
                 publish(&webview,&config,&games,&imported,scanning,&session,session_epoch,command_revision,&core_probe, companion_webview.as_ref());
             },
             TaoEvent::UserEvent(Message::VaultImportReady(id, command_id, request_id, result)) if id == vault_generation => {
@@ -830,6 +880,8 @@ pub fn run() -> Result<(), String> {
                                     let mut worker_entries = imported.clone();
                                     let worker_data = data.join("import-cache");
                                     let worker_proxy = proxy.clone();
+                                    let completion_command_id = command_id.clone();
+                                    let completion_request_id = request_id.clone();
                                     let spawn = std::thread::Builder::new().name("vyntra-import".into()).spawn(move || {
                                         let mut summary = crate::import::ImportSummary::default();
                                         let batch_total = sources.len();
@@ -862,7 +914,7 @@ pub fn run() -> Result<(), String> {
                                                 ImportSource::Rejected(count) => summary.rejected += count,
                                             }
                                         }
-                                        let _ = worker_proxy.send_event(Message::ImportFinished(id, worker_entries, summary));
+                                        let _ = worker_proxy.send_event(Message::ImportFinished(id, completion_command_id, completion_request_id, worker_entries, summary));
                                     });
                                     match spawn {
                                         Ok(_) => {
@@ -886,6 +938,8 @@ pub fn run() -> Result<(), String> {
                                     let cancel_worker = Arc::clone(&cancelled);
                                     let mut worker_entries = imported.clone();
                                     let worker_proxy = proxy.clone();
+                                    let completion_command_id = command_id.clone();
+                                    let completion_request_id = request_id.clone();
                                     let spawn = std::thread::Builder::new().name("vyntra-import-roots".into()).spawn(move || {
                                         let mut summary = crate::import::ImportSummary::default();
                                         summary.rejected = rejected_roots;
@@ -920,7 +974,7 @@ pub fn run() -> Result<(), String> {
                                                 ImportSource::Archive(_, _) => unreachable!(),
                                             }
                                         }
-                                        let _ = worker_proxy.send_event(Message::ImportFinished(id, worker_entries, summary));
+                                        let _ = worker_proxy.send_event(Message::ImportFinished(id, completion_command_id, completion_request_id, worker_entries, summary));
                                     });
                                     match spawn {
                                         Ok(_) => {
@@ -1208,10 +1262,12 @@ pub fn run() -> Result<(), String> {
                             core_probe = Some(json!({"path":core_path,"expected_system":expected_system.clone(),"system_match":null,"status":"probing","reason":null}));
                             let exe = env::current_exe().map_err(|e|e.to_string())?;
                             let tx = proxy.clone();
+                            let completion_command_id = command_id.clone();
+                            let completion_request_id = request_id.clone();
                             std::thread::spawn(move || {
                                 let report = crate::probe::probe_child(&exe,&core_path,&expected_system,std::time::Duration::from_secs(8))
                                     .unwrap_or_else(|reason| json!({"path":core_path,"expected_system":expected_system,"system_match":false,"status":"process_failed","reason":reason}));
-                                let _ = tx.send_event(Message::CoreProbed(id,report));
+                                let _ = tx.send_event(Message::CoreProbed(id,completion_command_id,completion_request_id,report));
                             });
                         },
                         _=>return Err("Acción no disponible".into()),
@@ -3292,6 +3348,87 @@ mod tests {
                 .is_some_and(|error| !error.reason.is_empty())
         );
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn import_completion_ack_preserves_ids_and_summary_even_when_cancelled() {
+        let summary = crate::import::ImportSummary {
+            imported: 2,
+            duplicates: 3,
+            rejected: 4,
+            cancelled: true,
+        };
+
+        let ack = import_terminal_ack(
+            "import-command".into(),
+            Some("import-request".into()),
+            &summary,
+        );
+
+        assert!(ack.ok);
+        assert_eq!(ack.command_id, "import-command");
+        assert_eq!(ack.request_id.as_deref(), Some("import-request"));
+        assert_eq!(
+            ack.result.unwrap()["import"],
+            serde_json::json!({
+                "completed": true,
+                "imported": 2,
+                "duplicates": 3,
+                "rejected": 4,
+                "cancelled": true
+            })
+        );
+    }
+
+    #[test]
+    fn core_probe_completion_ack_preserves_ids_and_reports_load_failure() {
+        let report = serde_json::json!({
+            "path": "C:/cores/broken.dll",
+            "expected_system": "GBA",
+            "status": "load_failed",
+            "system_match": false,
+            "reason": "retro_init falló"
+        });
+
+        let ack = core_probe_terminal_ack(
+            "probe-command".into(),
+            Some("probe-request".into()),
+            &report,
+        );
+
+        assert!(!ack.ok);
+        assert_eq!(ack.command_id, "probe-command");
+        assert_eq!(ack.request_id.as_deref(), Some("probe-request"));
+        assert_eq!(
+            ack.error.as_ref().map(|error| error.code.as_str()),
+            Some("command_failed")
+        );
+        assert_eq!(
+            ack.error.as_ref().map(|error| error.reason.as_str()),
+            Some("retro_init falló")
+        );
+    }
+
+    #[test]
+    fn core_probe_success_ack_preserves_ids_and_report() {
+        let report = serde_json::json!({
+            "path": "C:/cores/working.dll",
+            "expected_system": "GBA",
+            "status": "loadable",
+            "system_match": true,
+            "library_name": "mGBA"
+        });
+
+        let ack = core_probe_terminal_ack(
+            "probe-command".into(),
+            Some("probe-request".into()),
+            &report,
+        );
+
+        assert!(ack.ok);
+        assert_eq!(ack.command_id, "probe-command");
+        assert_eq!(ack.request_id.as_deref(), Some("probe-request"));
+        assert_eq!(ack.result.unwrap()["core_probe"], report);
     }
 
     #[cfg(windows)]
